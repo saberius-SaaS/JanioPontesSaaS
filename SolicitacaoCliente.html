@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Roboto', sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 20px; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+      .portal-card { background: white; width: 100%; max-width: 450px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #e2e8f0; }
+      .header { background: #1C3051; color: white; padding: 30px 25px; text-align: center; }
+      .header h1 { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; }
+      .header p { margin: 8px 0 0; font-size: 12px; opacity: 0.8; }
+      .content { padding: 30px; }
+      .client-info { background: #f1f5f9; padding: 18px; border-radius: 8px; margin-bottom: 25px; }
+      .client-info div { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; }
+      .client-info h2 { margin: 6px 0 0; font-size: 20px; color: #1C3051; }
+      .solicitacao-box { margin-bottom: 25px; border-left: 4px solid #ef4444; padding: 15px; background: #fff5f5; }
+      .solicitacao-box div { font-size: 12px; color: #b91c1c; font-weight: 800; text-transform: uppercase; }
+      .solicitacao-box p { margin: 8px 0 0; font-size: 15px; font-weight: 600; color: #7f1d1d; line-height: 1.4; }
+      label { display: block; font-size: 12px; font-weight: 900; color: #1C3051; margin-bottom: 12px; text-transform: uppercase; }
+      .upload-area { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 45px 20px; text-align: center; cursor: pointer; transition: 0.3s; }
+      .upload-area:hover { border-color: #1C3051; background: #f8fafc; }
+      .upload-area p { margin: 0; font-size: 14px; font-weight: 600; color: #64748b; }
+      .file-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f8fafc; border-radius: 6px; margin-top: 10px; font-size: 13px; }
+      .btn-send { width: 100%; margin-top: 30px; background: #1C3051; color: white; border: none; padding: 20px; border-radius: 10px; font-size: 14px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+      .btn-send:disabled { background: #cbd5e1; cursor: not-allowed; }
+      .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 100; }
+      .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #1C3051; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      .success-view { text-align: center; padding: 50px 25px; display: none; }
+      .success-view h2 { color: #059669; font-size: 24px; margin-bottom: 15px; }
+      .success-view p { color: #475569; font-size: 15px; line-height: 1.5; }
+      .error-view { color: #ef4444; font-size: 13px; margin-top: 20px; font-weight: 700; text-align: center; display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="loader" class="loading-overlay">
+      <div class="spinner"></div>
+      <p style="font-weight:900; font-size:12px; margin-top:15px; text-transform:uppercase; color:#1C3051;" id="loadMsg">Preparando Arquivos...</p>
+    </div>
+
+    <div class="portal-card" id="formCard">
+      <div class="header">
+        <h1>Portal de Envio NCE</h1>
+        <p>Janio Pontes Contabilidade</p>
+      </div>
+      <div class="content">
+        <div id="loadingData" style="text-align:center; font-size:14px; font-weight:700; color:#64748b;">Carregando dados da solicitação...</div>
+        
+        <div id="mainContent" style="display:none">
+          <div class="client-info">
+            <div>Empresa/Cliente</div>
+            <h2 id="cliNome">---</h2>
+          </div>
+          
+          <div class="solicitacao-box">
+            <div>O que precisamos</div>
+            <p id="solTexto">---</p>
+          </div>
+
+          <label>Selecionar Documentos</label>
+          <div class="upload-area" onclick="document.getElementById('fileIn').click()">
+            <p>Toque para anexar arquivos</p>
+            <input type="file" id="fileIn" style="display:none" multiple onchange="handleFiles()">
+          </div>
+          <div id="fileList"></div>
+
+          <button class="btn-send" id="btnEnv" disabled onclick="enviarTudo()">Finalizar Envio</button>
+          <div id="errorArea" class="error-view">Falha na conexão. Tente novamente ou fale conosco.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="portal-card success-view" id="successCard">
+       <div style="font-size: 60px; margin-bottom: 20px;">✅</div>
+       <h2>Envio Concluído!</h2>
+       <p id="successMsg">Seus documentos foram processados com sucesso.</p>
+       <p style="margin-top:25px; font-size:11px; font-weight:800; color:#1C3051; text-transform:uppercase;">Sistema Gestor de Tarefas - NCE</p>
+    </div>
+
+    <script>
+      const solIdRaw = <?= JSON.stringify(solId) ?>;
+      const solId = String(solIdRaw).replace(/^["']|["']$/g, "");
+      let filesToUpload = [];
+
+      window.onload = () => {
+        if (!solId || solId === "" || solId === "null") {
+          document.getElementById('loadingData').innerHTML = "<b style='color:red'>ERRO: LINK INVÁLIDO</b><br>O ID da solicitação não foi identificado.";
+          return;
+        }
+
+        google.script.run
+          .withFailureHandler(err => {
+            document.getElementById('loadingData').textContent = "Falha ao carregar dados. Tente atualizar a página.";
+          })
+          .withSuccessHandler(data => {
+            if (!data) { 
+              document.getElementById('loadingData').textContent = "Link expirado ou inexistente no banco de dados."; 
+              return; 
+            }
+            if (data.error) {
+              document.getElementById('loadingData').innerHTML = `<b style="color:#ef4444;">Acesso Bloqueado</b><br><br><span style="font-size:12px;">${data.error}</span>`;
+              return;
+            }
+           
+            if (data.status === 'ENTREGUE') {
+              document.getElementById('formCard').style.display = 'none';
+              document.getElementById('successCard').style.display = 'block';
+              document.getElementById('successMsg').textContent = "O envio desta solicitação já consta em nosso sistema.";
+              return;
+            }
+            document.getElementById('cliNome').textContent = data.cliente;
+            document.getElementById('solTexto').textContent = data.pedido;
+            document.getElementById('loadingData').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+          }).getDadosSolicitacao(solId);
+      };
+
+      function handleFiles() {
+        const input = document.getElementById('fileIn');
+        const list = document.getElementById('fileList');
+        list.innerHTML = "";
+        filesToUpload = [];
+        for (let i = 0; i < input.files.length; i++) {
+          const file = input.files[i];
+          filesToUpload.push(file);
+          list.innerHTML += `<div class="file-item"><span>${file.name}</span> <span style="font-weight:800; font-size:11px; color:#94a3b8;">${(file.size/1024).toFixed(1)} KB</span></div>`;
+        }
+        document.getElementById('btnEnv').disabled = filesToUpload.length === 0;
+      }
+
+      // NOVO MOTOR DE UPLOAD FRAGMENTADO
+      async function enviarTudo() {
+        const loader = document.getElementById('loader');
+        const loadMsg = document.getElementById('loadMsg');
+        loader.style.display = 'flex';
+        document.getElementById('errorArea').style.display = 'none';
+
+        try {
+          loadMsg.textContent = "Autenticando Pasta Segura...";
+          // 1. Busca a pasta de destino apenas 1 vez para todo o lote
+          const folderId = await new Promise((res, rej) => {
+            google.script.run.withSuccessHandler(res).withFailureHandler(rej).prepararPastaUploadCliente(solId);
+          });
+
+          let linksGerados = [];
+          const CHUNK_SIZE = 1024 * 1024; // 1 MB exato por pedaço (Garante que nunca trava no Google)
+
+          // 2. Loop Arquivo por Arquivo
+          for (let i = 0; i < filesToUpload.length; i++) {
+            const file = filesToUpload[i];
+            loadMsg.textContent = `Lendo Arquivo ${i+1}/${filesToUpload.length}...`;
+            
+            const b64Data = await toBase64(file);
+            const b64String = b64Data.split(',')[1];
+            const totalChunks = Math.ceil(b64String.length / CHUNK_SIZE);
+            
+            // 3. Fatiamento e Envio
+            for (let c = 0; c < totalChunks; c++) {
+              let perc = Math.round(((c+1) / totalChunks) * 100);
+              loadMsg.textContent = `Enviando ${file.name.substring(0, 15)}... (${perc}%)`;
+              
+              const chunk = b64String.substring(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
+              
+              const result = await new Promise((res, rej) => {
+                google.script.run
+                  .withSuccessHandler(res)
+                  .withFailureHandler(rej)
+                  .processarFragmentoUpload(folderId, file.name, file.type, chunk, c, totalChunks, solId);
+              });
+
+              if (result && result.status === 'DONE') {
+                linksGerados.push(result.url);
+              }
+            }
+          }
+          
+          loadMsg.textContent = "Finalizando Protocolo...";
+          await new Promise((res, rej) => {
+            google.script.run.withSuccessHandler(res).withFailureHandler(rej).finalizarLoteUploadsCliente(solId, linksGerados);
+          });
+
+          loader.style.display = 'none';
+          document.getElementById('formCard').style.display = 'none';
+          document.getElementById('successCard').style.display = 'block';
+
+        } catch (e) {
+          loader.style.display = 'none';
+          document.getElementById('errorArea').style.display = 'block';
+          console.error(e);
+        }
+      }
+
+      const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    </script>
+  </body>
+</html>

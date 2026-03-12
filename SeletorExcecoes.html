@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; background-color: #F1F5F9; margin: 0; padding: 0; color: #1E293B; overflow: hidden; }
+      
+      /* Cabeçalho Compacto para aproveitar espaço superior */
+      .header-slim { background: #1C3051; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #E65100; }
+      .header-slim .info { display: flex; flex-direction: column; }
+      .header-slim b { font-size: 13px; text-transform: uppercase; }
+      .header-slim span { font-size: 10px; opacity: 0.8; }
+      .regime-badge { background: #E65100; color: white; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; }
+
+      .search-bar { background: white; padding: 8px 15px; border-bottom: 1px solid #CBD5E1; }
+      .search-bar input { width: 100%; padding: 6px 10px; border: 1px solid #E2E8F0; border-radius: 4px; font-size: 12px; outline: none; }
+
+      /* Grid de 3 Colunas */
+      .grid-container { 
+        display: grid; 
+        grid-template-columns: repeat(3, 1fr); 
+        gap: 1px;
+        height: 420px; 
+        overflow-y: auto; 
+        background: #CBD5E1; 
+      }
+      
+      .grid-item { 
+        display: flex; 
+        align-items: center; 
+        padding: 8px 10px; 
+        background: white;
+        cursor: pointer; 
+        border: 1px solid transparent;
+      }
+      .grid-item:hover { background-color: #F8FAFC; }
+      .grid-item.selected { background-color: #ECFDF5; border-color: #10B981; }
+      
+      .grid-item input { margin-right: 8px; cursor: pointer; accent-color: #1C3051; width: 15px; height: 15px; }
+      .grid-item label { 
+        font-size: 10.5px; 
+        font-weight: 600; 
+        cursor: pointer; 
+        white-space: nowrap; 
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+      }
+
+      .footer { padding: 12px 20px; background: white; text-align: right; border-top: 1px solid #E2E8F0; }
+      button { padding: 8px 18px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+      .btn-save { background: #1C3051; color: white; margin-left: 10px; }
+      
+      .loading-state { padding: 100px; text-align: center; font-weight: 800; color: #64748B; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="header-slim">
+      <div class="info">
+        <b id="cliNome">Carregando...</b>
+        <span id="cliSub">NCE - Sistema de Gestão</span>
+      </div>
+      <div id="cliRegime" class="regime-badge">---</div>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" id="filtro" placeholder="🔎 Filtrar obrigações..." onkeyup="filtrar()">
+    </div>
+
+    <div class="grid-container" id="lista">
+      <div class="loading-state">Iniciando motor de dados...</div>
+    </div>
+
+    <div class="footer">
+      <button onclick="google.script.host.close()">Cancelar</button>
+      <button class="btn-save" onclick="salvar()">Gravar Alterações</button>
+    </div>
+
+    <script>
+      var clienteIdx = <?= clienteIndex ?>;
+      var todasRegras = [];
+
+      window.onload = function() {
+        google.script.run
+          .withSuccessHandler(function(d) {
+            document.getElementById('cliNome').innerText = d.cliente;
+            document.getElementById('cliRegime').innerText = d.regime;
+            
+            var atuais = d.atuais ? d.atuais.split(',').map(s => s.trim().toUpperCase()) : [];
+            todasRegras = d.regras;
+            renderizar(atuais);
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('lista').innerHTML = '<div style="color:red; padding:20px;">Erro ao carregar: ' + err.message + '</div>';
+          })
+          .getDadosExcecoes(clienteIdx);
+      };
+
+      function renderizar(atuais) {
+        var list = document.getElementById('lista');
+        list.innerHTML = "";
+        
+        todasRegras.forEach(function(r) {
+          var regNorm = r.trim().toUpperCase();
+          var isChecked = atuais.indexOf(regNorm) > -1;
+          
+          var item = document.createElement('div');
+          item.className = "grid-item" + (isChecked ? " selected" : "");
+          item.innerHTML = `
+            <input type="checkbox" value="${r}" ${isChecked ? "checked" : ""} onchange="toggleRow(this)">
+            <label onclick="this.previousElementSibling.click()">${r}</label>
+          `;
+          list.appendChild(item);
+        });
+      }
+
+      function toggleRow(cb) {
+        cb.parentElement.classList.toggle('selected', cb.checked);
+      }
+
+      function filtrar() {
+        var termo = document.getElementById('filtro').value.toUpperCase();
+        var itens = document.querySelectorAll('.grid-item');
+        itens.forEach(function(it) {
+          var txt = it.innerText.toUpperCase();
+          it.style.display = txt.indexOf(termo) > -1 ? "flex" : "none";
+        });
+      }
+
+      function salvar() {
+        var items = document.querySelectorAll('input[type="checkbox"]:checked');
+        var vals = Array.from(items).map(i => i.value);
+        
+        google.script.run.withSuccessHandler(function(){ 
+          google.script.host.close(); 
+        }).salvarExcecoesCliente(clienteIdx, vals.join(', '));
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,315 @@
+<script>
+  let arquivosStaged = [], pendenciasLocal = [];
+  let preSelecaoObrigacaoId = null; 
+
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarClientes();
+    carregarConfiguracaoDemanda();
+  });
+
+  function showFeedback(msg, isError = false) {
+    const f = document.getElementById('feedbackArea'); 
+    if(!f) return;
+    f.textContent = msg.toUpperCase();
+    f.style.color = isError ? "#ef4444" : "#1C3051";
+    f.classList.add('feedback-show'); 
+    setTimeout(() => f.classList.remove('feedback-show'), 5000);
+  }
+
+  function carregarClientes() {
+    showLoader("Sincronizando Clientes...");
+    google.script.run
+      .withFailureHandler(err => {
+        console.error("Erro ao carregar clientes:", err);
+        showFeedback("Erro na sincronização", true);
+        hideLoader();
+      })
+      .withSuccessHandler(clientes => {
+        const ids = ['clienteUpload', 'demandaCliente', 'solicitarCliente'];
+        ids.forEach(id => {
+          const s = document.getElementById(id);
+          if (!s) return;
+          s.innerHTML = '<option value="">-- CLIENTE --</option>';
+          clientes.forEach(n => { 
+            const o = document.createElement('option'); 
+            o.value = n; 
+            o.textContent = n; 
+            s.appendChild(o); 
+          });
+        });
+        hideLoader();
+      }).getListaClientes();
+  }
+
+  function carregarConfiguracaoDemanda() {
+    google.script.run
+      .withFailureHandler(err => { hideLoader(); })
+      .withSuccessHandler(tipos => {
+        const s = document.getElementById('demandaTipo');
+        if (!s) return;
+        s.innerHTML = '<option value="">-- SELECIONE --</option>';
+        tipos.forEach(t => { 
+          const o = document.createElement('option'); 
+          o.value = t; 
+          o.textContent = t; 
+          s.appendChild(o); 
+        });
+        const o = document.createElement('option'); o.value = 'OUTROS'; o.textContent = 'OUTROS'; s.appendChild(o);
+      }).getTiposTarefaRegras();
+  }
+
+  function aoMudarClienteDemanda() {
+    const cli = document.getElementById('demandaCliente').value;
+    document.getElementById('camposDemanda').style.display = cli ? 'block' : 'none';
+  }
+
+  function aoMudarClienteSolicitar() {
+    const cli = document.getElementById('solicitarCliente').value;
+    const campos = document.getElementById('camposSolicitar');
+    if (!cli) { campos.style.display = 'none'; return; }
+    showLoader("Buscando Tarefas...");
+    google.script.run.withSuccessHandler(tarefas => {
+        const s = document.getElementById('solicitarTarefa');
+        s.innerHTML = '<option value="AVULSA">SOLICITAÇÃO AVULSA</option>';
+        tarefas.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.nome + " [" + t.vencimento + "]"; s.appendChild(o); });
+        campos.style.display = 'block';
+        hideLoader();
+      }).getPendenciasCliente(cli);
+  }
+
+  function setPrazo(tipo) {
+    const btnHoje = document.getElementById('btnHoje');
+    const btnData = document.getElementById('btnData');
+    const inputData = document.getElementById('demandaData');
+    if (tipo === 'hoje') {
+      btnHoje.classList.add('active'); btnData.classList.remove('active'); inputData.style.display = 'none';
+      const hoje = new Date(); inputData.value = hoje.toISOString().split('T')[0];
+    } else {
+      btnHoje.classList.remove('active'); btnData.classList.add('active'); inputData.style.display = 'block';
+    }
+  }
+
+  function carregarPrioridades() {
+    const list = document.getElementById('prioridadeList');
+    list.innerHTML = '<div style="text-align:center; padding:20px; font-size:10px; font-weight:900; color:#1C3051;">ANALISANDO PENDÊNCIAS...</div>';
+    google.script.run
+      .withFailureHandler(err => {
+        list.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444; font-size:10px; font-weight:900;">ERRO: ${err.message}</div>`;
+      })
+      .withSuccessHandler(tasks => {
+        if (!tasks || tasks.length === 0) {
+          list.innerHTML = `<div style="text-align:center; padding:40px 20px;"><div style="font-size:10px; color:#64748b; font-weight:900;">TUDO EM DIA!</div></div>`;
+          return;
+        }
+        list.innerHTML = '';
+        tasks.forEach(t => {
+          const card = document.createElement('div');
+          card.className = 'priority-card';
+          card.onclick = function() { usarPrioridade(t.cliente, t.id); };
+          card.style.cursor = "pointer";
+          const textoAcao = t.acao || "---";
+          const ehEnvio = textoAcao.toUpperCase().indexOf('ENVIAR') > -1;
+          const corAcao = ehEnvio ? '#059669' : '#475569';
+          const bgAcao = ehEnvio ? '#D1FAE5' : '#E2E8F0';
+          card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div style="flex:1; padding-right:10px;">
+                <div style="font-size:11px; font-weight:900; color:#1C3051; text-transform:uppercase; line-height:1.2;">${t.cliente}</div>
+                <div style="font-size:10px; color:#475569; font-weight:600; margin-top:3px;">${t.obrigacao}</div>
+              </div>
+              <div style="text-align:right; min-width:80px;">
+                <div style="font-size:10px; font-weight:900; color:#ef4444;">${t.vencimentoStr}</div>
+                <div style="font-size:8px; color:#94a3b8; font-weight:800; text-transform:uppercase; margin-top:2px; letter-spacing:0.5px;">${t.depto}</div>
+                <div style="font-size:8px; color:${corAcao}; background:${bgAcao}; font-weight:900; text-transform:uppercase; margin-top:4px; padding:2px 5px; border-radius:4px; display:inline-block;">${textoAcao}</div>
+              </div>
+            </div>
+            <div style="font-size:8px; color:#1C3051; text-align:center; margin-top:8px; font-weight:900; opacity:0.6;">CLIQUE PARA RESOLVER</div>
+          `;
+          list.appendChild(card);
+        });
+      })
+      .getPrioridades();
+  }
+
+  function usarPrioridade(clienteNome, idObrigacao) {
+    mudarAba('upload');
+    const selectCli = document.getElementById('clienteUpload');
+    selectCli.value = clienteNome;
+    preSelecaoObrigacaoId = idObrigacao;
+    carregarPendencias();
+  }
+
+  function carregarPendencias() {
+    const c = document.getElementById('clienteUpload').value; 
+    if (!c) return;
+    showLoader("Buscando...");
+    google.script.run
+      .withFailureHandler(err => {
+        showFeedback("Erro de conexão", true);
+        hideLoader();
+        preSelecaoObrigacaoId = null;
+      })
+      .withSuccessHandler(pendencias => {
+        pendenciasLocal = pendencias;
+        const s = document.getElementById('obrigacao'); 
+        s.disabled = false;
+        s.innerHTML = pendencias.length ? '<option value="">-- SELECIONE A OBRIGAÇÃO --</option>' : '<option value="">SEM PENDÊNCIAS</option>';
+        pendencias.forEach(p => { 
+          const o = document.createElement('option'); 
+          o.value = p.id; 
+          o.textContent = p.nome + " [" + p.vencimento + "]"; 
+          s.appendChild(o); 
+        });
+        if (preSelecaoObrigacaoId) {
+            s.value = preSelecaoObrigacaoId;
+            if (s.value === preSelecaoObrigacaoId) {
+                atualizarInterfacePorAcao();
+            } else {
+                showFeedback("Tarefa não encontrada.");
+            }
+            preSelecaoObrigacaoId = null;
+        }
+        hideLoader();
+      }).getPendenciasCliente(c);
+  }
+
+  function atualizarInterfacePorAcao() {
+    const id = document.getElementById('obrigacao').value;
+    const t = pendenciasLocal.find(p => String(p.id) === String(id));
+    const btnFin = document.getElementById('btnFinalizar');
+    const arq = document.getElementById('areaArquivos');
+    const esc = document.getElementById('btnEscolher');
+    if (!t) {
+        document.getElementById('statusAcaoArea').innerHTML = '';
+        return;
+    }
+    const ehEnvio = t.acao.toUpperCase().includes("ENVIAR");
+    document.getElementById('statusAcaoArea').innerHTML = ehEnvio ? '<div class="status-badge badge-enviar">AÇÃO: ENVIAR PARA CLIENTE</div>' : '<div class="status-badge">AÇÃO: ARQUIVAMENTO</div>';
+    arq.style.display = ehEnvio ? 'block' : 'none'; 
+    esc.style.display = ehEnvio ? 'block' : 'none';
+    btnFin.disabled = ehEnvio && !arquivosStaged.length;
+  }
+
+  function adicionarArquivos() {
+    const fs = document.getElementById('fileInput').files;
+    showLoader("Lendo..."); 
+    let p = 0;
+    for (let i = 0; i < fs.length; i++) {
+      const r = new FileReader();
+      r.onload = (e) => {
+        arquivosStaged.push({ name: fs[i].name, base64: e.target.result.split(',')[1] });
+        if (++p === fs.length) { renderizarLista(); hideLoader(); atualizarInterfacePorAcao(); }
+      }; 
+      r.readAsDataURL(fs[i]);
+    }
+  }
+
+  function renderizarLista() {
+    const d = document.getElementById('fileListDisplay'); 
+    d.innerHTML = arquivosStaged.length ? '' : '<span style="color:#94a3b8; font-size:10px;">Vazio</span>';
+    arquivosStaged.forEach((f, i) => { d.innerHTML += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee;">${f.name}</div>`; });
+  }
+
+  async function finalizarProcesso() {
+    const id = document.getElementById('obrigacao').value;
+    const cli = document.getElementById('clienteUpload').value;
+    if(!id || !cli) { showFeedback("Selecione os campos", true); return; }
+    
+    showLoader("Processando via WebApp...");
+    google.script.run
+      .withFailureHandler(err => {
+        console.error(err);
+        showFeedback("Falha ao obter URL HTTP: " + err.message, true);
+        hideLoader();
+      })
+      .withSuccessHandler(async urlWebApp => {
+         try {
+           const payload = {
+             action: "uploadBatch",
+             arquivos: arquivosStaged,
+             taskId: id,
+             clienteNome: cli
+           };
+           
+           const resposta = await fetch(urlWebApp, {
+             method: 'POST',
+             body: JSON.stringify(payload),
+             headers: { 'Content-Type': 'text/plain;charset=utf-8' } // text/plain para evitar preflight CORS no script.google.com
+           });
+           
+           const result = await resposta.json();
+           if (result.success) {
+             showFeedback("Concluído!"); 
+             limparTudo(); 
+           } else {
+             showFeedback("Falha: " + (result.error || result.message), true);
+           }
+         } catch (errFetch) {
+           console.error("Erro no Fetch: ", errFetch);
+           showFeedback("Erro de conexão com WebApp", true);
+         } finally {
+           hideLoader();
+         }
+      }).getUrlParaFetch();
+  }
+
+  function criarTarefaDemanda() {
+    const cli = document.getElementById('demandaCliente').value;
+    const tipo = document.getElementById('demandaTipo').value;
+    const compl = document.getElementById('demandaComplemento').value;
+    const depto = document.getElementById('demandaDepto').value;
+    const acao = document.getElementById('demandaAcao').value;
+    let prazo = document.getElementById('demandaData').value;
+    if (!prazo || document.getElementById('btnHoje').classList.contains('active')) {
+      const hoje = new Date();
+      prazo = hoje.toISOString().split('T')[0];
+    }
+    if (!cli || !tipo) { showFeedback("Campos Obrigatórios!", true); return; }
+    showLoader("Criando...");
+    google.script.run.withSuccessHandler(res => {
+        showFeedback("Criada!");
+        document.getElementById('demandaForm').reset();
+        setPrazo('hoje');
+        aoMudarClienteDemanda();
+        hideLoader();
+      }).salvarTarefaDemanda({ cliente: cli, tipo: tipo, compl: compl, prazo: prazo, depto: depto, acao: acao });
+  }
+
+  function enviarSolicitacao() {
+    const cli = document.getElementById('solicitarCliente').value;
+    const tarefa = document.getElementById('solicitarTarefa').value;
+    const texto = document.getElementById('solicitarTexto').value;
+    if (!cli || !texto) { showFeedback("Preencha os campos!", true); return; }
+    showLoader("Enviando...");
+    google.script.run.withSuccessHandler(res => {
+        showFeedback("Solicitação Enviada!");
+        document.getElementById('solicitarForm').reset();
+        document.getElementById('camposSolicitar').style.display = 'none';
+        hideLoader();
+      }).enviarSolicitacaoDocumento({ cliente: cli, idTarefa: tarefa, solicitacao: texto });
+  }
+
+  function limparTudo() { 
+    arquivosStaged = []; 
+    document.getElementById('fileInput').value = "";
+    renderizarLista(); 
+    const obriSel = document.getElementById('obrigacao');
+    if (obriSel) { obriSel.innerHTML = '<option value="">Selecione o cliente</option>'; obriSel.disabled = true; }
+    document.getElementById('statusAcaoArea').innerHTML = '';
+    document.getElementById('areaArquivos').style.display = 'none';
+    document.getElementById('btnEscolher').style.display = 'none';
+    const btnFin = document.getElementById('btnFinalizar');
+    if (btnFin) btnFin.disabled = true;
+  }
+  
+  function showLoader(t) { document.getElementById('loaderText').textContent = t; document.getElementById('loader').style.display = 'flex'; }
+  function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+  
+  function mudarAba(a) {
+    document.querySelectorAll('.container').forEach(e => e.classList.remove('show'));
+    document.querySelectorAll('.tab').forEach(e => e.classList.remove('active-upload'));
+    document.getElementById('view' + a.charAt(0).toUpperCase() + a.slice(1)).classList.add('show');
+    document.getElementById('tab' + a.charAt(0).toUpperCase() + a.slice(1)).classList.add('active-upload');
+    if (a === 'pendentes') carregarPrioridades();
+  }
+</script>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <?!= include('Painel_CSS'); ?>
+  </head>
+  <body>
+    <div id="loader" class="loading-overlay">
+      <div class="spinner"></div>
+      <div id="loaderText" style="font-weight: 900; font-size: 10px; text-transform:uppercase; letter-spacing:2px;">Sincronizando Sistema...</div>
+    </div>
+
+    <input type="file" id="fileInput" style="display:none" multiple onchange="adicionarArquivos()">
+
+    <div class="header-tabs">
+      <div class="tab active-upload" id="tabUpload" onclick="mudarAba('upload')">UPLOAD</div>
+      <div class="tab" id="tabPendentes" onclick="mudarAba('pendentes')">PRIORIDADE</div>
+      <div class="tab" id="tabDemanda" onclick="mudarAba('demanda')">DEMANDA</div>
+      <div class="tab" id="tabPedir" onclick="mudarAba('pedir')">SOLICITAR</div>
+    </div>
+
+    <div id="viewUpload" class="container show">
+        <form id="uploadForm">
+          <label>1. Cliente</label>
+          <select id="clienteUpload" onchange="carregarPendencias()">
+            <option value="">Aguarde...</option>
+          </select>
+          <label>2. Obrigação</label>
+          <select id="obrigacao" disabled onchange="atualizarInterfacePorAcao()">
+            <option value="">Selecione o cliente</option>
+          </select>
+          <div id="statusAcaoArea"></div>
+          <div id="areaArquivos" style="display:none">
+            <label>3. Documentos</label>
+            <div class="file-list" id="fileListDisplay">
+              <span style="color:#94a3b8; font-size:10px;">Vazio</span>
+            </div>
+          </div>
+          <div class="btn-group">
+            <button type="button" class="btn-outline" id="btnEscolher" style="display:none" onclick="document.getElementById('fileInput').click()">ANEXAR</button>
+            <button type="button" class="btn-blue" id="btnFinalizar" onclick="finalizarProcesso()" disabled>FINALIZAR</button>
+          </div>
+        </form>
+    </div>
+
+    <div id="viewDemanda" class="container">
+        <form id="demandaForm">
+          <label>1. Cliente</label>
+          <select id="demandaCliente" onchange="aoMudarClienteDemanda()">
+            <option value="">Carregando...</option>
+          </select>
+          
+          <div id="camposDemanda" style="display:none">
+            <label>2. Tipo de Tarefa</label>
+            <select id="demandaTipo">
+              <option value="">Selecione...</option>
+            </select>
+            
+            <label>3. Complemento</label>
+            <input type="text" id="demandaComplemento" placeholder="Ex: Referente a 05/2024">
+            
+            <label>4. Prazo (Vencimento)</label>
+            <div class="toggle-group">
+              <button type="button" id="btnHoje" class="toggle-btn active" onclick="setPrazo('hoje')">Hoje</button>
+              <button type="button" id="btnData" class="toggle-btn" onclick="setPrazo('data')">Data</button>
+            </div>
+            <input type="date" id="demandaData" style="display:none; margin-top:10px;">
+            
+            <label>5. Departamento</label>
+            <select id="demandaDepto">
+              <option value="CONTABIL">CONTABIL</option>
+              <option value="FISCAL">FISCAL</option>
+              <option value="PESSOAL">PESSOAL</option>
+              <option value="SOCIETARIO">SOCIETARIO</option>
+            </select>
+            
+            <label>6. Ação</label>
+            <select id="demandaAcao">
+              <option value="ENVIAR">ENVIAR</option>
+              <option value="ARQUIVAR">ARQUIVAR</option>
+            </select>
+            
+            <div class="btn-group" style="margin-top:40px;">
+              <button type="button" class="btn-blue" onclick="criarTarefaDemanda()">CRIAR TAREFA</button>
+            </div>
+          </div>
+        </form>
+    </div>
+
+    <div id="viewPendentes" class="container">
+      <div id="prioridadeList"></div>
+    </div>
+
+    <div id="viewPedir" class="container">
+        <form id="solicitarForm">
+          <label>1. Cliente</label>
+          <select id="solicitarCliente" onchange="aoMudarClienteSolicitar()">
+            <option value="">Carregando...</option>
+          </select>
+
+          <div id="camposSolicitar" style="display:none">
+            <label>2. Tarefa Vinculada</label>
+            <select id="solicitarTarefa">
+              <option value="AVULSA">SOLICITAÇÃO AVULSA</option>
+            </select>
+
+            <label>3. Documento / O que solicita?</label>
+            <textarea id="solicitarTexto" rows="4" placeholder="Descreva aqui detalhadamente o que você precisa que o cliente envie..."></textarea>
+
+            <div class="btn-group" style="margin-top:40px;">
+              <button type="button" class="btn-blue" onclick="enviarSolicitacao()">ENVIAR SOLICITAÇÃO</button>
+            </div>
+          </div>
+        </form>
+    </div>
+
+    <div id="feedbackArea" class="feedback-area"></div>
+
+    <?!= include('Painel_JS'); ?>
+  </body>
+</html>
