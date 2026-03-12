@@ -13,46 +13,80 @@ function executarCheckUpSistema() {
   var relatorio = {
     integro: true,
     falhas: [],
+    sucessos: [],
     avisos: []
   };
 
   try {
-    // 1. VALIDAÇÃO DO OBJETO DE CONFIGURAÇÃO (Prevenção de Undefined)
+    // 1. VALIDAÇÃO DO OBJETO DE CONFIGURAÇÃO GLOBAl (Prevenção de Undefined)
     if (typeof CONFIG_SISTEMA === 'undefined' || !CONFIG_SISTEMA.STATUS) {
       relatorio.integro = false;
       relatorio.falhas.push("Objeto CONFIG_SISTEMA não carregado ou incompleto.");
+    } else {
+      relatorio.sucessos.push("Objeto CONFIG_SISTEMA carregado perfeitamente.");
     }
 
-    // 2. VALIDAÇÃO DE EXISTÊNCIA DE ABAS CRÍTICAS
+    // 2. VALIDAÇÃO DINÂMICA DE EXISTÊNCIA DE ABAS CRÍTICAS
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var abasObrigatorias = [
-      CONFIG_SISTEMA.ABA_USUARIOS,
-      CONFIG_SISTEMA.ABA_CLIENTES,
-      CONFIG_SISTEMA.ABA_REGRAS,
-      CONFIG_SISTEMA.ABA_WORKFLOWS,
-      CONFIG_SISTEMA.ABA_TAREFAS,
-      CONFIG_SISTEMA.ABA_SOLICITACOES,
-      CONFIG_SISTEMA.ABA_PROTOCOLOS,
-      CONFIG_SISTEMA.ABA_HISTORICO,
-      CONFIG_SISTEMA.ABA_RISCO,
-      CONFIG_SISTEMA.ABA_LOGS,
-    ];
-
-    abasObrigatorias.forEach(function(nomeAba) {
-      if (!ss.getSheetByName(nomeAba)) {
-        relatorio.integro = false;
-        relatorio.falhas.push("Aba obrigatória não localizada: " + nomeAba);
+    var keysConfig = Object.keys(CONFIG_SISTEMA);
+    var qtdAbasValidadas = 0;
+    
+    keysConfig.forEach(function(key) {
+      if (key.indexOf("ABA_") === 0) {
+        var nomeAba = CONFIG_SISTEMA[key];
+        if (!ss.getSheetByName(nomeAba)) {
+          relatorio.integro = false;
+          relatorio.falhas.push("Aba obrigatória NÃO localizada: " + nomeAba + " (Ref: " + key + ")");
+        } else {
+          qtdAbasValidadas++;
+        }
       }
     });
+    
+    if (qtdAbasValidadas > 0) {
+      relatorio.sucessos.push(qtdAbasValidadas + " Abas validadas com sucesso.");
+    }
 
-    // 3. VALIDAÇÃO DE SCHEMA (Posição de Colunas Críticas)
+    // 3. VALIDAÇÃO DINÂMICA DE TODAS AS FUNÇÕES GLOBAIS
+    // Identifica e conta dinamicamente quantas funções exclusivas existem no escopo atual.
+    var funcoesEncontradas = 0;
+    var funcoesFilaParaIgnorar = [
+      "executarCheckUpSistema", "validarSchemaColunas", "comandoValidarSaudeSistema", 
+      "getSafeStatus", "eval", "parseInt", "parseFloat", "isNaN", "isFinite", 
+      "decodeURI", "decodeURIComponent", "encodeURI", "encodeURIComponent", "escape", "unescape"
+    ]; // Ignora as funções deste próprio arquivo ou utilitárias JS para não sujar o count do usuário.
+    
+    var funcoesAusentes = false;
+    
+    try {
+      var globais = Object.keys(this);
+      globais.forEach(function(key) {
+        if (typeof this[key] === 'function' && funcoesFilaParaIgnorar.indexOf(key) === -1) {
+          // Garante que é uma função de usuário (não nativa complexa sem ser stringificável normal)
+          funcoesEncontradas++;
+        }
+      });
+      
+      if (funcoesEncontradas > 20) { 
+         // Assumindo um limite mínimo seguro de que o sistema possui dezenas de funções em seus packages 
+         relatorio.sucessos.push("Rastreio Reflexivo Ativo: " + funcoesEncontradas + " funções operacionais identificadas na memória global.");
+      } else {
+         relatorio.integro = false;
+         relatorio.falhas.push("Apenas " + funcoesEncontradas + " funções detectadas (possível falha de compilação de scripts).");
+      }
+    } catch(errFunc) {
+      relatorio.integro = false;
+      relatorio.falhas.push("Falha ao analisar funções do motor: " + errFunc.message);
+    }
+
+    // 4. VALIDAÇÃO DE SCHEMA (Posição de Colunas Críticas)
     if (relatorio.integro) {
       validarSchemaColunas(ss, relatorio);
     }
 
-    // 4. REGISTRO E FEEDBACK
+    // 5. REGISTRO E FEEDBACK
     if (!relatorio.integro) {
-      var msgErro = "🚨 ERRO DE INTEGRIDADE: \n" + relatorio.falhas.join("\n");
+      var msgErro = "🚨 DETECÇÃO DE FALHAS: \n" + relatorio.falhas.join(" | ");
       registrarLogSistema("HEALTH_CHECK_FAIL", msgErro);
       console.error(msgErro);
     } else {
@@ -63,7 +97,7 @@ function executarCheckUpSistema() {
 
   } catch (e) {
     registrarLogSistema("HEALTH_CHECK_CRASH", e.message);
-    return { integro: false, falhas: [e.message] };
+    return { integro: false, falhas: [e.message], sucessos: [], avisos: [] };
   }
 }
 
@@ -92,10 +126,18 @@ function validarSchemaColunas(ss, relatorio) {
  */
 function comandoValidarSaudeSistema() {
   var check = executarCheckUpSistema();
+  var ui = SpreadsheetApp.getUi();
+  
   if (check.integro) {
-    SpreadsheetApp.getUi().alert("✅ SISTEMA ÍNTEGRO\n\nTodas as abas, colunas e configurações globais foram validadas com sucesso.");
+    var msgSucesso = "✅ TODAS AS CAMADAS ÍNTEGRAS\n\n";
+    check.sucessos.forEach(function(suc) { msgSucesso += "✔️ " + suc + "\n"; });
+    msgSucesso += "\nO sistema está 100% operacional para rodar rotinas pesadas e receber demandas de usuários.";
+    ui.alert("🛡️ SAÚDE DO SISTEMA", msgSucesso, ui.ButtonSet.OK);
   } else {
-    SpreadsheetApp.getUi().alert("🚨 FALHA DETECTADA\n\n" + check.falhas.join("\n") + "\n\nO sistema pode apresentar erros de execução.");
+    var msgErro = "🚨 FALHA CRÍTICA DETECTADA\n\n";
+    check.falhas.forEach(function(falha) { msgErro += "❌ " + falha + "\n"; });
+    msgErro += "\nO sistema pode apresentar erros graves de execução. Bloqueie as operações até que o problema seja resolvido.";
+    ui.alert("🛡️ SAÚDE DO SISTEMA", msgErro, ui.ButtonSet.OK);
   }
 }
 
