@@ -22,6 +22,14 @@ var CONFIG_SISTEMA = {
   ABA_RISCO: "DB_RISCO",
   ABA_LOGS: "DB_LOGS",
   ABA_WORKFLOWS: "DB_WORKFLOWS",
+  
+  PASTAS: {
+    NOME: "OPERACIONAL",
+    BASE: "19f-w65G1jROg78UUmn6zGUIpAAg6i3wX",
+    BACKUPS: "1gFvKQhakxFtEWQTv5vzeI92wegeGfmdj",
+    CLIENTES_DIGITAL: "1RfP4l6po0g46YYjdzh1EmJDkgSP8lFVo",
+    ENVIADOS: "1DqR1Zg6_ASKXux80UxYJ_6FWGrV4MvYn"
+  },
  
   STATUS: {
     ABERTA: "ABERTA",
@@ -32,44 +40,7 @@ var CONFIG_SISTEMA = {
   FERIADOS: ["01/01", "21/04", "01/05", "07/09", "12/10", "02/11", "15/11", "20/11", "25/12"]
 };
 
-/**
- * Identifica o ambiente verificando se a planilha está dentro da Pasta Base de Operação ou Desenvolvimento.
- */
-function getAmbiente() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var ssId = ss.getId();
-  
-  var ID_PASTA_BASE_PROD = "19f-w65G1jROg78UUmn6zGUIpAAg6i3wX";
-  var ID_PASTA_BASE_DEV  = "1BeiB4aS8zLmAJUeAP6SSHbB3LhponoSF";
 
-  var pastaPaiId = "";
-  try {
-    var parents = DriveApp.getFileById(ssId).getParents();
-    if (parents.hasNext()) {
-      pastaPaiId = parents.next().getId();
-    }
-  } catch (e) {
-    console.error("Erro ao identificar pasta pai: " + e.message);
-  }
-
-  if (pastaPaiId === ID_PASTA_BASE_PROD || ssId === ID_PASTA_BASE_PROD) {
-    return {
-      NOME: "OPERACIONAL",
-      BASE: "19f-w65G1jROg78UUmn6zGUIpAAg6i3wX",
-      BACKUPS: "1gFvKQhakxFtEWQTv5vzeI92wegeGfmdj",
-      CLIENTES_DIGITAL: "1RfP4l6po0g46YYjdzh1EmJDkgSP8lFVo",
-      ENVIADOS: "1DqR1Zg6_ASKXux80UxYJ_6FWGrV4MvYn"
-    };
-  } else {
-    return {
-      NOME: "DESENVOLVIMENTO",
-      BASE: "1BeiB4aS8zLmAJUeAP6SSHbB3LhponoSF",
-      BACKUPS: "13Lqx_66hL-SZWO59Ej9ifQMGWaDCaj52",
-      CLIENTES_DIGITAL: "1z4jUorGF_pMJ5o0jR7jGc2QUmpD7c3l6",
-      ENVIADOS: "1dRgbz_FkqWUazrjaNNwCFFi4NkLTc1N-"
-    };
-  }
-}
 
 /**
  * Retorna a URL do WebApp configurada para o frontend usar no fetch.

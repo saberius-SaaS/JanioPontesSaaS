@@ -13,16 +13,54 @@ function getPublicWebAppUrl() {
 /**
  * Notificação de Entrega ao Cliente (ENVIO DE DOCUMENTOS)
  */
-function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailCli, linkArquivo, pastaLink, rowIdx) {
+function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailCli, linksArquivo, pastaLink, rowIdx) {
   if(!emailCli || emailCli.indexOf("@") === -1) return;
   try {
     var webAppUrl = getPublicWebAppUrl();
     var connector = webAppUrl.indexOf('?') > -1 ? '&' : '?';
-    var linkBotao = (linkArquivo && linkArquivo.length > 10) ? linkArquivo : pastaLink;
     
-    // Novas URLs de Rastreio com Destino
-    var urlTrackBotao = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(linkBotao);
-    var urlTrackPasta = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(pastaLink);
+    // linksArquivo agora é um Array (garante conversão se vier vindo um único link legado)
+    var links = Array.isArray(linksArquivo) ? linksArquivo : (linksArquivo ? [linksArquivo] : []);
+    
+    var htmlLinks = "";
+    if (links.length === 1) {
+      var linkObj = links[0];
+      var url = typeof linkObj === 'object' ? linkObj.url : linkObj;
+      var nomeExibicao = typeof linkObj === 'object' ? linkObj.name : "Documento";
+      
+      var urlTrack = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(url);
+      htmlLinks = `
+        <div style="margin-bottom:25px;">
+          <a href="${urlTrack}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px;">ABRIR: ${nomeExibicao.toUpperCase()}</a>
+        </div>
+      `;
+    } else if (links.length > 1) {
+      htmlLinks = '<div style="margin-bottom:25px; text-align:left;">';
+      links.forEach(function(linkObj, index) {
+        var url = typeof linkObj === 'object' ? linkObj.url : linkObj;
+        var nomeExibicao = typeof linkObj === 'object' ? linkObj.name : ("DOCUMENTO " + (index + 1));
+        
+        var urlTrack = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(url);
+        htmlLinks += `
+          <div style="margin-bottom:10px;">
+            <a href="${urlTrack}" target="_blank" style="display:inline-block; background-color:#f1f5f9; color:#1C3051; border:1px solid #e2e8f0; padding:15px; border-radius:10px; text-decoration:none; font-size:12px; font-weight:700; width:100%; box-sizing:border-box;">
+              📄 ${nomeExibicao} (Abrir)
+            </a>
+          </div>
+        `;
+      });
+      htmlLinks += '</div>';
+    } else {
+      // Fallback para Pasta se não houver links diretos
+      var urlTrackPasta = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(pastaLink);
+      htmlLinks = `
+        <div style="margin-bottom:25px;">
+          <a href="${urlTrackPasta}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px;">ACESSAR PASTA DIGITAL</a>
+        </div>
+      `;
+    }
+    
+    var urlTrackPastaFinal = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(pastaLink);
 
     var html = `
       <div style="margin:0; padding:0; background-color:#f8fafc; font-family:sans-serif; padding:40px 20px;">
@@ -33,14 +71,15 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
           </td></tr>
           <tr><td style="padding:45px 35px; text-align:center;">
               <h2 style="color:#1e293b; margin:0 0 10px 0; font-size:20px; font-weight:700;">Olá, ${cliente}</h2>
-              <p style="color:#64748b; font-size:14px; margin-bottom:35px; line-height:1.5;">O documento <b>${obrigacao}</b> já está disponível.</p>
-              <div style="margin-bottom:25px;">
-                <a href="${urlTrackBotao}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px;">ABRIR DOCUMENTO</a>
-                <div style="font-size:9px; color:#94a3b8; margin-top:12px; font-weight:700; text-transform:uppercase;">Protocolo: ${protocolo}</div>
-              </div>
+              <p style="color:#64748b; font-size:14px; margin-bottom:35px; line-height:1.5;">Os documentos referentes a <b>${obrigacao}</b> já estão disponíveis.</p>
+              
+              ${htmlLinks}
+              
+              <div style="font-size:9px; color:#94a3b8; margin-bottom:25px; font-weight:700; text-transform:uppercase;">Protocolo: ${protocolo}</div>
+              
               <div style="margin-top:20px; border-top:1px solid #f1f5f9; padding-top:30px;">
                 <p style="color:#94a3b8; font-size:11px; margin-bottom:15px;">Acesse seu repositório completo:</p>
-                <a href="${urlTrackPasta}" target="_blank" style="display:inline-block; background-color:transparent; border:2px solid #1C3051; color:#1C3051; padding:12px; border-radius:10px; text-decoration:none; font-size:11px; font-weight:800; text-transform:uppercase; width:100%; box-sizing:border-box;">MINHA PASTA DIGITAL</a>
+                <a href="${urlTrackPastaFinal}" target="_blank" style="display:inline-block; background-color:transparent; border:2px solid #1C3051; color:#1C3051; padding:12px; border-radius:10px; text-decoration:none; font-size:11px; font-weight:800; text-transform:uppercase; width:100%; box-sizing:border-box;">MINHA PASTA DIGITAL</a>
               </div>
           </td></tr>
           <tr><td style="padding:25px; background-color:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">

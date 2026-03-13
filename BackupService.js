@@ -7,20 +7,20 @@ function executarBackupTotal() {
   try { lock.waitLock(30000); } catch (e) { return; }
 
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var env = getAmbiente();
-    var idPastaBackup = env.BACKUPS;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var idPastaBackup = CONFIG_SISTEMA.PASTAS.BACKUPS;
+    var envNome = CONFIG_SISTEMA.PASTAS.NOME;
     
     var pastaDestino = DriveApp.getFolderById(idPastaBackup);
     var agora = new Date();
     var carimbo = Utilities.formatDate(agora, "GMT-3", "yyyy-MM-dd HH'h'mm");
-    var nomeArquivo = "[" + env.NOME + "-BKP] " + ss.getName() + " - " + carimbo;
+    var nomeArquivo = "[" + envNome + "-BKP] " + ss.getName() + " - " + carimbo;
 
     var arquivoCopia = DriveApp.getFileById(ss.getId()).makeCopy(nomeArquivo, pastaDestino);
-    registrarLogSistema("BACKUP_SUCCESS", "Ambiente: " + env.NOME + " | ID: " + arquivoCopia.getId());
+    registrarLogSistema("BACKUP_SUCCESS", "Ambiente: " + envNome + " | ID: " + arquivoCopia.getId());
     
     limparBackupsAntigos(pastaDestino);
-    return "Backup concluído (" + env.NOME + "): " + nomeArquivo;
+    return "Backup concluído (" + envNome + "): " + nomeArquivo;
 
   } catch (e) {
     registrarLogSistema("BACKUP_ERROR", e.message);

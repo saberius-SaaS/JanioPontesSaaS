@@ -197,6 +197,19 @@ function abrirSistema() {
 
 function getListaClientes() { var data = getSheetDataCached(CONFIG_SISTEMA.ABA_CLIENTES, CACHE_CONFIG.KEYS.CLIENTES); return data.slice(1).map(r => r[1]).filter(n => n !== "").sort(); }
 function getTiposTarefaRegras() { var data = getSheetDataCached(CONFIG_SISTEMA.ABA_REGRAS, CACHE_CONFIG.KEYS.REGRAS); return data.slice(1).map(r => String(r[7]).trim()).filter((v, i, a) => v !== "" && a.indexOf(v) === i).sort(); }
+
+/**
+ * ⚡ CONSOLIDATED PAYLOAD - PERFORMANCE BOOSTER
+ * Junta múltiplas requisições em 1 única chamada de rede para inicializar o painel sub-segundos.
+ */
+function getPayloadInicialPainel() {
+  return {
+    clientes: getListaClientes(),
+    tiposDemanda: getTiposTarefaRegras(),
+    prioridadesUser: getPrioridades()
+  };
+}
+
 function forcarAutorizacao() { SpreadsheetApp.getUi().alert("🛡️ Autorizado."); }
 function comandoSincronizarProvas() { sincronizarProvasDeEntregaAPI(); }
 function comandoSincronizarHistorico() { sincronizarHistoricoComProtocolos(); }

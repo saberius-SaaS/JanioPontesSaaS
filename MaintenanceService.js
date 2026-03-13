@@ -43,11 +43,10 @@ function padronizarLayout() {
 function mapearPastasClientesAutomatico() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
-  var env = getAmbiente();
   if (!wsCli) return;
   var dataCli = wsCli.getDataRange().getValues();
   try {
-    var rootFolder = DriveApp.getFolderById(env.CLIENTES_DIGITAL);
+    var rootFolder = DriveApp.getFolderById(CONFIG_SISTEMA.PASTAS.CLIENTES_DIGITAL);
     var subFolders = rootFolder.getFolders();
     var mapaNomes = new Map();
     var mapaIds = new Set();

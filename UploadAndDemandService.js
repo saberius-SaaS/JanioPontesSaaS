@@ -15,7 +15,8 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
-    var env = getAmbiente();
+    
+    registrarLogSistema("UPLOAD_START", "Recebidos: " + (arquivos ? arquivos.length : 0) + " arquivos para tarefa " + taskId);
     
     // Localização da Tarefa
     var dataTf = wsTarefas.getRange(1, 10, wsTarefas.getLastRow(), 1).getValues(); 
@@ -52,18 +53,19 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
     }
     
     if (!target) {
-       var root = DriveApp.getFolderById(env.CLIENTES_DIGITAL);
+       var root = DriveApp.getFolderById(CONFIG_SISTEMA.PASTAS.CLIENTES_DIGITAL);
        var pastas = root.getFoldersByName(clienteNome);
        target = pastas.hasNext() ? pastas.next() : root.createFolder(clienteNome);
        if (cliRowIdx !== -1) wsCli.getRange(cliRowIdx, 13).setValue(target.getUrl());
     }
     
-    var linksDrive = [];
-    var folderGlobal = DriveApp.getFolderById(env.ENVIADOS);
+    var linksParaEmail = [];
+    var folderGlobal = DriveApp.getFolderById(CONFIG_SISTEMA.PASTAS.ENVIADOS);
     
     // Processamento de Arquivos
     arquivos.forEach(function(f, idx) {
-      var ext = f.name.split('.').pop();
+      var nomeOriginal = f.name;
+      var ext = nomeOriginal.split('.').pop();
       var nomeObrig = norm(obrig).replace(/\s+/g, "_"); 
       var novoNome = cnpj + "." + nomeObrig + "." + mesRef.replace(/\//g, ".") + (arquivos.length > 1 ? "_" + (idx+1) : "") + "." + ext;
       
@@ -74,11 +76,13 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
       fileClient.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       fileClient.makeCopy(novoNome, folderGlobal);
       
-      linksDrive.push(fileClient.getUrl());
+      var url = fileClient.getUrl();
+      linksParaEmail.push({ url: url, name: nomeOriginal });
     });
 
-    var protocolo = (env.NOME === "DESENVOLVIMENTO" ? "DEV-" : "") + gerarProtocoloEntrega();
-    registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, email, linksDrive.join(" | "));
+    var protocolo = gerarProtocoloEntrega();
+    var linksDriveStr = linksParaEmail.map(function(item) { return item.url; }).join(" | ");
+    registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, email, linksDriveStr);
     
     wsTarefas.getRange(rowIdx, 6, 1, 2).setValues([[getSafeStatus("ENTREGUE"), protocolo]]);
     
@@ -87,7 +91,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
     invalidarCacheSistema(); 
 
     try {
-      notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, email, linksDrive[0], target.getUrl(), 0);
+      notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, email, linksParaEmail, target.getUrl(), rowIdx);
     } catch(e) { console.warn("Email erro: " + e.message); }
     
     return true;

@@ -1,10 +1,10 @@
 <script>
   let arquivosStaged = [], pendenciasLocal = [];
   let preSelecaoObrigacaoId = null; 
+  let payloadGlobalCache = null;
 
   document.addEventListener('DOMContentLoaded', () => {
-    carregarClientes();
-    carregarConfiguracaoDemanda();
+    carregarPayloadInicial();
   });
 
   function showFeedback(msg, isError = false) {
@@ -16,46 +16,43 @@
     setTimeout(() => f.classList.remove('feedback-show'), 5000);
   }
 
-  function carregarClientes() {
-    showLoader("Sincronizando Clientes...");
+  function carregarPayloadInicial() {
+    showLoader("Inicializando NCE...");
     google.script.run
       .withFailureHandler(err => {
-        console.error("Erro ao carregar clientes:", err);
-        showFeedback("Erro na sincronização", true);
+        console.error("Erro na carga inicial:", err);
+        showFeedback("Falha de conexão com servidor", true);
         hideLoader();
       })
-      .withSuccessHandler(clientes => {
-        const ids = ['clienteUpload', 'demandaCliente', 'solicitarCliente'];
-        ids.forEach(id => {
+      .withSuccessHandler(payload => {
+        payloadGlobalCache = payload;
+        
+        // 1. Renderiza Clientes
+        const idsClientes = ['clienteUpload', 'demandaCliente', 'solicitarCliente'];
+        idsClientes.forEach(id => {
           const s = document.getElementById(id);
           if (!s) return;
           s.innerHTML = '<option value="">-- CLIENTE --</option>';
-          clientes.forEach(n => { 
-            const o = document.createElement('option'); 
-            o.value = n; 
-            o.textContent = n; 
-            s.appendChild(o); 
+          payload.clientes.forEach(n => { 
+            const o = document.createElement('option'); o.value = n; o.textContent = n; s.appendChild(o); 
           });
         });
-        hideLoader();
-      }).getListaClientes();
-  }
 
-  function carregarConfiguracaoDemanda() {
-    google.script.run
-      .withFailureHandler(err => { hideLoader(); })
-      .withSuccessHandler(tipos => {
-        const s = document.getElementById('demandaTipo');
-        if (!s) return;
-        s.innerHTML = '<option value="">-- SELECIONE --</option>';
-        tipos.forEach(t => { 
-          const o = document.createElement('option'); 
-          o.value = t; 
-          o.textContent = t; 
-          s.appendChild(o); 
-        });
-        const o = document.createElement('option'); o.value = 'OUTROS'; o.textContent = 'OUTROS'; s.appendChild(o);
-      }).getTiposTarefaRegras();
+        // 2. Renderiza Tipos de Demanda
+        const sDemanda = document.getElementById('demandaTipo');
+        if (sDemanda) {
+          sDemanda.innerHTML = '<option value="">-- SELECIONE --</option>';
+          payload.tiposDemanda.forEach(t => { 
+            const o = document.createElement('option'); o.value = t; o.textContent = t; sDemanda.appendChild(o); 
+          });
+          const oOutro = document.createElement('option'); oOutro.value = 'OUTROS'; oOutro.textContent = 'OUTROS'; sDemanda.appendChild(oOutro);
+        }
+
+        // 3. Pré-renderiza Prioridades Em Background
+        renderizarCardsPrioridade(payload.prioridadesUser);
+
+        hideLoader();
+      }).getPayloadInicialPainel();
   }
 
   function aoMudarClienteDemanda() {
@@ -90,45 +87,51 @@
   }
 
   function carregarPrioridades() {
+    // Agora é um wrap da carga local (ou Refresh Silencioso se desejar)
+    if (payloadGlobalCache && payloadGlobalCache.prioridadesUser) {
+       renderizarCardsPrioridade(payloadGlobalCache.prioridadesUser);
+    } else {
+       // Fallback caso a aba seja aberta antes do payload chegar
+       document.getElementById('prioridadeList').innerHTML = '<div style="text-align:center; padding:20px; font-size:10px; font-weight:900; color:#1C3051;">AGUARDE O INÍCIO...</div>';
+    }
+  }
+
+  function renderizarCardsPrioridade(tasks) {
     const list = document.getElementById('prioridadeList');
-    list.innerHTML = '<div style="text-align:center; padding:20px; font-size:10px; font-weight:900; color:#1C3051;">ANALISANDO PENDÊNCIAS...</div>';
-    google.script.run
-      .withFailureHandler(err => {
-        list.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444; font-size:10px; font-weight:900;">ERRO: ${err.message}</div>`;
-      })
-      .withSuccessHandler(tasks => {
-        if (!tasks || tasks.length === 0) {
-          list.innerHTML = `<div style="text-align:center; padding:40px 20px;"><div style="font-size:10px; color:#64748b; font-weight:900;">TUDO EM DIA!</div></div>`;
-          return;
-        }
-        list.innerHTML = '';
-        tasks.forEach(t => {
-          const card = document.createElement('div');
-          card.className = 'priority-card';
-          card.onclick = function() { usarPrioridade(t.cliente, t.id); };
-          card.style.cursor = "pointer";
-          const textoAcao = t.acao || "---";
-          const ehEnvio = textoAcao.toUpperCase().indexOf('ENVIAR') > -1;
-          const corAcao = ehEnvio ? '#059669' : '#475569';
-          const bgAcao = ehEnvio ? '#D1FAE5' : '#E2E8F0';
-          card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-              <div style="flex:1; padding-right:10px;">
-                <div style="font-size:11px; font-weight:900; color:#1C3051; text-transform:uppercase; line-height:1.2;">${t.cliente}</div>
-                <div style="font-size:10px; color:#475569; font-weight:600; margin-top:3px;">${t.obrigacao}</div>
-              </div>
-              <div style="text-align:right; min-width:80px;">
-                <div style="font-size:10px; font-weight:900; color:#ef4444;">${t.vencimentoStr}</div>
-                <div style="font-size:8px; color:#94a3b8; font-weight:800; text-transform:uppercase; margin-top:2px; letter-spacing:0.5px;">${t.depto}</div>
-                <div style="font-size:8px; color:${corAcao}; background:${bgAcao}; font-weight:900; text-transform:uppercase; margin-top:4px; padding:2px 5px; border-radius:4px; display:inline-block;">${textoAcao}</div>
-              </div>
-            </div>
-            <div style="font-size:8px; color:#1C3051; text-align:center; margin-top:8px; font-weight:900; opacity:0.6;">CLIQUE PARA RESOLVER</div>
-          `;
-          list.appendChild(card);
-        });
-      })
-      .getPrioridades();
+    if (!list) return;
+
+    if (!tasks || tasks.length === 0) {
+      list.innerHTML = `<div style="text-align:center; padding:40px 20px;"><div style="font-size:10px; color:#64748b; font-weight:900;">TUDO EM DIA!</div></div>`;
+      return;
+    }
+
+    list.innerHTML = '';
+    tasks.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'priority-card';
+      card.onclick = function() { usarPrioridade(t.cliente, t.id); };
+      card.style.cursor = "pointer";
+      const textoAcao = t.acao || "---";
+      const ehEnvio = textoAcao.toUpperCase().indexOf('ENVIAR') > -1;
+      const corAcao = ehEnvio ? '#059669' : '#475569';
+      const bgAcao = ehEnvio ? '#D1FAE5' : '#E2E8F0';
+      
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div style="flex:1; padding-right:10px;">
+            <div style="font-size:11px; font-weight:900; color:#1C3051; text-transform:uppercase; line-height:1.2;">${t.cliente}</div>
+            <div style="font-size:10px; color:#475569; font-weight:600; margin-top:3px;">${t.obrigacao}</div>
+          </div>
+          <div style="text-align:right; min-width:80px;">
+            <div style="font-size:10px; font-weight:900; color:#ef4444;">${t.vencimentoStr}</div>
+            <div style="font-size:8px; color:#94a3b8; font-weight:800; text-transform:uppercase; margin-top:2px; letter-spacing:0.5px;">${t.depto}</div>
+            <div style="font-size:8px; color:${corAcao}; background:${bgAcao}; font-weight:900; text-transform:uppercase; margin-top:4px; padding:2px 5px; border-radius:4px; display:inline-block;">${textoAcao}</div>
+          </div>
+        </div>
+        <div style="font-size:8px; color:#1C3051; text-align:center; margin-top:8px; font-weight:900; opacity:0.6;">CLIQUE PARA RESOLVER</div>
+      `;
+      list.appendChild(card);
+    });
   }
 
   function usarPrioridade(clienteNome, idObrigacao) {
@@ -190,24 +193,69 @@
     btnFin.disabled = ehEnvio && !arquivosStaged.length;
   }
 
-  function adicionarArquivos() {
+  async function adicionarArquivos() {
     const fs = document.getElementById('fileInput').files;
-    showLoader("Lendo..."); 
-    let p = 0;
-    for (let i = 0; i < fs.length; i++) {
-      const r = new FileReader();
-      r.onload = (e) => {
-        arquivosStaged.push({ name: fs[i].name, base64: e.target.result.split(',')[1] });
-        if (++p === fs.length) { renderizarLista(); hideLoader(); atualizarInterfacePorAcao(); }
-      }; 
-      r.readAsDataURL(fs[i]);
+    if (!fs || fs.length === 0) return;
+    
+    showLoader("Lendo " + fs.length + " arquivo(s)..."); 
+    
+    try {
+      const promessasLeitura = Array.from(fs).map(file => {
+        return new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = (e) => {
+            resolve({ 
+              name: file.name, 
+              base64: e.target.result.split(',')[1] 
+            });
+          };
+          r.onerror = () => reject(new Error("Falha ao ler o arquivo " + file.name));
+          r.readAsDataURL(file);
+        });
+      });
+
+      const novosArquivos = await Promise.all(promessasLeitura);
+      arquivosStaged = arquivosStaged.concat(novosArquivos);
+      
+      renderizarLista(); 
+      atualizarInterfacePorAcao();
+      
+    } catch (e) {
+      console.error(e);
+      showFeedback("Erro na leitura dos arquivos.", true);
+    } finally {
+      hideLoader();
+      document.getElementById('fileInput').value = ""; 
     }
+  }
+
+  function removerArquivo(index) {
+    arquivosStaged.splice(index, 1);
+    renderizarLista();
+    atualizarInterfacePorAcao();
   }
 
   function renderizarLista() {
     const d = document.getElementById('fileListDisplay'); 
-    d.innerHTML = arquivosStaged.length ? '' : '<span style="color:#94a3b8; font-size:10px;">Vazio</span>';
-    arquivosStaged.forEach((f, i) => { d.innerHTML += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee;">${f.name}</div>`; });
+    const btnEsc = document.getElementById('btnEscolher');
+    
+    if (arquivosStaged.length === 0) {
+      d.innerHTML = '<span style="color:#94a3b8; font-size:10px;">Vazio</span>';
+      btnEsc.textContent = "ANEXAR";
+      return;
+    }
+
+    btnEsc.textContent = `ANEXAR (+${arquivosStaged.length})`;
+    d.innerHTML = '';
+    arquivosStaged.forEach((f, i) => { 
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `
+        <span>${i + 1}. ${f.name}</span>
+        <span class="btn-remove" onclick="removerArquivo(${i})">✕</span>
+      `;
+      d.appendChild(item);
+    });
   }
 
   async function finalizarProcesso() {
