@@ -101,4 +101,243 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
   } finally { lock.releaseLock(); }
 }
 
-// ... manter as outras funções de apoio inalteradas (prepararPastaUploadCliente, etc)
+// --- SERVIÇOS DE DEMANDA E SOLICITAÇÃO ---
+
+/**
+ * Cria uma nova tarefa manualmente via Painel (Demanda)
+ */
+function salvarTarefaDemanda(dados) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); } catch(e) { throw new Error("Sistema ocupado."); }
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
+    if (!wsTarefas) throw new Error("Aba DB_TAREFAS não localizada.");
+
+    var idControle = "DEM_" + new Date().getTime();
+    var mesAno = Utilities.formatDate(new Date(), "GMT-3", "MM/yyyy");
+    
+    // A=MES_ANO | B=NOME | C=OBRIGACAO | D=VENCIMENTO | E=DEPARTAMENTO | F=STATUS | G=PROTOCOLO | H=ACAO | I=RESPONSAVEL | J=ID_CONTROLE | K=NIVEL | L=VENCIMENTO_LEGAL
+    var novaLinha = [
+      mesAno,
+      dados.cliente,
+      dados.tipo + (dados.compl ? " - " + dados.compl : ""),
+      new Date(dados.prazo + "T12:00:00"), // Garante meio-dia para evitar problemas de fuso
+      dados.depto || "GERAL",
+      getSafeStatus("PENDENTE"),
+      "",
+      dados.acao || "ARQUIVAR",
+      dados.responsavel || Session.getActiveUser().getEmail(),
+      idControle,
+      "3", // Nível padrão
+      new Date(dados.prazo + "T12:00:00")
+    ];
+
+    wsTarefas.appendRow(novaLinha);
+    wsTarefas.getRange(wsTarefas.getLastRow(), 4).setNumberFormat("dd/MM/yyyy");
+    wsTarefas.getRange(wsTarefas.getLastRow(), 12).setNumberFormat("dd/MM/yyyy");
+
+    SpreadsheetApp.flush();
+    reordenarTarefasElite();
+    invalidarCacheSistema();
+    registrarLogSistema("DEMANDA_CREATED", "ID: " + idControle + " | Cliente: " + dados.cliente);
+    
+    return true;
+  } finally { lock.releaseLock(); }
+}
+
+/**
+ * Envia uma solicitação de documento para o cliente e registra na DB_SOLICITACOES
+ */
+function enviarSolicitacaoDocumento(dados) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); } catch(e) { throw new Error("Servidor ocupado."); }
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
+    var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
+    
+    // 1. Busca Email do Cliente
+    var emailCli = "";
+    var dataCli = wsCli.getDataRange().getValues();
+    for (var i = 1; i < dataCli.length; i++) {
+      if (norm(dataCli[i][1]) === norm(dados.cliente)) {
+        emailCli = dataCli[i][4];
+        break;
+      }
+    }
+    if (!emailCli) throw new Error("Email do cliente não localizado.");
+
+    // 2. Registra Solicitação (Schema Rígido)
+    var solId = "SOL" + new Date().getTime();
+    wsSol.appendRow([
+      solId,                   // A: ID
+      new Date(),              // B: DATA
+      dados.cliente,           // C: CLIENTE
+      emailCli,                // D: EMAIL
+      dados.solicitacao,       // E: PEDIDO
+      dados.idTarefa || "AVULSA", // F: ID_TAREFA (Referência)
+      getSafeStatus("PENDENTE"),// G: STATUS
+      "",                      // H: DATA_ENVIO (Será preenchido pela rotina de cobrança se necessário)
+      new Date(),              // I: ULTIMA_COBRANCA
+      0,                       // J: QTD_AVISOS
+      Session.getActiveUser().getEmail() // K: RESPONSAVEL
+    ]);
+
+    // 3. Dispara E-mail
+    try {
+      enviarSolicitacaoAoCliente(dados.cliente, emailCli, dados.solicitacao, solId);
+    } catch(errMail) {
+      registrarLogSistema("SOL_MAIL_FAIL", errMail.message);
+    }
+
+    invalidarCacheSistema();
+    registrarLogSistema("SOLICITATION_SENT", "ID: " + solId + " -> " + dados.cliente);
+    return true;
+  } finally { lock.releaseLock(); }
+}
+
+// --- PORTAL DO CLIENTE (UPLOAD FRAGMENTADO) ---
+
+/**
+ * Busca dados da solicitação para exibir no portal
+ */
+function getDadosSolicitacao(solId) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
+  var data = wsSol.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(solId)) {
+      return {
+        cliente: data[i][2],
+        pedido: data[i][4],
+        status: data[i][6]
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Garante que a pasta do cliente exista e retorna o ID para o portal
+ */
+function prepararPastaUploadCliente(solId) {
+  var dados = getDadosSolicitacao(solId);
+  if (!dados) throw new Error("Solicitação inválida.");
+  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
+  var dataCli = wsCli.getDataRange().getValues();
+  var pastaId = "";
+  var cliNome = dados.cliente;
+
+  for (var i = 1; i < dataCli.length; i++) {
+    if (norm(dataCli[i][1]) === norm(cliNome)) {
+      var url = String(dataCli[i][12]);
+      if (url.indexOf("id=") > -1) pastaId = url.split("id=")[1];
+      else if (url.indexOf("folders/") > -1) pastaId = url.split("folders/")[1].split("?")[0];
+      break;
+    }
+  }
+
+  if (pastaId) return pastaId;
+
+  // Cria se não existir
+  var root = DriveApp.getFolderById(CONFIG_SISTEMA.PASTAS.CLIENTES_DIGITAL);
+  var folders = root.getFoldersByName(cliNome);
+  var target = folders.hasNext() ? folders.next() : root.createFolder(cliNome);
+  return target.getId();
+}
+
+/**
+ * Processa pedaços de arquivo vindo do WebApp (Contorna limites de 10MB)
+ */
+function processarFragmentoUpload(folderId, fileName, fileType, chunk, currentChunk, totalChunks, solId) {
+  var cache = CacheService.getScriptCache();
+  var cacheKey = "SOL_UP_" + solId + "_" + fileName.replace(/[^a-zA-Z0-9]/g, "");
+  
+  // Acumula no cache (limite de 100KB por item, chunks de 1MB exigem sub-fragmentação ou persistência)
+  // Como o HTML envia 1MB, vamos salvar direto no Drive como arquivo temporário ou persistir no Cache
+  // Estratégia: Salvar cada chunk como um arquivo temporário oculto
+  var folder = DriveApp.getFolderById(folderId);
+  var blob = Utilities.newBlob(Utilities.base64Decode(chunk), fileType, fileName + ".part" + currentChunk);
+  var partFile = folder.createFile(blob);
+  
+  // Registra o ID da parte no cache para junção final
+  var parts = JSON.parse(cache.get(cacheKey) || "[]");
+  parts.push(partFile.getId());
+  cache.put(cacheKey, JSON.stringify(parts), 3600);
+
+  if (currentChunk + 1 === totalChunks) {
+    // Ultimo pedaço: Juntar tudo
+    var finalBlob = juntarFragmentos(parts, fileName, fileType);
+    var finalFile = folder.createFile(finalBlob);
+    finalFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    // Limpeza
+    parts.forEach(function(id) { try { DriveApp.getFileById(id).setTrashed(true); } catch(e){} });
+    cache.remove(cacheKey);
+
+    return { status: 'DONE', url: finalFile.getUrl() };
+  }
+  
+  return { status: 'CONTINUE' };
+}
+
+function juntarFragmentos(partsIds, fileName, fileType) {
+  var combinedBytes = [];
+  partsIds.forEach(function(id) {
+    var bytes = DriveApp.getFileById(id).getBlob().getBytes();
+    combinedBytes = combinedBytes.concat(bytes);
+  });
+  return Utilities.newBlob(combinedBytes, fileType, fileName);
+}
+
+/**
+ * Finaliza o processo de solicitação, baixa a tarefa e notifica
+ */
+function finalizarLoteUploadsCliente(solId, linksGerados) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
+  var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
+  
+  var dataSol = wsSol.getDataRange().getValues();
+  var solRow = -1;
+  for (var i = 1; i < dataSol.length; i++) {
+    if (String(dataSol[i][0]) === String(solId)) { solRow = i + 1; break; }
+  }
+  if (solRow === -1) throw new Error("Solicitação sumiu.");
+
+  var cliente = dataSol[solRow-1][2];
+  var pedido = dataSol[solRow-1][4];
+  var idTarefa = dataSol[solRow-1][5];
+  var responsavel = dataSol[solRow-1][10];
+
+  // 1. Atualiza Solicitação
+  var linksStr = linksGerados.join(" | ");
+  wsSol.getRange(solRow, 7, 1, 2).setValues([[getSafeStatus("ENTREGUE"), linksStr]]);
+
+  // 2. Se houver tarefa associada, dá baixa nela
+  if (idTarefa && idTarefa !== "AVULSA") {
+    var dataTf = wsTarefas.getRange(1, 10, wsTarefas.getLastRow(), 1).getValues();
+    for (var j = 1; j < dataTf.length; j++) {
+      if (String(dataTf[j][0]) === String(idTarefa)) {
+        wsTarefas.getRange(j + 1, 6, 1, 2).setValues([[getSafeStatus("ENTREGUE"), "PORTAL-" + solId]]);
+        acionarWorkflowFaseSeguinte(idTarefa, j + 1);
+        break;
+      }
+    }
+  }
+
+  // 3. Notifica Responsável
+  try {
+    notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, linksGerados);
+  } catch(e) {}
+
+  reordenarTarefasElite();
+  invalidarCacheSistema();
+  registrarLogSistema("PORTAL_UPLOAD_FINISH", "Sol: " + solId + " | Cliente: " + cliente);
+  return true;
+}
