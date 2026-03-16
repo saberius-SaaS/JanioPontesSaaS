@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repositório Digital | Janio Pontes Contabilidade</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1C3051;
+            --primary-light: #2A4571;
+            --bg: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-main: #1E293B;
+            --text-alt: #64748B;
+            --accent: #3B82F6;
+            --border: #E2E8F0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .header {
+            background-color: var(--primary);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            font-size: 11px;
+            font-weight: 600;
+            opacity: 0.8;
+            margin-top: 5px;
+            letter-spacing: 2px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: -30px auto 40px;
+            padding: 0 20px;
+        }
+
+        .search-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 25px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border);
+            margin-bottom: 25px;
+        }
+
+        .search-bar input {
+            border: none;
+            width: 100%;
+            padding: 5px;
+            font-size: 14px;
+            color: var(--text-main);
+            outline: none;
+        }
+
+        .file-list {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-item:hover {
+            background-color: #F1F5F9;
+        }
+
+        .file-icon {
+            width: 45px;
+            height: 45px;
+            background: #EFF6FF;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            color: var(--accent);
+            font-size: 20px;
+        }
+
+        .file-info {
+            flex-grow: 1;
+        }
+
+        .file-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .file-meta {
+            font-size: 11px;
+            color: var(--text-alt);
+            font-weight: 500;
+        }
+
+        .btn-download {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-download:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-alt);
+        }
+
+        .empty-state i {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-bottom: 40px;
+        }
+
+        .footer p {
+            font-size: 11px;
+            color: var(--text-alt);
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .file-icon {
+                margin-bottom: 15px;
+            }
+            .btn-download {
+                width: 100%;
+                text-align: center;
+                margin-top: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Janio Pontes Contabilidade</h1>
+        <p>REPOSITÓRIO DIGITAL DE DOCUMENTOS</p>
+    </div>
+
+    <div class="container">
+        <div class="search-bar">
+            <span>🔍 </span>
+            <input type="text" id="searchInput" placeholder="Buscar por nome ou período..." onkeyup="filterFiles()">
+        </div>
+
+        <div class="file-list" id="fileList">
+            <? if (arquivos && arquivos.length > 0) { ?>
+                <? arquivos.forEach(function(file) { ?>
+                    <div class="file-item-container">
+                        <a href="<?= file.url ?>" target="_blank" class="file-item">
+                            <div class="file-icon">📄</div>
+                            <div class="file-info">
+                                <span class="file-name"><?= file.name ?></span>
+                                <span class="file-meta">Modificado em: <?= file.date ?> • Tamanho: <?= file.size ?></span>
+                            </div>
+                            <div class="btn-download">Visualizar</div>
+                        </a>
+                    </div>
+                <? }); ?>
+            <? } else { ?>
+                <div class="empty-state">
+                    <i>📂</i>
+                    <p>Nenhum arquivo localizado nesta pasta.</p>
+                </div>
+            <? } ?>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Sistema Gestor de Tarefas - NCE</p>
+    </div>
+
+    <script>
+        function filterFiles() {
+            var input = document.getElementById('searchInput');
+            var filter = input.value.toUpperCase();
+            var items = document.getElementsByClassName('file-item-container');
+            
+            for (var i = 0; i < items.length; i++) {
+                var name = items[i].getElementsByClassName('file-name')[0];
+                if (name) {
+                    var txtValue = name.textContent || name.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        items[i].style.display = "";
+                    } else {
+                        items[i].style.display = "none";
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

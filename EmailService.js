@@ -19,10 +19,14 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
     var webAppUrl = getPublicWebAppUrl();
     var connector = webAppUrl.indexOf('?') > -1 ? '&' : '?';
     
+    // Link para o Repositório Digital customizado
+    var urlTrackRepo = webAppUrl + connector + "mode=repo&p=" + protocolo + "&r=" + rowIdx;
+    
     // linksArquivo agora é um Array (garante conversão se vier vindo um único link legado)
     var links = Array.isArray(linksArquivo) ? linksArquivo : (linksArquivo ? [linksArquivo] : []);
     
     var htmlLinks = "";
+
     if (links.length === 1) {
       var linkObj = links[0];
       var url = typeof linkObj === 'object' ? linkObj.url : linkObj;
@@ -31,7 +35,7 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
       var urlTrack = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(url);
       htmlLinks = `
         <div style="margin-bottom:25px;">
-          <a href="${urlTrack}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px;">ABRIR: ${nomeExibicao.toUpperCase()}</a>
+          <a href="${urlTrack}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px; box-shadow: 0 4px 6px -1px rgba(28, 48, 81, 0.2);">ABRIR: ${nomeExibicao.toUpperCase()}</a>
         </div>
       `;
     } else if (links.length > 1) {
@@ -42,23 +46,24 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
         
         var urlTrack = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(url);
         htmlLinks += `
-          <div style="margin-bottom:10px;">
-            <a href="${urlTrack}" target="_blank" style="display:inline-block; background-color:#f1f5f9; color:#1C3051; border:1px solid #e2e8f0; padding:15px; border-radius:10px; text-decoration:none; font-size:12px; font-weight:700; width:100%; box-sizing:border-box;">
-              📄 ${nomeExibicao} (Abrir)
+          <div style="margin-bottom:12px;">
+            <a href="${urlTrack}" target="_blank" style="display:flex; align-items:center; background-color:#ffffff; color:#1C3051; border:1px solid #e2e8f0; padding:18px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:700; width:100%; box-sizing:border-box; transition: 0.2s;">
+              <span style="margin-right:12px; font-size:18px;">📄</span>
+              <div style="flex-grow:1;">${nomeExibicao}</div>
+              <span style="font-size:10px; opacity:0.5;">ABRIR</span>
             </a>
           </div>
         `;
       });
       htmlLinks += '</div>';
     } else {
-      // Fallback para Pasta se não houver links diretos
-      var urlTrackPasta = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(pastaLink);
       htmlLinks = `
         <div style="margin-bottom:25px;">
-          <a href="${urlTrackPasta}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px;">ACESSAR PASTA DIGITAL</a>
+          <a href="${urlTrackRepo}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px; box-shadow: 0 4px 6px -1px rgba(28, 48, 81, 0.2);">ACESSAR REPOSITÓRIO DIGITAL</a>
         </div>
       `;
     }
+
     
     var urlTrackPastaFinal = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(pastaLink);
 
@@ -75,13 +80,14 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
               
               ${htmlLinks}
               
-              <div style="font-size:9px; color:#94a3b8; margin-bottom:25px; font-weight:700; text-transform:uppercase;">Protocolo: ${protocolo}</div>
+              <div style="font-size:9px; color:#94a3b8; margin-bottom:25px; font-weight:700; text-transform:uppercase;">Protocolo de Entrega: ${protocolo}</div>
               
               <div style="margin-top:20px; border-top:1px solid #f1f5f9; padding-top:30px;">
-                <p style="color:#94a3b8; font-size:11px; margin-bottom:15px;">Acesse seu repositório completo:</p>
-                <a href="${urlTrackPastaFinal}" target="_blank" style="display:inline-block; background-color:transparent; border:2px solid #1C3051; color:#1C3051; padding:12px; border-radius:10px; text-decoration:none; font-size:11px; font-weight:800; text-transform:uppercase; width:100%; box-sizing:border-box;">MINHA PASTA DIGITAL</a>
+                <p style="color:#94a3b8; font-size:11px; margin-bottom:15px; font-weight:600;">Acesse seu repositório digital completo:</p>
+                <a href="${urlTrackRepo}" target="_blank" style="display:inline-block; background-color:transparent; border:2px solid #1C3051; color:#1C3051; padding:14px; border-radius:12px; text-decoration:none; font-size:11px; font-weight:800; text-transform:uppercase; width:100%; box-sizing:border-box; transition:0.2s;">📂 REPOSITÓRIO DE ARQUIVOS</a>
               </div>
           </td></tr>
+
           <tr><td style="padding:25px; background-color:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
               <div style="font-size:11px; color:#1C3051; font-weight:800; text-transform:uppercase; margin-bottom:4px;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</div>
               <div style="font-size:9px; color:#64748b; font-weight:400; line-height:1.4;">Esta é uma mensagem automática. O acesso aos links deste e-mail é monitorado para fins de prova de entrega legal.</div>

@@ -112,26 +112,63 @@ function doGet(e) {
           <!DOCTYPE html>
           <html>
             <head>
+              <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
+              <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
               <style>
-                body { font-family: sans-serif; background: #F8FAFC; color: #1C3051; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; padding: 20px;}
-                .btn { background-color: #1C3051; color: white; padding: 18px 35px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 25px; display: inline-block; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;}
-                .btn:hover { background-color: #2A4571; }
+                body { font-family: 'Inter', sans-serif; background: #F8FAFC; color: #1C3051; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; padding: 20px;}
+                .card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); max-width: 400px; width: 100%; border: 1px solid #E2E8F0; }
+                .logo { font-weight: 800; font-size: 14px; letter-spacing: 1px; margin-bottom: 30px; color: #1C3051; text-transform: uppercase; }
+                .btn { background-color: #1C3051; color: white; padding: 18px 35px; border-radius: 10px; text-decoration: none; font-weight: 700; margin-top: 25px; display: inline-block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; border: none; cursor: pointer; width: 100%; }
+                .btn:hover { background-color: #2A4571; transform: translateY(-2px); }
+                .status-icon { font-size: 40px; margin-bottom: 20px; color: #10B981; }
               </style>
             </head>
             <body>
-              <h2 style="margin:0;">Acesso Seguro Confirmado</h2>
-              <p style="color: #64748B;">Sua requisição foi autenticada. Clique para visualizar o documento.</p>
-              <a href="${dest}" target="_top" class="btn">Visualizar Documento</a>
+              <div class="card">
+                <div class="logo">Janio Pontes Contabilidade</div>
+                <div class="status-icon">🛡️</div>
+                <h2 style="margin:0; font-size: 20px; font-weight: 800;">Acesso Autorizado</h2>
+                <p style="color: #64748B; font-size: 14px; margin-top: 10px;">Sua identidade foi confirmada e o documento está pronto para visualização.</p>
+                <a href="${dest}" target="_top" class="btn">Visualizar Documento</a>
+              </div>
             </body>
           </html>
         `;
         return HtmlService.createHtmlOutput(htmlRedirect)
           .setTitle("Acesso Seguro NCE")
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1')
           .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
       }
       return ContentService.createTextOutput("").setMimeType(ContentService.MimeType.TEXT);
     }
+
+    if (mode === "repo" && (p !== "" || params.folder)) {
+      var folderId = params.folder;
+      if (!folderId && p) {
+         // Tentar extrair ID da pasta via protocolo se não vier no link
+         var ss = SpreadsheetApp.getActiveSpreadsheet();
+         var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+         var dataP = wsProt.getDataRange().getValues();
+         var clienteNome = "";
+         for(var i=0; i<dataP.length; i++) {
+           if(String(dataP[i][2]) === String(p)) { clienteNome = dataP[i][1]; break; }
+         }
+         if (clienteNome) {
+            folderId = buscarIdPastaCliente(clienteNome);
+         }
+      }
+
+      if (folderId) {
+        var template = HtmlService.createTemplateFromFile('RepositorioCliente');
+        template.arquivos = listarArquivosRepositorioInterno(folderId);
+        return template.evaluate()
+          .setTitle('Repositório Digital | JP NCE')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      }
+    }
+
     return HtmlService.createHtmlOutput("🚀 SISTEMA NCE ATIVO").setTitle('NCE - Status');
   } catch (err) { return HtmlService.createHtmlOutput("Erro de conexão."); }
 }
@@ -233,3 +270,55 @@ function abrirAuditorRegras() {
   t.clienteIndex = row;
   SpreadsheetApp.getUi().showModalDialog(t.evaluate().setHeight(650).setWidth(900), '🔍 AUDITORIA');
 }
+
+/**
+ * Lógica de Listagem para o Repositório Digital
+ */
+function listarArquivosRepositorioInterno(folderId) {
+  try {
+    var folder = DriveApp.getFolderById(folderId);
+    var files = folder.getFiles();
+    var list = [];
+    while (files.hasNext()) {
+      var f = files.next();
+      if (f.isTrashed()) continue;
+      list.push({
+        name: f.getName(),
+        url: f.getUrl(),
+        date: Utilities.formatDate(f.getLastUpdated(), "GMT-3", "dd/MM/yyyy HH:mm"),
+        size: formatBytes(f.getSize())
+      });
+    }
+    // Ordenar por data (mais recentes primeiro)
+    list.sort((a,b) => {
+      var d1 = a.date.split(' ')[0].split('/').reverse().join('') + a.date.split(' ')[1];
+      var d2 = b.date.split(' ')[0].split('/').reverse().join('') + b.date.split(' ')[1];
+      return d2.localeCompare(d1);
+    });
+    return list;
+  } catch(e) { return []; }
+}
+
+function buscarIdPastaCliente(nome) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
+  var data = wsCli.getDataRange().getValues();
+  for(var i=1; i<data.length; i++) {
+    if(String(data[i][1]).trim().toUpperCase() === String(nome).trim().toUpperCase()) {
+      var url = String(data[i][12]);
+      if (url.indexOf("id=") > -1) return url.split("id=")[1];
+      if (url.indexOf("folders/") > -1) return url.split("folders/")[1].split("?")[0];
+    }
+  }
+  return null;
+}
+
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
