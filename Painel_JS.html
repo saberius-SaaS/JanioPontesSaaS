@@ -182,15 +182,33 @@
     const btnFin = document.getElementById('btnFinalizar');
     const arq = document.getElementById('areaArquivos');
     const esc = document.getElementById('btnEscolher');
+    
     if (!t) {
+        console.warn("Nenhuma pendência encontrada para o ID:", id);
         document.getElementById('statusAcaoArea').innerHTML = '';
+        if (arq) arq.style.display = 'none';
+        if (esc) esc.style.display = 'none';
         return;
     }
-    const ehEnvio = t.acao.toUpperCase().includes("ENVIAR");
-    document.getElementById('statusAcaoArea').innerHTML = ehEnvio ? '<div class="status-badge badge-enviar">AÇÃO: ENVIAR PARA CLIENTE</div>' : '<div class="status-badge">AÇÃO: ARQUIVAMENTO</div>';
-    arq.style.display = ehEnvio ? 'block' : 'none'; 
-    esc.style.display = ehEnvio ? 'block' : 'none';
-    btnFin.disabled = ehEnvio && !arquivosStaged.length;
+
+    const acaoRaw = t.acao || "ARQUIVAR";
+    const acao = String(acaoRaw).toUpperCase().trim();
+    console.log("Ação identificada:", acao, "para a tarefa:", t.nome);
+    
+    const ehEnvio = acao.indexOf("ENVIAR") > -1;
+    const ehAuditoria = acao.indexOf("AUDITAR") > -1;
+    
+    let statusHtml = `<div class="status-badge">AÇÃO: ${acao}</div>`;
+    if (ehEnvio) statusHtml = '<div class="status-badge badge-enviar">AÇÃO: ENVIAR PARA CLIENTE</div>';
+    if (ehAuditoria) statusHtml = '<div class="status-badge badge-auditar">AÇÃO: AUDITAGEM CONTÁBIL</div>';
+    
+    document.getElementById('statusAcaoArea').innerHTML = statusHtml;
+    
+    const precisaUpload = ehEnvio || ehAuditoria;
+    if (arq) arq.style.display = precisaUpload ? 'block' : 'none'; 
+    if (esc) esc.style.display = precisaUpload ? 'block' : 'none';
+    
+    btnFin.disabled = precisaUpload && (!arquivosStaged || !arquivosStaged.length);
   }
 
   async function adicionarArquivos() {
@@ -262,6 +280,12 @@
     const id = document.getElementById('obrigacao').value;
     const cli = document.getElementById('clienteUpload').value;
     if(!id || !cli) { showFeedback("Selecione os campos", true); return; }
+    
+    // Validar se há arquivos (Obrigatório para o fluxo atual)
+    if (arquivosStaged.length === 0) {
+      showFeedback("Por favor, anexe o arquivo antes de finalizar.", true);
+      return;
+    }
     
     showLoader("Processando via WebApp...");
     google.script.run

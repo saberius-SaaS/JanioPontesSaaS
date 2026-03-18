@@ -13,62 +13,53 @@ function getPublicWebAppUrl() {
 /**
  * Notificação de Entrega ao Cliente (ENVIO DE DOCUMENTOS)
  */
-function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailCli, linksArquivo, pastaLink, rowIdx) {
+/**
+ * Notificação de Entrega ao Cliente (Ajustado p/ NÃO enviar links diretos se o user preferir)
+ */
+function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailCli, linksArquivo, pastaLink, rowIdx, incluirLinks) {
   if(!emailCli || emailCli.indexOf("@") === -1) return;
   try {
     var webAppUrl = getPublicWebAppUrl();
     var connector = webAppUrl.indexOf('?') > -1 ? '&' : '?';
-    
-    // Link para o Repositório Digital customizado
     var urlTrackRepo = webAppUrl + connector + "mode=repo&p=" + protocolo + "&r=" + rowIdx;
     
-    // linksArquivo agora é um Array (garante conversão se vier vindo um único link legado)
+    // linksArquivo agora é um Array
     var links = Array.isArray(linksArquivo) ? linksArquivo : (linksArquivo ? [linksArquivo] : []);
-    
     var htmlLinks = "";
 
-    if (links.length === 1) {
-      var linkObj = links[0];
-      var url = typeof linkObj === 'object' ? linkObj.url : linkObj;
-      var nomeExibicao = typeof linkObj === 'object' ? linkObj.name : "Documento";
-      
-      var urlTrack = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(url);
-      htmlLinks = `
-        <div style="margin-bottom:25px;">
-          <a href="${urlTrack}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px; box-shadow: 0 4px 6px -1px rgba(28, 48, 81, 0.2);">ABRIR: ${nomeExibicao.toUpperCase()}</a>
-        </div>
-      `;
-    } else if (links.length > 1) {
-      htmlLinks = '<div style="margin-bottom:25px; text-align:left;">';
-      links.forEach(function(linkObj, index) {
+    // Só gera o bloco de links se explicitamente solicitado (Padrão: Off para Auditoria)
+    if (incluirLinks && links.length > 0) {
+      if (links.length === 1) {
+        var linkObj = links[0];
         var url = typeof linkObj === 'object' ? linkObj.url : linkObj;
-        var nomeExibicao = typeof linkObj === 'object' ? linkObj.name : ("DOCUMENTO " + (index + 1));
-        
+        var nomeExibicao = typeof linkObj === 'object' ? linkObj.name : "Documento";
         var urlTrack = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(url);
-        htmlLinks += `
-          <div style="margin-bottom:12px;">
-            <a href="${urlTrack}" target="_blank" style="display:flex; align-items:center; background-color:#ffffff; color:#1C3051; border:1px solid #e2e8f0; padding:18px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:700; width:100%; box-sizing:border-box; transition: 0.2s;">
-              <span style="margin-right:12px; font-size:18px;">📄</span>
-              <div style="flex-grow:1;">${nomeExibicao}</div>
-              <span style="font-size:10px; opacity:0.5;">ABRIR</span>
-            </a>
+        htmlLinks = `
+          <div style="margin-bottom:25px;">
+            <a href="${urlTrack}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px; box-shadow: 0 4px 6px -1px rgba(28, 48, 81, 0.2);">ABRIR: ${nomeExibicao.toUpperCase()}</a>
           </div>
         `;
-      });
-      htmlLinks += '</div>';
-    } else {
-      htmlLinks = `
-        <div style="margin-bottom:25px;">
-          <a href="${urlTrackRepo}" target="_blank" style="display:inline-block; background-color:#1C3051; color:#ffffff; padding:20px 40px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:900; text-transform:uppercase; width:100%; box-sizing:border-box; letter-spacing:1px; box-shadow: 0 4px 6px -1px rgba(28, 48, 81, 0.2);">ACESSAR REPOSITÓRIO DIGITAL</a>
-        </div>
-      `;
+      } else {
+        htmlLinks = '<div style="margin-bottom:25px; text-align:left;">';
+        links.forEach(function(linkObj, index) {
+          var url = typeof linkObj === 'object' ? linkObj.url : linkObj;
+          var nomeExibicao = typeof linkObj === 'object' ? linkObj.name : ("DOCUMENTO " + (index + 1));
+          var urlTrack = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(url);
+          htmlLinks += `
+            <div style="margin-bottom:12px;">
+              <a href="${urlTrack}" target="_blank" style="display:flex; align-items:center; background-color:#ffffff; color:#1C3051; border:1px solid #e2e8f0; padding:18px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:700; width:100%; box-sizing:border-box;">
+                <span style="margin-right:12px; font-size:18px;">📄</span>
+                <div style="flex-grow:1;">${nomeExibicao}</div>
+              </a>
+            </div>
+          `;
+        });
+        htmlLinks += '</div>';
+      }
     }
 
-    
-    var urlTrackPastaFinal = webAppUrl + connector + "mode=track&p=" + protocolo + "&r=" + rowIdx + "&dest=" + encodeURIComponent(pastaLink);
-
     var html = `
-      <div style="margin:0; padding:0; background-color:#f8fafc; font-family:sans-serif; padding:40px 20px;">
+      <div style="margin:0; padding:0; background-color:#f8fafc; font-family:'Inter', sans-serif; padding:40px 20px;">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:550px; margin:0 auto; background-color:#ffffff; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 10px 15px -3px rgba(0,0,0,0.05);">
           <tr><td style="padding:25px; background-color:#1C3051; color:#ffffff; text-align:center;">
             <div style="font-size:16px; font-weight:900; letter-spacing:1px; line-height:1.2;">JANIO PONTES CONTABILIDADE</div>
@@ -76,21 +67,21 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
           </td></tr>
           <tr><td style="padding:45px 35px; text-align:center;">
               <h2 style="color:#1e293b; margin:0 0 10px 0; font-size:20px; font-weight:700;">Olá, ${cliente}</h2>
-              <p style="color:#64748b; font-size:14px; margin-bottom:35px; line-height:1.5;">Os documentos referentes a <b>${obrigacao}</b> já estão disponíveis.</p>
+              <p style="color:#64748b; font-size:14px; margin-bottom:35px; line-height:1.5;">O documento <b>${obrigacao}</b> foi processado com sucesso.</p>
               
               ${htmlLinks}
               
               <div style="font-size:9px; color:#94a3b8; margin-bottom:25px; font-weight:700; text-transform:uppercase;">Protocolo de Entrega: ${protocolo}</div>
               
               <div style="margin-top:20px; border-top:1px solid #f1f5f9; padding-top:30px;">
-                <p style="color:#94a3b8; font-size:11px; margin-bottom:15px; font-weight:600;">Acesse seu repositório digital completo:</p>
-                <a href="${urlTrackRepo}" target="_blank" style="display:inline-block; background-color:transparent; border:2px solid #1C3051; color:#1C3051; padding:14px; border-radius:12px; text-decoration:none; font-size:11px; font-weight:800; text-transform:uppercase; width:100%; box-sizing:border-box; transition:0.2s;">📂 REPOSITÓRIO DE ARQUIVOS</a>
+                <p style="color:#94a3b8; font-size:11px; margin-bottom:15px; font-weight:600;">Acesse seu repositório digital para ver este e outros documentos:</p>
+                <a href="${urlTrackRepo}" target="_blank" style="display:inline-block; background-color:transparent; border:2px solid #1C3051; color:#1C3051; padding:14px; border-radius:12px; text-decoration:none; font-size:11px; font-weight:800; text-transform:uppercase; width:100%; box-sizing:border-box;">📂 REPOSITÓRIO DE ARQUIVOS</a>
               </div>
           </td></tr>
 
           <tr><td style="padding:25px; background-color:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
               <div style="font-size:11px; color:#1C3051; font-weight:800; text-transform:uppercase; margin-bottom:4px;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</div>
-              <div style="font-size:9px; color:#64748b; font-weight:400; line-height:1.4;">Esta é uma mensagem automática. O acesso aos links deste e-mail é monitorado para fins de prova de entrega legal.</div>
+              <div style="font-size:9px; color:#64748b; font-weight:400; line-height:1.4;">Monitoramento legal de abertura de mensagem.</div>
           </td></tr>
         </table>
       </div>
@@ -247,4 +238,103 @@ function notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, links) 
     `;
     MailApp.sendEmail({ to: responsavel, subject: "✅ ARQUIVOS RECEBIDOS: " + cliente, htmlBody: html });
   } catch (e) { registrarLogSistema("NOTIF_RESP_FAIL", e.message); }
+}
+
+/**
+ * Envia o Relatório de Análise Gerado pela IA para o Responsável do Cliente (E-mail Formatado)
+ * Agora recebe TEXTO (Markdown de preferência) em vez de PDF.
+ */
+function enviarRelatorioAnaliseIA(emailResponsavel, nomeResponsavel, cliente, obrigacao, analiseTexto) {
+  if (!emailResponsavel || emailResponsavel.indexOf("@") === -1) return;
+  
+  try {
+    // Converte Markdown simples para HTML básico (IA costuma gerar #, ##, *)
+    var analiseHtmlEscaped = analiseTexto
+      .replace(/^### (.*$)/gim, '<h3 style="color:#1C3051; margin-top:20px;">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="color:#1C3051; margin-top:25px;">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 style="color:#1C3051;">$1</h1>')
+      .replace(/^\* (.*$)/gim, '<li style="margin-bottom:8px;">$1</li>')
+      .replace(/\n/g, '<br>');
+
+    var html = `
+      <div style="margin:0; padding:0; background-color:#f8fafc; font-family:'Inter', sans-serif; padding:40px 20px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:650px; margin:0 auto; background-color:#ffffff; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 10px 15px -3px rgba(0,0,0,0.05);">
+          <tr><td style="padding:25px; background-color:#1C3051; color:#ffffff; text-align:center;">
+            <div style="font-size:16px; font-weight:900; letter-spacing:1px; line-height:1.2;">JANIO PONTES CONTABILIDADE</div>
+            <div style="font-size:10px; font-weight:700; opacity:0.8; text-transform:uppercase; letter-spacing:2px; margin-top:4px;">ANÁLISE DE PERFORMANCE</div>
+          </td></tr>
+          <tr><td style="padding:45px 35px;">
+              <h2 style="color:#1e293b; margin:0 0 10px 0; font-size:20px; font-weight:700;">Olá, ${nomeResponsavel || cliente}</h2>
+              <p style="color:#64748b; font-size:14px; margin-bottom:30px; line-height:1.5;">Com base no balancete de <b>${obrigacao}</b> da empresa <b>${cliente}</b>, geramos a seguinte análise estratégica:</p>
+              
+              <div style="background-color:#ffffff; border:1px solid #f1f5f9; padding:25px; border-radius:12px; color:#334155; font-size:14px; line-height:1.6;">
+                ${analiseHtmlEscaped}
+              </div>
+
+              <div style="margin-top:30px; text-align:center;">
+                <p style="color:#94a3b8; font-size:12px;">Dúvidas sobre esta análise? Entre em contato com seu consultor.</p>
+              </div>
+          </td></tr>
+          <tr><td style="padding:25px; background-color:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
+              <div style="font-size:11px; color:#1C3051; font-weight:800; text-transform:uppercase; margin-bottom:4px;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</div>
+              <div style="font-size:9px; color:#64748b; font-weight:400;">Monitoramento legal de abertura de mensagem.</div>
+          </td></tr>
+        </table>
+      </div>
+    `;
+
+    MailApp.sendEmail({
+      to: emailResponsavel,
+      subject: "📊 ANÁLISE ESTRATÉGICA: " + cliente + " (" + obrigacao + ")",
+      htmlBody: html
+    });
+    
+    registrarLogSistema("EMAIL_AI_REPORT_SENT", "Cliente: " + cliente);
+  } catch (e) {
+    registrarLogSistema("EMAIL_AI_REPORT_FAIL", e.message);
+  }
+}
+
+/**
+ * Notifica o Administrador sobre o Resultado da Auditoria (Aprovação ou Reprovação)
+ */
+function notificarAuditAdmin(cliente, obrigacao, aprovado, detalhes) {
+  var emailAdmin = CONFIG_SISTEMA.EMAILS.ADMIN_AUDITORIA;
+  if (!emailAdmin) return;
+
+  var statusCor = aprovado ? "#10b981" : "#ef4444";
+  var statusTexto = aprovado ? "APROVADO" : "REPROVADO";
+  var objetivo = "AVISO DE CONFORMIDADE";
+
+  var html = `
+    <div style="margin:0; padding:0; background-color:#f8fafc; font-family:'Inter', sans-serif; padding:40px 20px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:550px; margin:0 auto; background-color:#ffffff; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden;">
+          <tr><td style="padding:25px; background-color:#1C3051; color:#ffffff; text-align:center;">
+            <div style="font-size:16px; font-weight:900; letter-spacing:1px; line-height:1.2;">JANIO PONTES CONTABILIDADE</div>
+            <div style="font-size:10px; font-weight:700; opacity:0.8; text-transform:uppercase; letter-spacing:2px; margin-top:4px;">${objetivo}</div>
+          </td></tr>
+          <tr><td style="padding:40px 35px;">
+              <div style="text-align:center; margin-bottom:30px;">
+                <span style="display:inline-block; background-color:${statusCor}; color:white; padding:8px 16px; border-radius:30px; font-size:12px; font-weight:900;">AUDITORIA: ${statusTexto}</span>
+              </div>
+              <p style="color:#1e293b; font-size:14px; margin-bottom:20px;">O balancete do cliente <b>${cliente}</b> (${obrigacao}) foi auditado pelo motor de IA.</p>
+              
+              <div style="background-color:#f8fafc; border:1px solid #e2e8f0; padding:20px; border-radius:8px; color:#334155; font-size:13px; line-height:1.6;">
+                <strong>Pontos Auditados / Observações:</strong><br>
+                ${detalhes.replace(/\n/g, '<br>')}
+              </div>
+          </td></tr>
+          <tr><td style="padding:25px; background-color:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
+              <div style="font-size:11px; color:#1C3051; font-weight:800; text-transform:uppercase; margin-bottom:4px;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</div>
+              <div style="font-size:9px; color:#64748b;">Monitoramento legal de abertura de mensagem.</div>
+          </td></tr>
+        </table>
+      </div>
+  `;
+
+  MailApp.sendEmail({
+    to: emailAdmin,
+    subject: (aprovado ? "✅" : "🚨") + " AUDITORIA " + statusTexto + ": " + cliente,
+    htmlBody: html
+  });
 }

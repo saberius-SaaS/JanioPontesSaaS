@@ -5,7 +5,7 @@
 
 var CONFIG_SISTEMA = {
   VERSAO: "v131.06",
-  URL_WEBAPP: "https://script.google.com/macros/s/AKfycbyq44MGH0Rz42URDxUfipu4KTLpqhIAauMwsuz6ID9RXpXAKishHTr6aOCWaWPhvUcpgw/exec", 
+  URL_WEBAPP: "https://script.google.com/macros/s/AKfycbx2t7kFdD7qlwJOGwjPNiVZwomAuqOGSy70gbmeboq4yFXMBz77jv8B51tqRkKhh-SDRQ/exec", 
 
   DIAS_INTERVALO_COBRANCA: 2,
   TURNOS_PARA_CHECKPOINT: 5,
@@ -22,6 +22,7 @@ var CONFIG_SISTEMA = {
   ABA_RISCO: "DB_RISCO",
   ABA_LOGS: "DB_LOGS",
   ABA_WORKFLOWS: "DB_WORKFLOWS",
+  ABA_CONFIG_IA: "DB_CONFIG_IA",
   
   PASTAS: {
     NOME: "OPERACIONAL",
@@ -34,7 +35,18 @@ var CONFIG_SISTEMA = {
   STATUS: {
     ABERTA: "ABERTA",
     PENDENTE: "PENDENTE",
-    ENTREGUE: "ENTREGUE"
+    ENTREGUE: "ENTREGUE",
+    REPROVADA: "REPROVADA"
+  },
+
+  ACOES: {
+    ENVIAR: "ENVIAR",
+    ARQUIVAR: "ARQUIVAR",
+    AUDITAR: "AUDITAR"
+  },
+
+  EMAILS: {
+    ADMIN_AUDITORIA: "contato@janiopontes.com.br" // Email padrão para alertas de auditoria
   },
 
   FERIADOS: ["01/01", "21/04", "01/05", "07/09", "12/10", "02/11", "15/11", "20/11", "25/12"]

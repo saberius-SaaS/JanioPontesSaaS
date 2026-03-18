@@ -75,6 +75,71 @@ function prepararContextoIA(historico) {
 }
 
 /**
+ * Gera análise comportamental de balancetes via Gemini
+ */
+function gerarRelatorioComportamentalIA(dadosAtuais, historico, tipoPrompt) {
+  var resConfig = garantirConfigIA();
+  if (resConfig.criada) return "Configuração da IA inicializada na aba DB_CONFIG_IA. Por favor, preencha a API Key.";
+
+  var wsConfig = resConfig.sheet;
+  var dataConfig = wsConfig.getDataRange().getValues();
+  var apiKey = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
+  var promptBase = "", model = "gemini-2.5-flash";
+  
+  var chavePrompt = tipoPrompt === "RELATORIO" ? "PROMPT_RELATORIO" : "PROMPT_AUDITORIA";
+
+  for (var i = 1; i < dataConfig.length; i++) {
+    if (dataConfig[i][0] === chavePrompt) promptBase = dataConfig[i][1];
+    if (dataConfig[i][0] === "GEMINI_MODEL") model = dataConfig[i][1];
+  }
+
+  if (!apiKey) return "API Key do Gemini não configurada nos Script Properties.";
+  if (!promptBase) return "Prompt " + chavePrompt + " não localizado na configuração.";
+
+  var promptFinal = promptBase
+    .replace("{{ATUAL}}", JSON.stringify(dadosAtuais))
+    .replace("{{HISTORICO}}", JSON.stringify(historico || []));
+
+  return chamarGeminiAPI(apiKey, promptFinal, model);
+}
+
+/**
+ * Chamada direta à API do Gemini
+ */
+function chamarGeminiAPI(apiKey, prompt, model) {
+  var modelName = model || "gemini-2.5-flash";
+  var url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + apiKey;
+  
+  var payload = {
+    contents: [{
+      parts: [{ text: prompt }]
+    }]
+  };
+
+  var options = {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  try {
+    var response = UrlFetchApp.fetch(url, options);
+    var resJson = JSON.parse(response.getContentText());
+    
+    if (resJson.candidates && resJson.candidates[0].content.parts[0].text) {
+      return resJson.candidates[0].content.parts[0].text;
+    } else {
+      registrarLogSistema("AI_API_ERR", response.getContentText());
+      return "Erro na resposta da IA: " + (resJson.error ? resJson.error.message : "Formato inválido");
+    }
+  } catch (e) {
+    registrarLogSistema("AI_FETCH_FATAL", e.message);
+    return "Erro crítico na chamada da IA.";
+  }
+}
+
+/**
  * Função de Teste para Validar o Middleware
  * Execute esta função no Editor para ver o log de execução.
  */
@@ -108,4 +173,32 @@ function testarGerenciadorContexto() {
   } else {
     console.log("❌ FALHA: Gatilho não ativado.");
   }
+}
+
+/**
+ * Garante a existência da aba de configuração da IA
+ */
+function garantirConfigIA() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var wsConfig = ss.getSheetByName(CONFIG_SISTEMA.ABA_CONFIG_IA);
+  var criada = false;
+  
+  if (!wsConfig) {
+    wsConfig = ss.insertSheet(CONFIG_SISTEMA.ABA_CONFIG_IA);
+    wsConfig.appendRow(["CHAVE", "VALOR"]);
+    wsConfig.appendRow(["GEMINI_MODEL", "gemini-2.5-flash"]);
+    wsConfig.appendRow(["AUDIT_QUESITOS", "ATIVO TOTAL, PASSIVO TOTAL, CAIXA, LUCRO/PREJUÍZO"]);
+    wsConfig.appendRow(["PROMPT_AUDITORIA", "Aja como um auditor interno. Verifique se o balancete {{ATUAL}} segue as regras: 1. Ativo=Passivo. 2. Caixa positivo. 3. Se houver variação >30% em despesas comparado a {{HISTORICO}}, responda [REPROVADO] seguido do motivo. Caso contrário, responda [APROVADO]."]);
+    wsConfig.appendRow(["PROMPT_RELATORIO", "Aja como um analista contábil sênior. Gere um relatório Markdown profissional para o cliente sobre o balancete {{ATUAL}}. Compare com histórico {{HISTORICO}} e destaque pontos positivos e de atenção. Não mencione códigos técnicos de auditoria interna."]);
+    
+    // Aplicar layout básico
+    wsConfig.getRange("A1:B1").setBackground("#1C3051").setFontColor("white").setFontWeight("bold");
+    wsConfig.setFrozenRows(1);
+    wsConfig.autoResizeColumns(1, 2);
+    
+    SpreadsheetApp.flush();
+    criada = true;
+  }
+  
+  return { sheet: wsConfig, criada: criada };
 }

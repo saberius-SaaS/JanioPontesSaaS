@@ -30,12 +30,13 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
     
     // Localização do Cliente
     var dadosC = wsCli.getDataRange().getValues();
-    var email = "", cnpj = "", pastaId = "";
+    var emailCli = "", cnpj = "", pastaId = "", nomeResp = "";
     var cliRowIdx = -1;
     for(var i=1; i<dadosC.length; i++) {
       if(norm(dadosC[i][1]) === norm(clienteNome)) { 
         cnpj = String(dadosC[i][2]).replace(/[^0-9]/g, "");
-        email = dadosC[i][4]; 
+        nomeResp = dadosC[i][3]; // Coluna D: RESPONSAVEL
+        emailCli = dadosC[i][4]; // Coluna E: EMAIL
         var urlM = String(dadosC[i][12]);
         if (urlM.indexOf("id=") > -1) pastaId = urlM.split("id=")[1];
         else if (urlM.indexOf("folders/") > -1) pastaId = urlM.split("folders/")[1].split("?")[0];
@@ -82,19 +83,52 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
 
     var protocolo = gerarProtocoloEntrega();
     var linksDriveStr = linksParaEmail.map(function(item) { return item.url; }).join(" | ");
-    registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, email, linksDriveStr);
     
-    wsTarefas.getRange(rowIdx, 6, 1, 2).setValues([[getSafeStatus("ENTREGUE"), protocolo]]);
+    // --- INTEGRAÇÃO BLOCO AUDITORIA ---
+    var acaoTarefa = rowVal[7];
+    var statusFinal = getSafeStatus("ENTREGUE");
+    var resAudit = null;
+
+    if (norm(acaoTarefa) === CONFIG_SISTEMA.ACOES.AUDITAR) {
+      if (!arquivos || arquivos.length === 0) {
+        throw new Error("Arquivo obrigatório para auditoria não foi enviado.");
+      }
+      registrarLogSistema("AUDIT_START", "Iniciando auditoria para " + clienteNome);
+      var fAudit = arquivos[0];
+      var blobAudit = Utilities.newBlob(Utilities.base64Decode(fAudit.base64), "application/octet-stream", fAudit.name);
+      
+      try {
+        resAudit = processarAuditoriaBalancete(blobAudit, taskId, clienteNome, cnpj, obrig);
+        if (!resAudit.aprovado) {
+          wsTarefas.getRange(rowIdx, 6).setValue(getSafeStatus("PENDENTE"));
+          invalidarCacheSistema();
+          return { success: false, audit: false, message: "REPROVADO: " + resAudit.erros.join(" | ") };
+        }
+      } catch(eAudit) {
+        registrarLogSistema("AUDIT_FAIL_SYS", eAudit.message);
+        throw new Error("Erro no motor de auditoria: " + eAudit.message);
+      }
+    }
+    // --- FIM BLOCO AUDITORIA ---
+
+    registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, linksDriveStr);
+    wsTarefas.getRange(rowIdx, 6, 1, 2).setValues([[statusFinal, protocolo]]);
     
     acionarWorkflowFaseSeguinte(taskId, rowIdx);
     reordenarTarefasElite(); 
     invalidarCacheSistema(); 
-
+ 
     try {
-      notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, email, linksParaEmail, target.getUrl(), rowIdx);
+      // notificarEntregaClienteRefatorada agora exige flag para incluir links (User: off)
+      notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), rowIdx, false);
+      
+      // Se houve auditoria aprovada, enviar Relatório IA por E-mail (não mais PDF)
+      if (resAudit && resAudit.analise) {
+        enviarRelatorioAnaliseIA(emailCli, nomeResp, clienteNome, obrig, resAudit.analise);
+      }
     } catch(e) { console.warn("Email erro: " + e.message); }
     
-    return true;
+    return { success: true, message: "Concluído!" };
   } catch(e) { 
     registrarLogSistema("UPLOAD_FATAL", e.message);
     throw new Error(e.message); 

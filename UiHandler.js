@@ -34,6 +34,7 @@ function onOpen() {
     .addSubMenu(ui.createMenu('⚙️ Configurações Avançadas')
       .addItem('⚡ SINCRONIZAR PASTAS', 'comandoMapearPastas')
       .addItem('⚡ LIMPAR CACHE', 'comandoLimparCache')
+      .addItem('⚙️ CONFIG IA (Gemini)', 'comandoInicializarIA')
       .addSeparator()
       .addItem('⏰ Instalar Backup Automático', 'instalarGatilhoBackup')
       .addItem('❌ Remover Gatilho de Backup', 'removerGatilhoBackup'))
@@ -182,8 +183,8 @@ function doPost(e) {
     var payload = JSON.parse(e.postData.contents);
     
     if (payload.action === "uploadBatch") {
-      var resultados = processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome);
-      return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Upload concluído" }))
+      var resultado = processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome);
+      return ContentService.createTextOutput(JSON.stringify(resultado))
         .setMimeType(ContentService.MimeType.JSON);
     }
     
@@ -320,5 +321,32 @@ function formatBytes(bytes, decimals = 2) {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+/**
+ * Comando para inicializar a aba de configuração da IA
+ */
+function comandoInicializarIA() {
+  var ui = SpreadsheetApp.getUi();
+  try {
+    var res = garantirConfigIA();
+    var msg = res.criada ? "✅ Aba DB_CONFIG_IA criada com sucesso! " : "ℹ️ A aba DB_CONFIG_IA já existe. ";
+    
+    var prompt = ui.prompt("🔐 CONFIGURAÇÃO DE SEGURANÇA - GEMINI", 
+                           msg + "\n\nPara sua segurança, a API Key não fica visível na planilha.\n\n" +
+                           "Por favor, insira sua API Key do Gemini abaixo:", 
+                           ui.ButtonSet.OK_CANCEL);
+    
+    if (prompt.getSelectedButton() == ui.Button.OK) {
+      var key = prompt.getResponseText().trim();
+      if (key) {
+        PropertiesService.getScriptProperties().setProperty("GEMINI_API_KEY", key);
+        ui.alert("✅ API Key salva com segurança nos Script Properties!");
+      } else {
+        ui.alert("⚠️ Chave vazia. A configuração anterior foi mantida (se houver).");
+      }
+    }
+  } catch (e) {
+    ui.alert("❌ Erro ao inicializar configuração: " + e.message);
+  }
 }
 
