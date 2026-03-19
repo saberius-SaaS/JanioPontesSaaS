@@ -248,13 +248,24 @@ function enviarRelatorioAnaliseIA(emailResponsavel, nomeResponsavel, cliente, ob
   if (!emailResponsavel || emailResponsavel.indexOf("@") === -1) return;
   
   try {
-    // Converte Markdown simples para HTML básico (IA costuma gerar #, ##, *)
-    var analiseHtmlEscaped = analiseTexto
-      .replace(/^### (.*$)/gim, '<h3 style="color:#1C3051; margin-top:20px;">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 style="color:#1C3051; margin-top:25px;">$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1 style="color:#1C3051;">$1</h1>')
-      .replace(/^\* (.*$)/gim, '<li style="margin-bottom:8px;">$1</li>')
-      .replace(/\n/g, '<br>');
+    var analiseHtml;
+    var trimTexto = analiseTexto.trim();
+
+    // Detecção Inteligente: Se começar com < e tiver tags HTML, tratamos como HTML puro
+    if (trimTexto.startsWith("<") && (trimTexto.indexOf("</div>") > -1 || trimTexto.indexOf("</table>") > -1 || trimTexto.indexOf("</p>") > -1)) {
+       analiseHtml = analiseTexto; 
+    } else {
+       // Backup: Conversor Markdown mais robusto que o anterior
+       analiseHtml = analiseTexto
+        .replace(/^### (.*$)/gim, '<h3 style="color:#1C3051; margin-top:20px; border-left: 4px solid #1C3051; padding-left:10px;">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2 style="color:#1C3051; margin-top:25px;">$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1 style="color:#1C3051;">$1</h1>')
+        .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+        .replace(/^\* (.*$)/gim, '<li style="margin-bottom:8px;">$1</li>');
+
+       // Só aplica <br> se NÃO for HTML (para evitar espaçamento duplo em tabelas/divs)
+       analiseHtml = analiseHtml.replace(/\n/g, '<br>');
+    }
 
     var html = `
       <div style="margin:0; padding:0; background-color:#f8fafc; font-family:'Inter', sans-serif; padding:40px 20px;">
@@ -268,7 +279,7 @@ function enviarRelatorioAnaliseIA(emailResponsavel, nomeResponsavel, cliente, ob
               <p style="color:#64748b; font-size:14px; margin-bottom:30px; line-height:1.5;">Com base no balancete de <b>${obrigacao}</b> da empresa <b>${cliente}</b>, geramos a seguinte análise estratégica:</p>
               
               <div style="background-color:#ffffff; border:1px solid #f1f5f9; padding:25px; border-radius:12px; color:#334155; font-size:14px; line-height:1.6;">
-                ${analiseHtmlEscaped}
+                ${analiseHtml}
               </div>
 
               <div style="margin-top:30px; text-align:center;">
@@ -319,9 +330,9 @@ function notificarAuditAdmin(cliente, obrigacao, aprovado, detalhes) {
               </div>
               <p style="color:#1e293b; font-size:14px; margin-bottom:20px;">O balancete do cliente <b>${cliente}</b> (${obrigacao}) foi auditado pelo motor de IA.</p>
               
-              <div style="background-color:#f8fafc; border:1px solid #e2e8f0; padding:20px; border-radius:8px; color:#334155; font-size:13px; line-height:1.6;">
-                <strong>Pontos Auditados / Observações:</strong><br>
-                ${detalhes.replace(/\n/g, '<br>')}
+              <div style="background-color:#ffffff; border:1px solid #e2e8f0; padding:25px; border-radius:12px; color:#334155; font-size:14px; line-height:1.6;">
+                <strong style="color:#1C3051; display:block; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">DETALHAMENTO DA AUDITORIA</strong>
+                ${formatarDetalhesAudit(detalhes)}
               </div>
           </td></tr>
           <tr><td style="padding:25px; background-color:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
@@ -337,4 +348,49 @@ function notificarAuditAdmin(cliente, obrigacao, aprovado, detalhes) {
     subject: (aprovado ? "✅" : "🚨") + " AUDITORIA " + statusTexto + ": " + cliente,
     htmlBody: html
   });
+}
+
+/**
+ * Auxiliar para converter o texto bruto da IA em um checklist HTML bonito
+ */
+function formatarDetalhesAudit(texto) {
+  if (!texto) return '<p>Sem detalhes disponíveis.</p>';
+  
+  var linhas = texto.split('\n');
+  var html = '<div style="margin-top:10px;">';
+  var emLista = false;
+
+  linhas.forEach(function(linha) {
+    var trimL = linha.trim();
+    if (!trimL) return;
+
+    // Detectar itens de checklist da IA: - [OK] ou - [FALHA]
+    if (trimL.startsWith('- [OK]') || trimL.startsWith('- [FALHA]')) {
+      if (!emLista) {
+        html += '<ul style="list-style:none; padding:0; margin:0;">';
+        emLista = true;
+      }
+      var status = trimL.indexOf('[OK]') > -1 ? 'OK' : 'FALHA';
+      var cor = status === 'OK' ? '#10b981' : '#ef4444';
+      var icone = status === 'OK' ? '✅' : '❌';
+      var conteudo = trimL.replace('- [OK]', '').replace('- [FALHA]', '').trim();
+      
+      html += `
+        <li style="display:flex; align-items:flex-start; margin-bottom:12px; padding:10px; background:#f8fafc; border-radius:8px; border-left:4px solid ${cor};">
+          <span style="margin-right:10px; font-size:16px;">${icone}</span>
+          <span style="font-size:13px; color:#1e293b;">${conteudo}</span>
+        </li>
+      `;
+    } else if (trimL.startsWith('LISTA DE VERIFICAÇÃO') || trimL.startsWith('**') || trimL.indexOf('REPROVADO') > -1 || trimL.indexOf('APROVADO') > -1) {
+      if (emLista) { html += '</ul>'; emLista = false; }
+      html += `<p style="margin: 15px 0 10px 0; font-size:12px; font-weight:800; text-transform:uppercase; color:#64748b; letter-spacing:0.5px;">${trimL}</p>`;
+    } else {
+      if (emLista) { html += '</ul>'; emLista = false; }
+      html += `<p style="margin-bottom:8px; font-size:13px; color:#475569;">${trimL}</p>`;
+    }
+  });
+
+  if (emLista) html += '</ul>';
+  html += '</div>';
+  return html;
 }

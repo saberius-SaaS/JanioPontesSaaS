@@ -5,7 +5,8 @@
 
 var CONFIG_SISTEMA = {
   VERSAO: "v131.06",
-  URL_WEBAPP: "https://script.google.com/macros/s/AKfycbx2t7kFdD7qlwJOGwjPNiVZwomAuqOGSy70gbmeboq4yFXMBz77jv8B51tqRkKhh-SDRQ/exec", 
+  // 🌐 URLs E CONEXÕES
+  URL_WEBAPP: "https://script.google.com/macros/s/AKfycbyhqzkedoXyN0qeg56_0xKzNxPAtHyK8T79yRmVYcd68mU3TQhh4Bd7UdluLfH8MddeMg/exec", 
 
   DIAS_INTERVALO_COBRANCA: 2,
   TURNOS_PARA_CHECKPOINT: 5,

@@ -84,13 +84,14 @@ function gerarRelatorioComportamentalIA(dadosAtuais, historico, tipoPrompt) {
   var wsConfig = resConfig.sheet;
   var dataConfig = wsConfig.getDataRange().getValues();
   var apiKey = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
-  var promptBase = "", model = "gemini-2.5-flash";
+  var promptBase = "", model = "gemini-2.5-flash", quesitos = "";
   
   var chavePrompt = tipoPrompt === "RELATORIO" ? "PROMPT_RELATORIO" : "PROMPT_AUDITORIA";
 
   for (var i = 1; i < dataConfig.length; i++) {
     if (dataConfig[i][0] === chavePrompt) promptBase = dataConfig[i][1];
     if (dataConfig[i][0] === "GEMINI_MODEL") model = dataConfig[i][1];
+    if (dataConfig[i][0] === "AUDIT_QUESITOS") quesitos = dataConfig[i][1];
   }
 
   if (!apiKey) return "API Key do Gemini não configurada nos Script Properties.";
@@ -98,7 +99,8 @@ function gerarRelatorioComportamentalIA(dadosAtuais, historico, tipoPrompt) {
 
   var promptFinal = promptBase
     .replace("{{ATUAL}}", JSON.stringify(dadosAtuais))
-    .replace("{{HISTORICO}}", JSON.stringify(historico || []));
+    .replace("{{HISTORICO}}", JSON.stringify(historico || []))
+    .replace("{{QUESITOS}}", quesitos);
 
   return chamarGeminiAPI(apiKey, promptFinal, model);
 }
@@ -187,9 +189,9 @@ function garantirConfigIA() {
     wsConfig = ss.insertSheet(CONFIG_SISTEMA.ABA_CONFIG_IA);
     wsConfig.appendRow(["CHAVE", "VALOR"]);
     wsConfig.appendRow(["GEMINI_MODEL", "gemini-2.5-flash"]);
-    wsConfig.appendRow(["AUDIT_QUESITOS", "ATIVO TOTAL, PASSIVO TOTAL, CAIXA, LUCRO/PREJUÍZO"]);
-    wsConfig.appendRow(["PROMPT_AUDITORIA", "Aja como um auditor interno. Verifique se o balancete {{ATUAL}} segue as regras: 1. Ativo=Passivo. 2. Caixa positivo. 3. Se houver variação >30% em despesas comparado a {{HISTORICO}}, responda [REPROVADO] seguido do motivo. Caso contrário, responda [APROVADO]."]);
-    wsConfig.appendRow(["PROMPT_RELATORIO", "Aja como um analista contábil sênior. Gere um relatório Markdown profissional para o cliente sobre o balancete {{ATUAL}}. Compare com histórico {{HISTORICO}} e destaque pontos positivos e de atenção. Não mencione códigos técnicos de auditoria interna."]);
+    wsConfig.appendRow(["AUDIT_QUESITOS", "EQUILÍBRIO: Ativo deve ser igual ao Passivo.\nCAIXA: Saldo não pode ser negativo (credor).\nDESPESAS: Variação mensal não deve exceder 30%.\nRAZÃO SOCIAL: Nome no documento deve bater com o cadastro."]);
+    wsConfig.appendRow(["PROMPT_AUDITORIA", "Aja como um auditor interno sênior. Sua tarefa é avaliar o balancete {{ATUAL}} com base na lista de {{QUESITOS}}.\n\nRegras de Resposta:\n1. Para cada quesito fornecido, avalie se foi [OK] ou [FALHA].\n2. Se houver falha, descreva o motivo brevemente.\n3. Se o balancete não passar em critérios críticos (Equilíbrio ou Caixa), comece a resposta com [REPROVADO].\n4. Caso contrário, finalize com [APROVADO].\n5. Use o {{HISTORICO}} para avaliar tendências se necessário.\n\nFormato de Saída:\nLISTA DE VERIFICAÇÃO:\n- [STATUS] Item: Motivo (se houver)"]);
+    wsConfig.appendRow(["PROMPT_RELATORIO", "Você é um Consultor Estratégico do NCE (Janio Pontes Contabilidade - janiopontes@janiopontes.com.br). Sua missão é analisar um balancete e redigir o corpo de um e-mail em HTML gerencial, objetivo e elegante, voltado para o dono do negócio (leigo em contabilidade).\n\nDADOS:\nAtual: {{ATUAL}}\nHistórico: {{HISTORICO}}\n\nREGRAS DE LINGUAGEM E ESTILO:\n- ZERO jargões contábeis sem explicação.\n- O tom deve ser prático, executivo, claro e altamente profissional (Premium).\n- Use português brasileiro impecável.\n\nESTRUTURA E FORMATAÇÃO (HTML OBRIGATÓRIO):\nVocê deve gerar apenas código HTML válido. Comece e termine diretamente com as tags HTML.\nUtilize um design 'Clean & Modern':\n1. Container: <div style='font-family: sans-serif; color: #1e293b; line-height: 1.6; max-width: 600px;'>\n2. Títulos: Use <h3 style='color: #1C3051; margin-top: 25px; border-left: 4px solid #1C3051; padding-left: 10px;'> para seções.\n3. Tabelas Sutis: \n   - <table style='width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px;'>\n   - Cabeçalho: <th style='background-color: #f8fafc; color: #1C3051; padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0;'>\n   - Células: <td style='padding: 12px; border-bottom: 1px solid #f1f5f9;'>\n   - Sem bordas laterais rígidas. Visual leve e arejado.\n\nSiga exatamente esta estrutura:\n1. Saudação: '<b>Prezado Cliente!</b>'\n2. Resumo do Mês: Diagnóstico geral em 1 parágrafo.\n3. Raio-X Financeiro: Tabela comparativa (Categoria | Mês Atual | Mês Anterior | Variação | Significado). Itens: Dinheiro em Caixa, Contas a Receber, Contas a Pagar, Resultado.\n4. Indicadores: Tabela (Indicador | Índice | Tradução Prática). Liquidez, Margem, Endividamento.\n5. Recomendações: Lista <ul> com até 3 ações práticas.\n6. Encerramento: Parágrafo motivador e positivo.\n7. Assinatura: 'Um abraço,<br><br><b>Janio Pontes Contabilidade - NCE</b>'\n\nREGRA DE NEGÓCIO INEGOCIÁVEL:\nPROIBIDO criticar, sugerir reduções ou dar conselhos sobre adiantamentos de lucros aos sócios ou aplicações financeiras. É liberalidade do empresário.\n\nEntregue estritamente o código HTML pronto."]);
     
     // Aplicar layout básico
     wsConfig.getRange("A1:B1").setBackground("#1C3051").setFontColor("white").setFontWeight("bold");

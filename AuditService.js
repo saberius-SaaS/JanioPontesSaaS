@@ -168,7 +168,10 @@ function extrairDadosApenas(texto) {
     if(dataConfig[i][0] === "AUDIT_QUESITOS") quesitosStr = dataConfig[i][1];
   }
   
-  var quesitosLista = quesitosStr.split(',').map(q => q.trim()).filter(q => q !== "");
+  var quesitosLista = quesitosStr.split('\n').map(l => {
+    var p = l.split(':');
+    return p[0].trim();
+  }).filter(q => q !== "");
   var dados = {};
   quesitosLista.forEach(q => {
     dados[q] = extrairValor(q, texto);

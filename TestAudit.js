@@ -20,20 +20,18 @@ function testAuditFlow() {
   
   try {
     var blob = testFile.getBlob();
-    var res = validarDadosBalancete(blob);
+    // Testando o fluxo completo que agora NÃO gera PDF
+    var res = processarAuditoriaBalancete(blob, "TF_TEST", "CLIENTE TESTE", "00.000.000/0001-00", "BALANCETE");
     
-    console.log("✅ Resultado da Validação:");
-    console.log(JSON.stringify(res, null, 2));
+    console.log("✅ Resultado da Auditoria:");
+    console.log("Aprovado: " + res.aprovado);
     
     if (res.aprovado) {
-       console.log("🤖 Gerando Relatório IA...");
-       var relIA = gerarRelatorioComportamentalIA(res.dadosAtuais, []);
-       console.log("Conteúdo IA:\n" + relIA);
-       
-       var pdf = gerarPDFAnalise("CLIENTE TESTE", relIA);
-       console.log("📄 PDF Gerado: " + pdf.getName() + " (" + pdf.getSize() + " bytes)");
+       console.log("🤖 Conteúdo da Análise IA (Relatório Cliente):");
+       console.log(res.analise);
+       console.log("✅ Teste de auditoria completo concluído.");
     } else {
-       console.log("❌ Auditoria Reprovada conforme esperado ou erro de leitura: " + res.erros.join(", "));
+       console.log("❌ Auditoria Reprovada: " + res.erros.join(" | "));
     }
     
   } catch (e) {
@@ -84,28 +82,4 @@ function testGetPendencias() {
   console.log("--- TESTANDO PENDÊNCIAS PARA: " + cliente + " ---");
   var pendencias = getPendenciasCliente(cliente);
   console.log(JSON.stringify(pendencias, null, 2));
-}
-function testNewAuditNotifications() {
-  console.log("--- TESTANDO NOVAS NOTIFICAÇÕES DE AUDITORIA ---");
-  
-  var cliente = "EMPRESA TESTE LTDA";
-  var obrigacao = "BALANCETE MENSAL";
-  var responsavel = "João Silva";
-  var email = "joao.silva@exemplo.com";
-  var analiseMock = "### Análise Estratégica\n* Ativo e Passivo conferem.\n* Saldo de caixa saudável.\n## Recomendações\nManter o controle de custos fixos.";
-  
-  try {
-    console.log("1. Testando notificarAuditAdmin (Sucesso)...");
-    notificarAuditAdmin(cliente, obrigacao, true, "Todos os quesitos matemáticos e de IA foram aprovados.");
-    
-    console.log("2. Testando notificarAuditAdmin (Falha)...");
-    notificarAuditAdmin(cliente, obrigacao, false, "Divergência de R$ 50,00 entre Ativo e Passivo.");
-    
-    console.log("3. Testando enviarRelatorioAnaliseIA...");
-    enviarRelatorioAnaliseIA(email, responsavel, cliente, obrigacao, analiseMock);
-    
-    console.log("✅ Ciclo de testes de e-mail concluído com sucesso (Verifique logs e caixa de saída).");
-  } catch (e) {
-    console.error("❌ Erro ao disparar notificações de teste: " + e.message);
-  }
 }
