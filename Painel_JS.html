@@ -311,8 +311,16 @@
            
            const result = await resposta.json();
            if (result.success) {
-             showFeedback("Concluído!"); 
              limparTudo(); 
+             if (result.dispararEmailVIP) {
+               showFeedback("Auditoria Aprovada! O Relatório VIP está sendo gerado em 2º plano e será enviado por e-mail em instantes.");
+               // Chama o server e esquece (fire and forget)
+               google.script.run.processarAuditoriaRelatorioBackground(result.backgroundPayload);
+             } else if (result.auditoriaRodou) {
+               showFeedback("Auditoria Aprovada e Tarefa Concluída!");
+             } else {
+               showFeedback("Concluído!"); 
+             }
            } else {
              showFeedback("Falha: " + (result.error || result.message), true);
            }

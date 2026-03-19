@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --primary: #1C3051;
+        --primary-light: #2A4571;
+        --bg-color: #F8FAFC;
+        --surface: #FFFFFF;
+        --border: #E2E8F0;
+        --text-main: #1E293B;
+        --text-muted: #64748B;
+        --success: #10B981;
+        --error: #EF4444;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        margin: 0;
+        padding: 0;
+      }
+      .loading-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        z-index: 9999;
+      }
+      .spinner {
+        border: 4px solid #f3f3f3; border-top: 4px solid var(--primary);
+        border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;
+        margin-bottom: 15px;
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      
+      .header {
+        background: var(--primary);
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+      .header h1 { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 1px; }
+      .header p { margin: 5px 0 0 0; font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 2px; }
+      
+      .tabs {
+        display: flex;
+        background: white;
+        border-bottom: 1px solid var(--border);
+      }
+      .tab {
+        flex: 1; text-align: center; padding: 15px 10px; font-size: 13px; font-weight: 800; color: var(--text-muted);
+        cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s;
+        border-bottom: 3px solid transparent;
+      }
+      .tab:hover { color: var(--primary); background: #f1f5f9; }
+      .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+      
+      .container { padding: 25px 20px; display: none; }
+      .container.active { display: block; }
+      
+      label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--primary); margin-bottom: 8px; margin-top: 20px; }
+      textarea {
+        width: 100%; padding: 15px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Inter', sans-serif;
+        font-size: 13px; line-height: 1.6; color: var(--text-main); box-sizing: border-box; resize: vertical; min-height: 150px;
+        transition: 0.3s;
+      }
+      textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(28, 48, 81, 0.1); }
+      
+      .helper-text { font-size: 11px; color: var(--text-muted); margin-top: 6px; display: block; line-height: 1.4; }
+      
+      .client-list {
+        background: white; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+        max-height: 350px; overflow-y: auto;
+      }
+      .client-item {
+        display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #F1F5F9; transition: 0.2s;
+      }
+      .client-item:hover { background: #F8FAFC; }
+      .client-item:last-child { border-bottom: none; }
+      
+      .checkbox-wrapper { display: flex; align-items: center; cursor: pointer; width: 100%; }
+      .checkbox-wrapper input { margin-right: 12px; width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+      .checkbox-wrapper span { font-size: 13px; font-weight: 600; color: var(--text-main); }
+      
+      .btn-primary {
+        background: var(--primary); color: white; padding: 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 800;
+        width: 100%; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: 0.3s; margin-top: 25px;
+      }
+      .btn-primary:hover { background: var(--primary-light); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(28, 48, 81, 0.2); }
+      .btn-primary:disabled { background: #94A3B8; cursor: not-allowed; transform: none; box-shadow: none; }
+      
+      .search-box {
+        width: 100%; padding: 12px 15px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Inter', sans-serif;
+        font-size: 13px; margin-bottom: 15px; box-sizing: border-box;
+      }
+      
+      #toast {
+        visibility: hidden; min-width: 250px; background-color: var(--success); color: #fff; text-align: center; border-radius: 8px;
+        padding: 16px; position: fixed; z-index: 10000; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 13px; font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+      #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+      #toast.error { background-color: var(--error); }
+      @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
+      @keyframes fadeout { from { bottom: 30px; opacity: 1; } to { bottom: 0; opacity: 0; } }
+    </style>
+  </head>
+  <body>
+    <div id="loader" class="loading-overlay">
+      <div class="spinner"></div>
+      <div id="loaderText" style="font-weight: 800; font-size: 11px; text-transform:uppercase; letter-spacing:2px; color: #1C3051;">Carregando Configurações...</div>
+    </div>
+
+    <div class="header">
+      <h1>CONFIGURAÇÃO DA IA</h1>
+      <p>Gestor de Auditoria e Comunicação</p>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('prompts')" id="tab-prompts">PROMPTS DA IA</div>
+      <div class="tab" onclick="switchTab('clientes')" id="tab-clientes">CLIENTES ELEGÍVEIS</div>
+    </div>
+
+    <!-- ABA PROMPTS -->
+    <div id="view-prompts" class="container active">
+      <form id="formPrompts">
+        <label>Contas a Extrair (Quesitos do OCR)</label>
+        <textarea id="auditQuesitos" placeholder="Ex: ATIVO TOTAL, PASSIVO TOTAL, RECEITAS..." style="min-height: 80px;"></textarea>
+        <span class="helper-text">Termos exatos que o extrator procurará no balancete para passar à IA. (Um por linha ou separados por vírgula).</span>
+
+        <label>Prompt da Auditoria Interna</label>
+        <textarea id="promptAuditoria" placeholder="Aja como um auditor..."></textarea>
+        <span class="helper-text">Variáveis dinâmicas: {{ATUAL}}, {{HISTORICO}}, {{QUESITOS}}. Avalie com [OK] ou [FALHA] e use [REPROVADO] em erros graves.</span>
+
+        <label>Prompt do Relatório ao Cliente</label>
+        <textarea id="promptRelatorio" placeholder="Aja como consultor estratégico..."></textarea>
+        <span class="helper-text">Este relatório é exclusivo para os VIPs. Defina o tom executivo, diagnóstico 🎯, raio-X financeiro 📊 e recomendações 💡 em formato Markdown.</span>
+        
+        <button type="button" class="btn-primary" id="btnSalvarPrompts" onclick="salvarPrompts()">SALVAR CONFIGURAÇÕES</button>
+      </form>
+    </div>
+
+    <!-- ABA CLIENTES -->
+    <div id="view-clientes" class="container">
+      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-top: 0;">Selecione os clientes que receberão o <b>e-mail de análise estratégica VIP</b> após a conclusão do balancete. Se desmarcado, o cliente não recebe e-mail de análise (apenas a auditoria interna é executada).</p>
+      
+      <input type="text" id="pesquisaCliente" class="search-box" placeholder="Buscar cliente..." onkeyup="filtrarClientes()">
+      
+      <div class="client-list" id="listaClientesDOM">
+        <!-- Injetado via JS -->
+      </div>
+      
+      <button type="button" class="btn-primary" id="btnSalvarClientes" onclick="salvarClientesAtivos()">SALVAR LISTA VIP</button>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+      function showLoader(text) {
+        document.getElementById('loaderText').innerText = text || "Processando...";
+        document.getElementById('loader').style.display = 'flex';
+      }
+      function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+      function showToast(msg, isError) {
+        var t = document.getElementById("toast");
+        t.innerText = msg;
+        t.className = isError ? "show error" : "show";
+        setTimeout(function(){ t.className = t.className.replace("show", ""); }, 3000);
+      }
+
+      function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
+        document.getElementById('view-' + tabId).classList.add('active');
+      }
+
+      var globais = { clientesStrAtivos: "" };
+
+      window.onload = function() {
+        showLoader("Sincronizando Banco de Dados...");
+        google.script.run.withSuccessHandler(preencherDados).withFailureHandler(erroLoad).obterConfigIACompl();
+      };
+
+      function preencherDados(dados) {
+        // Preenche Prompts
+        document.getElementById('promptAuditoria').value = dados.promptAuditoria || "";
+        document.getElementById('promptRelatorio').value = dados.promptRelatorio || "";
+        document.getElementById('auditQuesitos').value = dados.auditQuesitos || "";
+        
+        // Trata Clientes Ativos
+        globais.clientesStrAtivos = (dados.clientesAtivos || "").toUpperCase();
+        var numAtivos = globais.clientesStrAtivos ? globais.clientesStrAtivos.split(',').length : 0;
+        
+        // Renderiza Lista
+        var htmlList = "";
+        dados.listaClientesAll.forEach(function(c) {
+            var checks = globais.clientesStrAtivos.split(',').map(x => x.trim());
+            var isChecked = checks.indexOf(c.toUpperCase()) > -1 ? "checked" : "";
+            htmlList += `
+              <div class="client-item" data-nome="${c.toUpperCase()}">
+                <label class="checkbox-wrapper">
+                  <input type="checkbox" class="chk-cliente" value="${c}" ${isChecked}>
+                  <span>${c}</span>
+                </label>
+              </div>
+            `;
+        });
+        document.getElementById('listaClientesDOM').innerHTML = htmlList;
+        hideLoader();
+      }
+
+      function erroLoad(err) { hideLoader(); showToast("Erro Crítico: " + err, true); }
+
+      function filtrarClientes() {
+        var term = document.getElementById('pesquisaCliente').value.toUpperCase();
+        var items = document.querySelectorAll('.client-item');
+        items.forEach(function(item) {
+          if (item.getAttribute('data-nome').indexOf(term) > -1) { item.style.display = 'flex'; } 
+          else { item.style.display = 'none'; }
+        });
+      }
+
+      function salvarPrompts() {
+        var pa = document.getElementById('promptAuditoria').value.trim();
+        var pr = document.getElementById('promptRelatorio').value.trim();
+        var qt = document.getElementById('auditQuesitos').value.trim();
+        showLoader("Gravando Configurações...");
+        document.getElementById('btnSalvarPrompts').disabled = true;
+        
+        google.script.run.withSuccessHandler(function(res) {
+          hideLoader(); showToast("Configurações salvas com sucesso!", false);
+          document.getElementById('btnSalvarPrompts').disabled = false;
+        }).withFailureHandler(function(e) {
+          hideLoader(); showToast("Falha ao salvar: " + e, true);
+          document.getElementById('btnSalvarPrompts').disabled = false;
+        }).salvarConfigIACompl({ prop: "PROMPTS", pa: pa, pr: pr, qt: qt });
+      }
+
+      function salvarClientesAtivos() {
+        var chks = document.querySelectorAll('.chk-cliente:checked');
+        var ativos = [];
+        chks.forEach(function(chk) { ativos.push(chk.value.trim().toUpperCase()); });
+        var strFinal = ativos.join(', ');
+        
+        showLoader("Atualizando Lista VIP...");
+        document.getElementById('btnSalvarClientes').disabled = true;
+        
+        google.script.run.withSuccessHandler(function(res) {
+          hideLoader(); showToast("Lista VIP atualizada com sucesso! (" + ativos.length + " ativos)", false);
+          document.getElementById('btnSalvarClientes').disabled = false;
+        }).withFailureHandler(function(e) {
+          hideLoader(); showToast("Falha ao salvar clientes: " + e, true);
+          document.getElementById('btnSalvarClientes').disabled = false;
+        }).salvarConfigIACompl({ prop: "CLIENTES", lista: strFinal });
+      }
+    </script>
+  </body>
+</html>

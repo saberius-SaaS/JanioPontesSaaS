@@ -96,13 +96,16 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
       registrarLogSistema("AUDIT_START", "Iniciando auditoria para " + clienteNome);
       var fAudit = arquivos[0];
       var blobAudit = Utilities.newBlob(Utilities.base64Decode(fAudit.base64), "application/octet-stream", fAudit.name);
+      var nomeObrigAudit = norm(obrig).replace(/\s+/g, "_");
+      var extAudit = fAudit.name.split('.').pop();
+      var novoNomeAudit = cnpj + "." + nomeObrigAudit + "." + mesRef.replace(/\//g, ".") + "." + extAudit;
       
       try {
-        resAudit = processarAuditoriaBalancete(blobAudit, taskId, clienteNome, cnpj, obrig);
+        resAudit = processarAuditoriaBalancete(blobAudit, taskId, clienteNome, cnpj, novoNomeAudit);
         if (!resAudit.aprovado) {
           wsTarefas.getRange(rowIdx, 6).setValue(getSafeStatus("PENDENTE"));
           invalidarCacheSistema();
-          return { success: false, audit: false, message: "REPROVADO: " + resAudit.erros.join(" | ") };
+          return JSON.stringify({ success: false, audit: false, message: "REPROVADO: " + resAudit.erros.join(" | ") });
         }
       } catch(eAudit) {
         registrarLogSistema("AUDIT_FAIL_SYS", eAudit.message);
@@ -119,16 +122,47 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
     invalidarCacheSistema(); 
  
     try {
-      // notificarEntregaClienteRefatorada agora exige flag para incluir links (User: off)
-      notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), rowIdx, false);
+      // Se não for auditoria (ex: envio comum), manda a notificação genérica "Processado com sucesso"
+      if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.AUDITAR) {
+        notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), rowIdx, false);
+      }
       
-      // Se houve auditoria aprovada, enviar Relatório IA por E-mail (não mais PDF)
-      if (resAudit && resAudit.analise) {
-        enviarRelatorioAnaliseIA(emailCli, nomeResp, clienteNome, obrig, resAudit.analise);
+      var dispararEmailVIP = false;
+      var backgroundPayload = null;
+      
+      // Se houve auditoria aprovada, PREPARA o Relatório IA por E-mail APENAS se cliente for VIP
+      if (resAudit && resAudit.dadosAtuais) {
+        var iaConfInfo = garantirConfigIA();
+        var dConf = iaConfInfo.sheet.getDataRange().getValues();
+        var vips = "";
+        for (var idxC = 1; idxC < dConf.length; idxC++) {
+           if (dConf[idxC][0] === "CLIENTES_AUDITORIA_ATIVOS") { vips = String(dConf[idxC][1]).toUpperCase(); break; }
+        }
+        var authVips = vips.split(',').map(function(n) { return n.trim(); });
+        
+        if (authVips.indexOf(String(clienteNome).toUpperCase().trim()) > -1) {
+           dispararEmailVIP = true;
+           backgroundPayload = {
+             emailCli: emailCli,
+             nomeResp: nomeResp,
+             clienteNome: clienteNome,
+             obrig: obrig + " (" + mesRef + ")",
+             dadosAtuais: resAudit.dadosAtuais,
+             historicoDados: resAudit.historicoDados
+           };
+        } else {
+           registrarLogSistema("AUDIT_MAIL_SKIPPED", "Cliente " + clienteNome + " auditado com sucesso mas não é VIP para e-mail.");
+        }
       }
     } catch(e) { console.warn("Email erro: " + e.message); }
     
-    return { success: true, message: "Concluído!" };
+    return { 
+      success: true, 
+      message: "Operação concluída com sucesso.",
+      auditoriaRodou: (norm(acaoTarefa) === CONFIG_SISTEMA.ACOES.AUDITAR),
+      dispararEmailVIP: dispararEmailVIP,
+      backgroundPayload: backgroundPayload
+    };
   } catch(e) { 
     registrarLogSistema("UPLOAD_FATAL", e.message);
     throw new Error(e.message); 

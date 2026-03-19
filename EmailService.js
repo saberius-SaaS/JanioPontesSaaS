@@ -241,62 +241,104 @@ function notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, links) 
 }
 
 /**
- * Envia o Relatório de Análise Gerado pela IA para o Responsável do Cliente (E-mail Formatado)
- * Agora recebe TEXTO (Markdown de preferência) em vez de PDF.
+ * Envia o Relatório de Análise Gerado pela IA para o Responsável do Cliente (E-mail Formatado Premium)
  */
 function enviarRelatorioAnaliseIA(emailResponsavel, nomeResponsavel, cliente, obrigacao, analiseTexto) {
   if (!emailResponsavel || emailResponsavel.indexOf("@") === -1) return;
   
   try {
     var analiseHtml;
+    // Limpeza de blocos Markdown se a IA enviar o HTML envelopado (```html ... ```)
     var trimTexto = analiseTexto.trim();
+    trimTexto = trimTexto.replace(/^```html\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
 
     // Detecção Inteligente: Se começar com < e tiver tags HTML, tratamos como HTML puro
     if (trimTexto.startsWith("<") && (trimTexto.indexOf("</div>") > -1 || trimTexto.indexOf("</table>") > -1 || trimTexto.indexOf("</p>") > -1)) {
-       analiseHtml = analiseTexto; 
+       analiseHtml = trimTexto; 
     } else {
-       // Backup: Conversor Markdown mais robusto que o anterior
-       analiseHtml = analiseTexto
-        .replace(/^### (.*$)/gim, '<h3 style="color:#1C3051; margin-top:20px; border-left: 4px solid #1C3051; padding-left:10px;">$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2 style="color:#1C3051; margin-top:25px;">$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1 style="color:#1C3051;">$1</h1>')
-        .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-        .replace(/^\* (.*$)/gim, '<li style="margin-bottom:8px;">$1</li>');
-
-       // Só aplica <br> se NÃO for HTML (para evitar espaçamento duplo em tabelas/divs)
-       analiseHtml = analiseHtml.replace(/\n/g, '<br>');
+       // Premium Markdown to HTML converter
+       analiseHtml = trimTexto
+        .replace(/^### (.*$)/gim, '<h3 style="color:#1C3051; margin-top:35px; margin-bottom:15px; font-size:16px; font-weight:900; letter-spacing:0.5px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; text-transform:uppercase;">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2 style="color:#1e293b; margin-top:40px; margin-bottom:20px; font-size:20px; font-weight:800; border-left: 5px solid #1C3051; padding-left: 15px;">$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1 style="color:#1C3051; font-size:24px; font-weight:900; text-align:center; margin-bottom:30px;">$1</h1>')
+        .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:#1C3051; font-weight:700;">$1</strong>')
+        .replace(/^\* (.*$)/gim, '<li style="margin-bottom:12px; padding-left:5px; position:relative;"><span style="color:#1C3051; position:absolute; left:-15px; font-weight:bold;">&bull;</span>$1</li>')
+        .replace(/^- (.*$)/gim, '<li style="margin-bottom:12px; padding-left:5px; position:relative;"><span style="color:#1C3051; position:absolute; left:-15px; font-weight:bold;">&mdash;</span>$1</li>');
+        
+       // Agrupando LIs em ULs
+       analiseHtml = analiseHtml.replace(/(<li.*<\/li>(\n<li.*<\/li>)*)/gim, '<ul style="list-style:none; padding-left:20px; margin:20px 0;">$1</ul>');
+       
+       // Processamento de Parágrafos
+       var lines = analiseHtml.split('\n');
+       var finalHtml = [];
+       for (var i = 0; i < lines.length; i++) {
+         var line = lines[i].trim();
+         if (line === '') continue;
+         // Se a linha já é uma tag estrutural HTML, não envelopamos em Parágrafo (evita quebrar tabelas HTML da IA)
+         if (/^<\/?(h[1-6]|ul|ol|li|div|table|tr|td|th|thead|tbody|p|br|hr|span|b|strong|i|em)(>|\s)/i.test(line)) {
+           finalHtml.push(line);
+         } else {
+           finalHtml.push('<p style="margin-bottom:16px; line-height:1.7; color:#475569; font-size:15px;">' + line + '</p>');
+         }
+       }
+       analiseHtml = finalHtml.join('\n');
     }
 
     var html = `
-      <div style="margin:0; padding:0; background-color:#f8fafc; font-family:'Inter', sans-serif; padding:40px 20px;">
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:650px; margin:0 auto; background-color:#ffffff; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 10px 15px -3px rgba(0,0,0,0.05);">
-          <tr><td style="padding:25px; background-color:#1C3051; color:#ffffff; text-align:center;">
-            <div style="font-size:16px; font-weight:900; letter-spacing:1px; line-height:1.2;">JANIO PONTES CONTABILIDADE</div>
-            <div style="font-size:10px; font-weight:700; opacity:0.8; text-transform:uppercase; letter-spacing:2px; margin-top:4px;">ANÁLISE DE PERFORMANCE</div>
-          </td></tr>
-          <tr><td style="padding:45px 35px;">
-              <h2 style="color:#1e293b; margin:0 0 10px 0; font-size:20px; font-weight:700;">Olá, ${nomeResponsavel || cliente}</h2>
-              <p style="color:#64748b; font-size:14px; margin-bottom:30px; line-height:1.5;">Com base no balancete de <b>${obrigacao}</b> da empresa <b>${cliente}</b>, geramos a seguinte análise estratégica:</p>
+      <div style="margin:0; padding:40px 20px; background-color:#F8FAFC; font-family:'Inter', 'Roboto', Helvetica, Arial, sans-serif;">
+        <!-- Container Principal -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:650px; margin:0 auto; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 25px -5px rgba(28, 48, 81, 0.1), 0 8px 10px -6px rgba(28, 48, 81, 0.05); border: 1px solid #E2E8F0;">
+          
+          <!-- Header Banner -->
+          <tr>
+            <td style="padding:40px 30px; background: linear-gradient(135deg, #1C3051 0%, #2A4571 100%); color:#ffffff; text-align:center;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td style="text-align:center; padding-bottom:15px;">
+                    <div style="display:inline-block; background:rgba(255,255,255,0.1); padding:10px 20px; border-radius:30px; font-size:10px; font-weight:800; letter-spacing:2px; text-transform:uppercase; color:#bae6fd; border: 1px solid rgba(255,255,255,0.2);">Inteligência Contábil NCE</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="text-align:center;">
+                    <h1 style="margin:0; font-size:24px; font-weight:900; letter-spacing:0.5px; line-height:1.3;">JANIO PONTES<br><span style="font-weight:400; font-size:20px; opacity:0.9;">CONTABILIDADE</span></h1>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Corpo do E-mail -->
+          <tr>
+            <td style="padding:50px 40px; background-color:#ffffff;">
+              <h2 style="color:#0f172a; margin:0 0 15px 0; font-size:22px; font-weight:800; letter-spacing:-0.5px;">Olá, ${nomeResponsavel || cliente}</h2>
+              <p style="color:#64748b; font-size:16px; margin-bottom:40px; line-height:1.6; border-bottom:1px solid #f1f5f9; padding-bottom:30px;">Este é o relatório estratégico do seu balancete de <strong style="color:#1C3051;">${obrigacao}</strong> referente à empresa <strong style="color:#1C3051;">${cliente}</strong>.</p>
               
-              <div style="background-color:#ffffff; border:1px solid #f1f5f9; padding:25px; border-radius:12px; color:#334155; font-size:14px; line-height:1.6;">
+              <!-- Área de Conteúdo Gerado pela IA -->
+              <div style="color:#334155; font-size:15px; line-height:1.7; text-align:justify;">
                 ${analiseHtml}
               </div>
 
-              <div style="margin-top:30px; text-align:center;">
-                <p style="color:#94a3b8; font-size:12px;">Dúvidas sobre esta análise? Entre em contato com seu consultor.</p>
+              <!-- Footer Interno (CTA ou Contato) -->
+              <div style="margin-top:50px; background-color:#f8fafc; border-radius:12px; padding:25px; text-align:center; border: 1px dashed #cbd5e1;">
+                <p style="color:#475569; font-size:14px; margin:0; line-height:1.5;">✨ Dúvidas sobre o rumo das métricas?<br><strong style="color:#1C3051; font-weight:700;">Agende uma conversa com seu consultor estratégico.</strong></p>
               </div>
-          </td></tr>
-          <tr><td style="padding:25px; background-color:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
-              <div style="font-size:11px; color:#1C3051; font-weight:800; text-transform:uppercase; margin-bottom:4px;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</div>
-              <div style="font-size:9px; color:#64748b; font-weight:400;">Monitoramento legal de abertura de mensagem.</div>
-          </td></tr>
+            </td>
+          </tr>
+
+          <!-- Rodapé de Sistema -->
+          <tr>
+            <td style="padding:25px 40px; background-color:#f1f5f9; border-top:1px solid #e2e8f0; text-align:center;">
+              <div style="font-size:11px; color:#1C3051; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Sistema Gestor de Tarefas - NCE</div>
+              <div style="font-size:10px; color:#64748b; font-weight:500; line-height:1.5;">Mensagem enviada automaticamente.<br>A leitura deste doc é rastreada para fins de Compliance Estratégico.</div>
+            </td>
+          </tr>
         </table>
       </div>
     `;
 
     MailApp.sendEmail({
       to: emailResponsavel,
-      subject: "📊 ANÁLISE ESTRATÉGICA: " + cliente + " (" + obrigacao + ")",
+      subject: "📊 DIAGNÓSTICO ESTRATÉGICO: " + cliente + " (" + obrigacao + ")",
       htmlBody: html
     });
     

@@ -42,6 +42,10 @@
             <button type="button" class="btn-outline" id="btnEscolher" style="display:none" onclick="document.getElementById('fileInput').click()">ANEXAR</button>
             <button type="button" class="btn-blue" id="btnFinalizar" onclick="finalizarProcesso()" disabled>FINALIZAR</button>
           </div>
+          
+          <!-- Feedback Área reposicionada para visibilidade imediata -->
+          <div id="feedbackArea" class="feedback-area" style="margin-top: 20px;"></div>
+          
         </form>
     </div>
 
@@ -114,10 +118,6 @@
             </div>
           </div>
         </form>
-    </div>
-
-    <div id="feedbackArea" class="feedback-area"></div>
-
     <?!= include('Painel_JS'); ?>
   </body>
 </html>

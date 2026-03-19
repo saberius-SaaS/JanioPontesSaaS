@@ -35,15 +35,32 @@ function processarAuditoriaBalancete(fileBlob, taskId, clienteNome, cnpj, obriga
     // Se aprovado, notifica o Admin sobre o sucesso da auditoria
     notificarAuditAdmin(clienteNome, obrigacao, true, analiseInterna);
 
-    // 4. Chamada 2: Relatório do Cliente (Se aprovado em tudo)
-    var analiseCliente = gerarRelatorioComportamentalIA(resultadoAudit.dadosAtuais, historicoDados, "RELATORIO");
-    
-    // 5. Retorno apenas dos dados necessários (PDF removido conforme solicitação)
-    return { aprovado: true, analise: analiseCliente };
+    // 4. Chamada 2: Relatório do Cliente (RELATORIO VIP) -> MUDADO PARA BACKGROUND!
+    // Para não travar a tela do usuário por 15 segundos esperando a redação do texto,
+    // apenas retornamos os dados "crus" para que o front-end dispare a Parte 2 isoladamente.
+    return { 
+      aprovado: true, 
+      dadosAtuais: resultadoAudit.dadosAtuais,
+      historicoDados: historicoDados
+    };
     
   } catch (e) {
     registrarLogSistema("AUDIT_FATAL_ERR", e.message);
     throw e;
+  }
+}
+
+/**
+ * RODADA EM SEGUNDO PLANO: Trata a redação do e-mail VIP longo fora da thread de Upload
+ */
+function processarAuditoriaRelatorioBackground(payload) {
+  try {
+    var analiseCliente = gerarRelatorioComportamentalIA(payload.dadosAtuais, payload.historicoDados, "RELATORIO");
+    enviarRelatorioAnaliseIA(payload.emailCli, payload.nomeResp, payload.clienteNome, payload.obrig, analiseCliente);
+    return true;
+  } catch(e) {
+    registrarLogSistema("BACKGROUND_VIP_ERR", e.message);
+    return false;
   }
 }
 
@@ -152,7 +169,8 @@ function validarDadosBalancete(blobAtual) {
 function extrairDadosApenas(texto) {
   function extrairValor(termo, txt) {
     if (!termo) return null;
-    var regex = new RegExp(termo + "[:\\s\\.]+\\s*([\\d\\.,]+)", "i");
+    var termoSeguro = termo.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'); // Escapa para texto literal seguro (Ex: 1.1.01.02 ou (AJUSTE) )
+    var regex = new RegExp(termoSeguro + "[:\\s\\.]+\\s*([\\d\\.,]+)", "i");
     var match = txt.match(regex);
     if (match) {
       var valStr = match[1].replace(/\./g, "").replace(",", ".");

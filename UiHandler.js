@@ -34,7 +34,8 @@ function onOpen() {
     .addSubMenu(ui.createMenu('⚙️ Configurações Avançadas')
       .addItem('⚡ SINCRONIZAR PASTAS', 'comandoMapearPastas')
       .addItem('⚡ LIMPAR CACHE', 'comandoLimparCache')
-      .addItem('⚙️ CONFIG IA (Gemini)', 'comandoInicializarIA')
+      .addItem('⚙️ CONFIG IA (Chave API)', 'comandoInicializarIA')
+      .addItem('⚙️ CONFIG IA (Módulo Avançado)', 'abrirPainelConfigIA')
       .addSeparator()
       .addItem('⏰ Instalar Backup Automático', 'instalarGatilhoBackup')
       .addItem('❌ Remover Gatilho de Backup', 'removerGatilhoBackup'))
@@ -348,5 +349,16 @@ function comandoInicializarIA() {
   } catch (e) {
     ui.alert("❌ Erro ao inicializar configuração: " + e.message);
   }
+}
+
+/**
+ * Abre o novo painel de configurações visuais da IA (Auditoria e Relatórios)
+ */
+function abrirPainelConfigIA() {
+  var html = HtmlService.createHtmlOutputFromFile('AuditConfig')
+      .setTitle('Gestor de Auditoria IA (NCE)')
+      .setWidth(800)
+      .setHeight(650);
+  SpreadsheetApp.getUi().showModalDialog(html, '⚙️ PAINEL VIP DE AUDITORIA IA');
 }
 
