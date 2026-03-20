@@ -2,6 +2,7 @@
   let arquivosStaged = [], pendenciasLocal = [];
   let preSelecaoObrigacaoId = null; 
   let payloadGlobalCache = null;
+  let precisaUploadGlobal = false;
 
   document.addEventListener('DOMContentLoaded', () => {
     carregarPayloadInicial();
@@ -204,11 +205,11 @@
     
     document.getElementById('statusAcaoArea').innerHTML = statusHtml;
     
-    const precisaUpload = ehEnvio || ehAuditoria;
-    if (arq) arq.style.display = precisaUpload ? 'block' : 'none'; 
-    if (esc) esc.style.display = precisaUpload ? 'block' : 'none';
+    precisaUploadGlobal = ehEnvio || ehAuditoria;
+    if (arq) arq.style.display = precisaUploadGlobal ? 'block' : 'none'; 
+    if (esc) esc.style.display = precisaUploadGlobal ? 'block' : 'none';
     
-    btnFin.disabled = precisaUpload && (!arquivosStaged || !arquivosStaged.length);
+    btnFin.disabled = precisaUploadGlobal && (!arquivosStaged || !arquivosStaged.length);
   }
 
   async function adicionarArquivos() {
@@ -281,8 +282,8 @@
     const cli = document.getElementById('clienteUpload').value;
     if(!id || !cli) { showFeedback("Selecione os campos", true); return; }
     
-    // Validar se há arquivos (Obrigatório para o fluxo atual)
-    if (arquivosStaged.length === 0) {
+    // Validar se há arquivos (Obrigatório apenas se a AÇÃO exigir envio ou auditoria)
+    if (precisaUploadGlobal && arquivosStaged.length === 0) {
       showFeedback("Por favor, anexe o arquivo antes de finalizar.", true);
       return;
     }
@@ -372,6 +373,8 @@
   function limparTudo() { 
     arquivosStaged = []; 
     document.getElementById('fileInput').value = "";
+    const cliSel = document.getElementById('clienteUpload');
+    if (cliSel) cliSel.value = "";
     renderizarLista(); 
     const obriSel = document.getElementById('obrigacao');
     if (obriSel) { obriSel.innerHTML = '<option value="">Selecione o cliente</option>'; obriSel.disabled = true; }

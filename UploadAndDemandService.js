@@ -124,7 +124,11 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
     try {
       // Se não for auditoria (ex: envio comum), manda a notificação genérica "Processado com sucesso"
       if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.AUDITAR) {
-        notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), rowIdx, false);
+        // Caso seja ARQUIVAR sem arquivos, não envia e-mail ao cliente (Finalização Simples Interna)
+        var deveNotificar = (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) || (arquivos && arquivos.length > 0);
+        if (deveNotificar) {
+          notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), rowIdx, false);
+        }
       }
       
       var dispararEmailVIP = false;
