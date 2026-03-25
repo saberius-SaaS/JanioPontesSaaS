@@ -2,10 +2,6 @@
 🖥️ GESTOR DE INTERFACE E ROTAS v131.09
 FOCO: Rastreio Seguro e Roteamento de Permissões Elevadas.
 */
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
-
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('🚀 Janio Pontes SaaS')
