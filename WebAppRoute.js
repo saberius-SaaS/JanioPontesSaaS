@@ -1,0 +1,296 @@
+/**
+ * 🛡️ SISTEMA DE GESTÃO CONTÁBIL | JANIO PONTES SaaS
+ * Módulo: WebApp Route Controller (Ponte Planilha -> Web)
+ * Finalidade: Servir o Portal de Trabalho Externo
+ */
+
+/**
+ * Função unificada para gerar as páginas web a partir do Apps Script
+ * O Prompt.md obriga o uso da MetaTag 'viewport'
+ */
+function renderPage(templateFile, title) {
+  const template = HtmlService.createTemplateFromFile(templateFile);
+  
+  return template.evaluate()
+    .setTitle(title)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) // Permite iframe se necessário no futuro
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME); // Obrigatório para scripts mais modernos
+}
+
+/**
+ * Função Utilitária para Injeção de Dependências CSS/JS
+ * Habilita o uso de <?!= include('Arquivo_CSS'); ?> no HTML
+ * @param {string} filename 
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
+ * ⚡ CORE DATA FETCH (Portal Web)
+ * Busca consolidada para extrema performance no carregamento inicial da SPA.
+ */
+function getDadosPortalWeb() {
+  try {
+    var hoje = new Date();
+    // 1. Dados Básicos do Dashboard (Mês Atual)
+    var dashMes = getDashboardData("ESTE_MES");
+    
+    // 2. Calcula Risco Legal (Atrasados Pendentes globais)
+    var wsTarefas = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_TAREFAS");
+    var totalRisco = 0;
+    if (wsTarefas) {
+       var dados = wsTarefas.getDataRange().getValues();
+       for (var i = 1; i < dados.length; i++) {
+         if (String(dados[i][5]).toUpperCase() === "PENDENTE") {
+           var vcto = dados[i][3];
+           if (vcto && (vcto instanceof Date || !isNaN(new Date(vcto).getTime())) && new Date(vcto) < hoje) {
+             totalRisco++;
+           }
+         }
+       }
+    }
+    
+    // Captura de contexto de usuário
+    var emailAtivo = Session.getActiveUser().getEmail();
+    var emailFinal = emailAtivo;
+
+    // TRAVA DE SEGURANÇA: Bloqueia fakes e acessos anônimos
+      if (!emailFinal) {
+        return { 
+          success: false, 
+          error: "LOGIN_REQUERIDO", 
+          message: "⚠️ LOGIN DO GOOGLE NECESSÁRIO\n\nNão detectamos sua conta ativa no navegador. Por favor, faça login no Google Chrome com seu e-mail autorizado para acessar o portal." 
+        };
+      }
+
+    // 2. Calcula o UserLevel Real baseado na Aba Usuários
+    var userLevel = null; // Inicia nulo para forçar validação
+    var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+    for (var u = 1; u < dataU.length; u++) {
+       if (String(dataU[u][0]).toLowerCase().trim() === emailFinal.toLowerCase().trim()) { 
+           userLevel = String(dataU[u][2]).toUpperCase().trim(); 
+           break; 
+       }
+    }
+
+    // TRAVA DE SEGURANÇA: Se não estiver na lista, bloqueia tudo
+    if (userLevel === null) {
+       return { 
+         success: false, 
+         error: "SISTEMA_BLOQUEADO", 
+         message: "Acesso não autorizado. Seu e-mail (" + emailFinal + ") não consta na lista de usuários permitidos. Entre em contato com o administrador." 
+       };
+    }
+
+    // 3. Fila de Prioridades Exclusiva do WebApp (Usa o email final)
+    var prioridades = getPrioridadesPortal(emailFinal);
+    
+    // 4. Listas de Metadados para o Módulo de Comunicação
+    var clientes = getListaClientes();
+    var tiposDemanda = getTiposTarefaRegras();
+    
+    return {
+      success: true,
+      userEmail: emailFinal,
+      userLevel: userLevel,
+      dash: {
+        pendentes: (dashMes && !dashMes.error) ? dashMes.pendentes : 0,
+        entregues: (dashMes && !dashMes.error) ? dashMes.entregues : 0,
+        risco: totalRisco,
+        departamentos: (dashMes && !dashMes.error) ? dashMes.departamentos : {},
+        usuarios: (dashMes && !dashMes.error) ? dashMes.usuarios : {}
+      },
+      prioridades: prioridades,
+      clientes: clientes,
+      tiposDemanda: tiposDemanda,
+      protocolos: getProtocolosPendentes()
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * ⚡ WORKFLOW DEDICADO DO PORTAL
+ * Semelhante ao getPrioridades() legado, mas aceita injeção do E-mail Efetivo
+ * para contornar o anonimato de execução do WebApp.
+ */
+function getPrioridadesPortal(activeEmail) {
+  try {
+    var userEmail = activeEmail.toLowerCase().trim();
+    // Busca do cache usando a infraestrutura legada
+    var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+    var userLevel = "USER";
+    for (var i = 1; i < dataU.length; i++) {
+       if (String(dataU[i][0]).toLowerCase().trim() === userEmail) { 
+           userLevel = String(dataU[i][2]).toUpperCase().trim(); 
+           break; 
+       }
+    }
+    
+    var wsTasks = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_TAREFAS");
+    if (!wsTasks) return [];
+    var dataT = wsTasks.getDataRange().getValues();
+    var tasks = [];
+    for (var j = 1; j < dataT.length; j++) {
+      var statusObj = String(dataT[j][5]).toUpperCase().trim();
+      if (statusObj !== "PENDENTE") continue;
+      
+      var resp = String(dataT[j][8]).toLowerCase().trim();
+      if (userLevel === "ADMIN" || resp === userEmail) {
+        var rawVcto = dataT[j][3];
+        var dateObj = (rawVcto instanceof Date) ? rawVcto : new Date(rawVcto);
+        
+        var mesAnoRaw = dataT[j][0];
+        var mesAnoStr = (mesAnoRaw instanceof Date) ? Utilities.formatDate(mesAnoRaw, "GMT-3", "MM/yyyy") : String(mesAnoRaw);
+
+        tasks.push({ 
+           id: dataT[j][9], 
+           cliente: String(dataT[j][1]), 
+           obrigacao: String(dataT[j][2]), 
+           vencimentoSort: dateObj.getTime(), 
+           vencimentoStr: Utilities.formatDate(dateObj, "GMT-3", "dd/MM/yyyy"), 
+           mesAno: mesAnoStr,
+           depto: String(dataT[j][4]), 
+           acao: String(dataT[j][7]).toUpperCase().trim(), 
+           nivel: dataT[j][10] || "1" 
+        });
+      }
+    }
+    
+    tasks.sort((a, b) => (a.nivel !== b.nivel) ? b.nivel - a.nivel : a.vencimentoSort - b.vencimentoSort);
+    return tasks; // Retorna 100% da esteira do usuário logado sem limitar a 7
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * ⚡ RISK FETCH (Portal Web)
+ * Busca tarefas vencidas para montar o painel de Compliance.
+ */
+function getDadosRiscoWeb() {
+  try {
+    // ⚡ CACHE: Tenta retornar resultado cacheado
+    var cached = getViewCached(CACHE_CONFIG.KEYS.RISCO_RESULT);
+    if (cached) return cached;
+
+    var wsTasks = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_TAREFAS");
+    if (!wsTasks) return { success: false, error: "Tabela não encontrada" };
+    
+    var lastRow = wsTasks.getLastRow();
+    if (lastRow <= 1) return { success: true, data: [] };
+    
+    // OTIMIZAÇÃO: Lê apenas até a coluna I (Índice 8) para economizar memória e banda
+    var dataT = wsTasks.getRange(1, 1, lastRow, 9).getValues();
+    var hoje = new Date();
+    hoje.setHours(0,0,0,0);
+    var riskList = [];
+    
+    var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+    var mapUsuarios = {};
+    for(var u=1; u<dataU.length; u++) {
+       mapUsuarios[String(dataU[u][0]).toLowerCase().trim()] = String(dataU[u][1]);
+    }
+
+    for (var i = 1; i < dataT.length; i++) {
+       if (String(dataT[i][5]).toUpperCase() !== "PENDENTE") continue;
+       var vctoRaw = dataT[i][3];
+       if (!vctoRaw) continue;
+       
+       var dataVcto = (vctoRaw instanceof Date) ? vctoRaw : new Date(vctoRaw);
+       if (isNaN(dataVcto.getTime())) continue;
+       dataVcto.setHours(0,0,0,0);
+       
+       if (dataVcto < hoje) {
+          var diffTime = Math.abs(hoje - dataVcto);
+          var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          var respEmail = String(dataT[i][8]).toLowerCase().trim();
+          var respDisplay = mapUsuarios[respEmail] || dataT[i][8] || "Não Atribuído";
+          
+          riskList.push({
+             cliente: String(dataT[i][1]),
+             obrigacao: String(dataT[i][2]),
+             vencimento: Utilities.formatDate(dataVcto, "GMT-3", "dd/MM/yyyy"),
+             atraso: diffDays,
+             responsavel: respDisplay
+          });
+       }
+    }
+    
+    riskList.sort((a,b) => b.atraso - a.atraso);
+    var resultado = { success: true, data: riskList };
+    
+    // ⚡ CACHE: Grava resultado processado
+    setViewCache(CACHE_CONFIG.KEYS.RISCO_RESULT, resultado);
+    
+    return resultado;
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * ⚡ HISTORIC FETCH (Portal Web)
+ * Busca os ultimos 70 registros.
+ */
+function getDadosHistoricoWeb() {
+  try {
+    // ⚡ CACHE: Tenta retornar resultado cacheado
+    var cached = getViewCached(CACHE_CONFIG.KEYS.HISTORICO_RESULT);
+    if (cached) return cached;
+
+    var wsHist = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_HISTORICO");
+    if (!wsHist) return { success: false, error: "Aba Historico não encontrada." };
+    
+    var lastRow = wsHist.getLastRow();
+    if (lastRow <= 1) return { success: true, data: [] };
+    
+    var lastCol = wsHist.getLastColumn();
+    var rangeSize = 100;
+    var startRow = Math.max(1, lastRow - rangeSize + 1);
+    var numRows = lastRow - startRow + 1;
+    var dataH = wsHist.getRange(startRow, 1, numRows, lastCol).getValues();
+    
+    var histList = [];
+    var limit = 70; 
+    
+    // Varredura Inversa
+    var stopIndex = (startRow === 1) ? 1 : 0;
+    for (var i = dataH.length - 1; i >= stopIndex && limit > 0; i--) {
+        var vctoRaw = dataH[i][3];
+        var vctoStr = (vctoRaw instanceof Date) ? Utilities.formatDate(vctoRaw, "GMT-3", "dd/MM/yyyy") : String(vctoRaw);
+        
+        var mesAnoRaw = dataH[i][0];
+        var mesAnoStr = (mesAnoRaw instanceof Date) ? Utilities.formatDate(mesAnoRaw, "GMT-3", "MM/yyyy") : String(mesAnoRaw);
+        
+        var statusEnvio = String(dataH[i][12] || "---");
+        
+        var leituraRaw = dataH[i][13];
+        var leituraStr = (leituraRaw instanceof Date) ? Utilities.formatDate(leituraRaw, "GMT-3", "dd/MM/yyyy HH:mm:ss") : String(leituraRaw || "---");
+
+        histList.push({
+           mesAno: mesAnoStr,
+           cliente: String(dataH[i][1]),
+           obrigacao: String(dataH[i][2]),
+           vencimento: vctoStr,
+           depto: String(dataH[i][4]),
+           statusEnvio: statusEnvio,
+           leitura: leituraStr
+        });
+        limit--;
+    }
+    var resultado = { success: true, data: histList };
+    
+    // ⚡ CACHE: Grava resultado processado
+    setViewCache(CACHE_CONFIG.KEYS.HISTORICO_RESULT, resultado);
+    
+    return resultado;
+  } catch(err) {
+    return { success: false, error: err.message };
+  }
+}
+

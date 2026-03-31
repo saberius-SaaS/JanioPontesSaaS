@@ -1,0 +1,25 @@
+# Dependências e ferramentas de build
+node_modules/
+.clasp.json
+.claspignore
+package-lock.json
+
+# Logs e ficheiros temporários do Apps Script
+logs/
+*.log
+.build/
+dist/
+
+# Documentação pesada que a IA não precisa ler toda vez
+docs/
+*.md
+!README.md
+
+# Ficheiros de credenciais (Segurança e Economia)
+creds.json
+client_secret*.json
+.env
+
+# Backups de versões antigas
+*.bak
+backup/

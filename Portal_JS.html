@@ -1,0 +1,796 @@
+<script>
+/**
+ * Portal_JS.html | Lógica de Interface do Cliente
+ * Single Page Application Controller
+ */
+
+// Ao carregar a página
+document.addEventListener("DOMContentLoaded", function(event) {
+    document.getElementById('currentUserEmail').textContent = "Conectando...";
+    carregarDadosBase();
+    
+    // Configura sincronização periódica (30 segundos)
+    setInterval(() => carregarDadosBase(true), 30000);
+});
+
+let tarefasGlobaisBase = []; // Cache das tarefas para busca Local
+window.currentView = 'dashboard'; 
+
+// ═══════════════ UTILITÁRIOS PREMIUM ═══════════════
+function debounce(fn, delay) {
+  let timer;
+  return function() {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, arguments), delay);
+  };
+}
+
+const _debouncedTarefas = debounce(() => filtrarTarefasWeb(), 300);
+function debounceTarefas() { _debouncedTarefas(); }
+
+const _debouncedHistorico = debounce(() => filtrarHistoricoWeb(), 300);
+function debounceHistorico() { _debouncedHistorico(); }
+
+function animateCounter(el, target) {
+  const num = parseInt(target, 10);
+  if (isNaN(num)) { el.textContent = target; return; }
+  const duration = 600;
+  const start = performance.now();
+  const from = 0;
+  function step(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(from + (num - from) * eased);
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebarEl');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('active');
+}
+
+function setAvatarInitials(email) {
+  const av = document.getElementById('avatarUser');
+  if (!av || !email) return;
+  const parts = email.split('@')[0].split(/[._-]/);
+  let initials = parts.length >= 2 
+    ? (parts[0][0] + parts[1][0]).toUpperCase() 
+    : parts[0].substring(0, 2).toUpperCase();
+  av.innerHTML = initials;
+}
+
+
+/**
+ * Realiza Fetch das Vistas Iniciais (Sub-segundo / Single Request)
+ */
+function carregarDadosBase(isAutoSync) {
+    const txtSync = document.getElementById('txtLastSync');
+    const agora = new Date().toLocaleTimeString('pt-BR');
+
+    if (isAutoSync === true) {
+        // Proteção de Trabalho: Não refrescar se estiver no CRM ou Modal aberto
+        const currentView = document.querySelector('.view-content:not(.hidden)')?.id;
+        if (currentView === 'comunicacao' || (typeof tarefaEmFoco !== 'undefined' && tarefaEmFoco !== null)) {
+            if (txtSync) txtSync.textContent = agora; // Atualiza o relógio para mostrar que o sistema está operante
+            return;
+        }
+    }
+
+    google.script.run
+      .withFailureHandler(function(err) {
+         console.error(err);
+         document.getElementById('currentUserEmail').textContent = "Falha!";
+      })
+      .withSuccessHandler(function(res) {
+          if(!res.success) {
+             if (res.error === "SISTEMA_BLOQUEADO" || res.error === "LOGIN_REQUERIDO") {
+                 const overlay = document.getElementById('overlayBloqueio');
+                 const msg = document.getElementById('msgBloqueio');
+                 const title = overlay.querySelector('h2');
+                 const icon = overlay.querySelector('i');
+
+                 overlay.classList.remove('hidden');
+                 msg.textContent = res.message;
+                 
+                 if (res.error === "LOGIN_REQUERIDO") {
+                     title.textContent = "Login Necessário";
+                     icon.className = "fa-solid fa-user-lock text-4xl";
+                 }
+
+                 document.querySelector('aside').classList.add('hidden'); // Esconde sidebar
+                 document.querySelector('main').classList.add('hidden');  // Esconde conteúdo
+             }
+             console.error("Erro Backend:", res.error);
+             return;
+          }
+          
+          if (txtSync) txtSync.textContent = agora;
+          const userEmailStr = String(res.userEmail).toLowerCase();
+          document.getElementById('currentUserEmail').textContent = userEmailStr;
+          setAvatarInitials(userEmailStr);
+          
+          // 1. Injetar numéricos de Dashboard
+          const dPendentes = document.getElementById('dash-pendentes');
+          const dEntregues = document.getElementById('dash-entregues');
+          const dRisco = document.getElementById('dash-risco');
+          
+          if(dPendentes) animateCounter(dPendentes, res.dash.pendentes);
+          if(dEntregues) animateCounter(dEntregues, res.dash.entregues);
+          if(dRisco) animateCounter(dRisco, res.dash.risco);
+          
+          // 1.1 Injetar Gráficos de Setores e Equipe
+          renderizarBarrasPerformance('dash-deptos-box', res.dash.departamentos, 'indigo');
+          renderizarBarrasPerformance('dash-users-box', res.dash.usuarios, 'emerald');
+
+          // 2. Injetar layout HTML puro para a Fila de Prioridades (Todas sem limitador 7)
+          tarefasGlobaisBase = res.prioridades;
+          renderizarTarefas(tarefasGlobaisBase);
+          
+          // 3. Popular Metabase CRM (Só se NÃO for auto-sync para não quebrar preenchimento)
+          if (isAutoSync !== true) {
+              const cliDemanda = document.getElementById('demandaClienteWeb');
+              const cliSol = document.getElementById('solicitarClienteWeb');
+              const tipoDem = document.getElementById('demandaTipoWeb');
+              
+              if(cliDemanda && cliSol) {
+                 let htmlCli = '<option value="">-- SELECIONE O CLIENTE --</option>';
+                 res.clientes.forEach(c => htmlCli += `<option value="${c}">${c}</option>`);
+                 cliDemanda.innerHTML = htmlCli;
+                 cliSol.innerHTML = htmlCli;
+              }
+              if(tipoDem) {
+                 let htmlTipo = '<option value="">-- SELECIONE O CLASSIFICADOR --</option>';
+                 res.tiposDemanda.forEach(t => htmlTipo += `<option value="${t}">${t}</option>`);
+                 htmlTipo += '<option value="OUTROS">CÓDIGO GENÉRICO (OUTROS)</option>';
+                 tipoDem.innerHTML = htmlTipo;
+              }
+          }
+          
+          // 5. Injetar Protocolos
+          if (res.protocolos) {
+              const badge = document.getElementById('badgeProtocolosCount');
+              if (badge) {
+                  if (res.protocolos.length > 0) {
+                      badge.textContent = res.protocolos.length;
+                      badge.classList.remove('hidden');
+                  } else {
+                      badge.classList.add('hidden');
+                  }
+              }
+              // Se estiver na vista de protocolos, renderiza agora (Sincronização Ativa)
+              if (window.currentView === 'protocolos') {
+                  renderizarProtocolosInfo(res.protocolos);
+              }
+          }
+
+          // 6. Exposição de Super Privilégios (RBAC)
+          if (res.userLevel === "ADMIN") {
+             const btnAdv = document.getElementById('navAdminWeb');
+             if(btnAdv && btnAdv.classList.contains('hidden')) btnAdv.classList.remove('hidden');
+          }
+          
+      }).getDadosPortalWeb();
+}
+
+function renderizarBarrasPerformance(elementId, dataObj, colorBase) {
+    const box = document.getElementById(elementId);
+    if (!dataObj || Object.keys(dataObj).length === 0) {
+        box.innerHTML = '<div class="text-center text-slate-400 py-6 text-[10px] uppercase font-bold tracking-widest">Sem movimentação registrada no período.</div>';
+        return;
+    }
+    
+    // Sort items by absolute volume (total) descending
+    const items = Object.entries(dataObj).map(([name, stats]) => ({
+       name: name.substring(0, 20),
+       ...stats,
+       pct: stats.total > 0 ? Math.round((stats.entregues / stats.total) * 100) : 0
+    })).sort((a,b) => b.total - a.total);
+    
+    let html = '<div class="space-y-4">';
+    items.forEach(i => {
+       const bgTrack = colorBase === 'indigo' ? 'bg-indigo-100' : 'bg-emerald-100';
+       const bgFill = colorBase === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500';
+       
+       html += `
+         <div>
+            <div class="flex justify-between text-[10px] font-bold text-slate-600 mb-1 tracking-wider uppercase">
+               <span>${i.name}</span>
+               <span class="text-slate-500">${i.entregues}/${i.total} <span class="${colorBase==='indigo'?'text-indigo-500':'text-emerald-500'}">(${i.pct}%)</span></span>
+            </div>
+            <div class="h-2.5 w-full ${bgTrack} rounded-full overflow-hidden">
+               <div class="h-full ${bgFill} transition-all duration-1000 ease-out flex items-center justify-end pr-1 text-[8px] text-white font-bold" style="width: ${i.pct}%">${i.pct >= 15 ? i.pct+'%' : ''}</div>
+            </div>
+         </div>
+       `;
+    });
+    html += '</div>';
+    
+    box.innerHTML = html;
+}
+
+/**
+ * Transforma Objeto JSON (Tarefas) em Cards Visuais e injeta no DOM
+ */
+function renderizarTarefas(tarefas) {
+    const box = document.getElementById('listaTarefasDinamica');
+    if (!box) return;
+    
+    if (!tarefas || tarefas.length === 0) {
+        box.innerHTML = '<div class="flex-1 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-mug-hot text-5xl mb-4 opacity-50"></i><p>Tudo em dia! Sem pendências.</p></div>';
+        return;
+    }
+    
+    // Removemos os flex centrais (loader) caso haja dados:
+    box.className = "flex-1 p-6 overflow-y-auto bg-slate-50"; 
+    
+    let html = '<div class="space-y-3">';
+    tarefas.forEach(t => {
+        const textoAcao = t.acao || "PROCESSAR";
+        const ehEnvio = textoAcao.toUpperCase().indexOf('ENVIAR') > -1;
+        const colorClass = ehEnvio ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700';
+        const borderClass = ehEnvio ? 'border-l-emerald-500' : 'border-l-slate-400 hover:border-l-indigo-500';
+        
+        // Escape characters para previnir sintaxe error
+        const idSafe = String(t.id).replace(/'/g, "\\'");
+        const clienteSafe = String(t.cliente).replace(/'/g, "\\'");
+        const obriSafe = String(t.obrigacao).replace(/'/g, "\\'");
+        
+         html += `
+          <div onclick="abrirModalTarefa('${idSafe}', '${clienteSafe}', '${obriSafe}', '${t.vencimentoStr}', '${t.acao}')" class="task-card flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group cursor-pointer border-l-4 ${borderClass}">
+             <div>
+                <div class="flex items-center gap-2 mb-0.5">
+                   <span class="bg-slate-800 text-slate-100 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-widest shadow-sm">${t.mesAno}</span>
+                   <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nível ${t.nivel} | Ref: ${t.id}</p>
+                </div>
+                <p class="text-xs font-bold text-jp-navy uppercase tracking-wider">${t.cliente}</p>
+                <div class="flex items-center gap-2">
+                   <p class="text-sm text-slate-600 font-medium">${t.obrigacao}</p>
+                   <span class="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 uppercase">${t.depto}</span>
+                </div>
+             </div>
+             <div class="text-right flex flex-col items-end">
+                <p class="text-[11px] font-bold text-red-500 mb-2"><i class="fa-regular fa-clock mr-1 text-red-400"></i> ${t.vencimentoStr}</p>
+                <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${colorClass}">${textoAcao}</span>
+             </div>
+          </div>
+        `;
+    });
+    html += '</div>';
+    
+    box.innerHTML = html;
+}
+
+function filtrarTarefasWeb() {
+   const q = document.getElementById('inputBuscaTarefas').value.toLowerCase().trim();
+   if(!q) { renderizarTarefas(tarefasGlobaisBase); return; }
+   
+   const fList = tarefasGlobaisBase.filter(t => 
+      t.cliente.toLowerCase().includes(q) || 
+      t.obrigacao.toLowerCase().includes(q) ||
+      String(t.id).toLowerCase().includes(q)
+   );
+   renderizarTarefas(fList);
+}
+
+// ================= LÓGICA DO MOTOR DE AÇÃO (MODAL DE RESOLUÇÃO) =================
+let tarefaEmFoco = null;
+let arquivosStagedWeb = [];
+let precisaUploadWeb = false;
+
+function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw) {
+    tarefaEmFoco = { id, cliente, obrigacao, vencimento, acao: acaoRaw };
+    
+    document.getElementById('modalCliente').textContent = cliente;
+    document.getElementById('modalObrigacao').textContent = obrigacao;
+    document.getElementById('modalVcto').textContent = vencimento;
+    
+    const acao = String(acaoRaw || "").toUpperCase().trim();
+    const ehEnvio = acao.indexOf("ENVIAR") > -1;
+    const ehAuditoria = acao.indexOf("AUDITAR") > -1;
+    
+    let colorClass = "text-slate-600 border-slate-200 bg-slate-100";
+    if(ehEnvio) colorClass = "text-emerald-700 border-emerald-200 bg-emerald-50";
+    if(ehAuditoria) colorClass = "text-amber-700 border-amber-200 bg-amber-50";
+    
+    const badge = document.getElementById('modalAcaoBadge');
+    badge.className = `inline-flex text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded border ${colorClass}`;
+    badge.textContent = `AÇÃO EXIGIDA: ${acao}`;
+    
+    precisaUploadWeb = ehEnvio || ehAuditoria;
+    document.getElementById('areaUpload').style.display = precisaUploadWeb ? 'block' : 'none';
+    
+    // Reset modal state
+    arquivosStagedWeb = [];
+    document.getElementById('fileInputObj').value = "";
+    document.getElementById('fileListDisplayWeb').innerHTML = "";
+    document.getElementById('modalFeedback').className = "hidden";
+    
+    const btnFin = document.getElementById('btnFinalizarWeb');
+    btnFin.disabled = false;
+    btnFin.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento`;
+    btnFin.className = "px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center";
+
+    // Show modal fade in
+    const modal = document.getElementById('modalTarefa');
+    const content = document.getElementById('modalTarefaContent');
+    modal.classList.remove('hidden');
+    
+    setTimeout(() => { 
+       modal.classList.remove('opacity-0'); 
+       content.classList.remove('scale-95');
+    }, 10);
+}
+
+function fecharModalTarefa() {
+    const modal = document.getElementById('modalTarefa');
+    const content = document.getElementById('modalTarefaContent');
+    
+    modal.classList.add('opacity-0');
+    content.classList.add('scale-95');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        tarefaEmFoco = null;
+    }, 300);
+}
+
+async function adicionarArquivosWeb() {
+    const input = document.getElementById('fileInputObj');
+    const fs = input.files;
+    if (!fs || fs.length === 0) return;
+    
+    const feedback = document.getElementById('modalFeedback');
+    feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-indigo-50 border-indigo-100 text-indigo-700 block";
+    feedback.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Convertendo e preparando arquivos...`;
+    
+    try {
+      const promessasLeitura = Array.from(fs).map(file => {
+        return new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = (e) => resolve({ name: file.name, base64: e.target.result.split(',')[1] });
+          r.onerror = () => reject(new Error("Falha ao ler " + file.name));
+          r.readAsDataURL(file);
+        });
+      });
+
+      const novosArquivos = await Promise.all(promessasLeitura);
+      arquivosStagedWeb = arquivosStagedWeb.concat(novosArquivos);
+      renderizarListaArquivosWeb(); 
+      feedback.className = "hidden";
+    } catch (e) {
+      feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-red-50 border-red-100 text-red-600 block";
+      feedback.textContent = e.message;
+    } finally {
+      input.value = ""; 
+    }
+}
+
+function removerArquivoWeb(index) {
+    arquivosStagedWeb.splice(index, 1);
+    renderizarListaArquivosWeb();
+}
+
+function renderizarListaArquivosWeb() {
+    const box = document.getElementById('fileListDisplayWeb');
+    if(arquivosStagedWeb.length === 0) {
+        box.innerHTML = ''; return;
+    }
+    let html = '';
+    arquivosStagedWeb.forEach((f, i) => {
+        html += `
+          <div class="flex justify-between items-center bg-white border border-slate-200 px-3 py-2 rounded shadow-sm">
+             <span class="text-xs font-medium text-slate-600 truncate mr-2"><i class="fa-regular fa-file-pdf mr-2 text-indigo-400"></i>${f.name}</span>
+             <button onclick="removerArquivoWeb(${i})" class="text-red-400 hover:text-red-500 p-1"><i class="fa-solid fa-trash-can"></i></button>
+          </div>
+        `;
+    });
+    box.innerHTML = html;
+}
+
+async function finalizarProcessoWeb() {
+    if(!tarefaEmFoco) return;
+    const feedback = document.getElementById('modalFeedback');
+    
+    if (precisaUploadWeb && arquivosStagedWeb.length === 0) {
+      feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-orange-50 border-orange-200 text-orange-700 block";
+      feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Anexe os documentos mandatórios para avançar.`;
+      return;
+    }
+    
+    const btnFin = document.getElementById('btnFinalizarWeb');
+    btnFin.disabled = true;
+    btnFin.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Enviando e Fechando...`;
+    btnFin.className = "px-6 py-2 text-sm font-bold bg-slate-400 text-white rounded shadow flex items-center cursor-not-allowed";
+    
+    feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-indigo-50 border-indigo-200 text-indigo-700 block";
+    feedback.innerHTML = `<i class="fa-solid fa-cloud-arrow-up mr-2 text-indigo-500 text-lg align-middle"></i> Acessando nuvem (Motor REST via Planilha)...`;
+
+    google.script.run
+      .withFailureHandler(err => {
+         feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-red-50 border-red-200 text-red-700 block";
+         feedback.textContent = "Falha de Google Script Runtime: " + err.message;
+         btnFin.disabled = false;
+         btnFin.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento`;
+         btnFin.className = "px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center";
+      })
+      .withSuccessHandler(async urlWebApp => {
+         try {
+           const payload = {
+             action: "uploadBatch",
+             arquivos: arquivosStagedWeb,
+             taskId: tarefaEmFoco.id,
+             clienteNome: tarefaEmFoco.cliente
+           };
+           
+           const resposta = await fetch(urlWebApp, {
+             method: 'POST',
+             body: JSON.stringify(payload),
+             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+           });
+           
+           const result = await resposta.json();
+           if (result.success) {
+             feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-emerald-50 border-emerald-200 text-emerald-700 block";
+             feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-2 text-emerald-500"></i> Sucesso! Tarefa concluída e rotinas acionadas.`;
+             
+             if (result.dispararEmailVIP) {
+               google.script.run.processarAuditoriaRelatorioBackground(result.backgroundPayload);
+             }
+             
+             carregarDadosBase(); // Refresh data quietly
+             setTimeout(() => { fecharModalTarefa(); }, 2000);
+             
+           } else {
+             throw new Error(result.error || result.message);
+           }
+         } catch (errFetch) {
+            feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-red-50 border-red-200 text-red-700 block";
+            feedback.innerHTML = `<i class="fa-solid fa-xmark mr-2 text-red-500"></i> <b>Erro:</b> ${errFetch.message}`;
+            btnFin.disabled = false;
+            btnFin.innerHTML = `<i class="fa-solid fa-rotate-right mr-2"></i> Tentar Novamente`;
+            btnFin.className = "px-6 py-2 text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white rounded shadow transition flex items-center";
+         }
+      }).getUrlParaFetch();
+}
+
+/**
+ * Função responsável por navegar (ocultar barras e exibir seções selecionadas)
+ * @param {string} pageId - ID do contexto a ser exibido ('dashboard', 'tarefas'...)
+ */
+function navigate(pageId) {
+    console.log("Navegando para rota interna: " + pageId);
+    window.currentView = pageId;
+
+    
+    // 1. Tratamento Visual dos Botões na Sidebar
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+        // Remove active state
+        btn.classList.remove('active');
+        btn.classList.add('opacity-70', 'hover:bg-slate-800');
+        
+        // Add active se for o clicado
+        if (btn.getAttribute('onclick').includes(pageId)) {
+            btn.classList.add('active');
+            btn.classList.remove('opacity-70', 'hover:bg-slate-800');
+        }
+    });
+
+    // 2. Ocultar todas as seções `<section>`
+    const sections = document.querySelectorAll('.view-section');
+    sections.forEach(sec => {
+        sec.classList.remove('active');
+        sec.classList.add('hidden');
+    });
+
+    // 3. Exibir apenas a seção alvo
+    const targetSection = document.getElementById('view-' + pageId);
+    if (targetSection) {
+        targetSection.classList.remove('hidden');
+        targetSection.classList.add('active', 'fade-in'); // refaz a anim
+    }
+    
+    // 4. Mudar Título do Topbar baseando-se no ID (Quick Transform)
+    const titles = {
+        'dashboard': 'Visão Geral (Dashboard)',
+        'tarefas': 'Tarefas e Prioridades',
+        'risco': 'Painel de Risco (Compliance)',
+        'historico': 'Arquivo Morto e Auditoria',
+        'protocolos': 'Protocolos Pendentes de Leitura',
+        'comunicacao': 'Comunicação Oficial e Relacionamento Interno',
+        'admin': 'Robótica e Administração Geral'
+    };
+    document.getElementById('pageTitle').textContent = titles[pageId] || "Portal";
+    
+    // Gatilho Lazy Load
+    if (pageId === 'risco' && !carregouRisco) { carregarRiscoServer(); }
+    if (pageId === 'historico' && !carregouHistorico) { carregarHistoricoServer(); }
+}
+
+// ================= LÓGICA DE DADOS SECUNDÁRIOS (LAZY LOADING) =================
+let carregouRisco = false;
+let carregouHistorico = false;
+let historicoGlobalBase = [];
+
+function carregarRiscoServer() {
+   const container = document.getElementById('containerRisco');
+   container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-user-shield text-4xl mb-4 text-red-300 fa-bounce"></i><p class="text-[10px] uppercase tracking-widest font-bold">Consolidando Auditoria Remota...</p></div>';
+   
+   google.script.run
+     .withFailureHandler(err => { container.innerHTML = `<div class="p-6 text-red-500 text-[11px] font-bold text-center border-t border-red-100">Erro: ${err.message}</div>`; })
+     .withSuccessHandler(res => {
+        if(!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">${res.error}</div>`; return; }
+        carregouRisco = true;
+        renderizarRisco(res.data);
+     }).getDadosRiscoWeb();
+}
+
+function renderizarRisco(lista) {
+   const container = document.getElementById('containerRisco');
+   if(!lista || lista.length === 0) {
+      container.innerHTML = '<div class="p-10 text-center text-emerald-500 h-full flex flex-col justify-center items-center"><i class="fa-solid fa-shield-check text-5xl mb-4 text-emerald-300"></i><h2 class="text-lg font-bold">Zero Atrasos Globais!</h2><p class="text-xs mt-1 text-slate-400 uppercase tracking-widest font-bold">Resiliência de sistema em 100%.</p></div>';
+      return;
+   }
+   
+   let table = `
+     <table class="w-full text-left border-collapse">
+       <thead class="bg-slate-100 text-[9px] uppercase text-slate-500 tracking-wider sticky top-0 shadow-sm z-10">
+         <tr>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Cliente</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Obrigação</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Vencimento Original</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200 text-center">Dias de Atraso</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200 text-right">Owner Assigned</th>
+         </tr>
+       </thead>
+       <tbody class="divide-y divide-slate-100">
+   `;
+   
+   lista.forEach(item => {
+      let badgeCor = item.atraso > 5 ? "bg-red-100 text-red-700 border-red-200" : "bg-orange-100 text-orange-700 border-orange-200";
+      
+      table += `
+         <tr class="hover:bg-red-50/30 transition bg-white">
+           <td class="px-5 py-3.5 font-bold text-jp-navy text-[11px] uppercase tracking-wider">${item.cliente}</td>
+           <td class="px-5 py-3.5 text-slate-600 text-[13px] font-medium">${item.obrigacao}</td>
+           <td class="px-5 py-3.5 text-slate-500 text-[11px] font-bold">${item.vencimento}</td>
+           <td class="px-5 py-3.5 text-center"><span class="px-2.5 py-1 text-[10px] uppercase font-bold rounded border ${badgeCor}">${item.atraso} Dias</span></td>
+           <td class="px-5 py-3.5 text-[9px] uppercase font-bold text-slate-400 text-right bg-slate-50 border-l border-slate-100">${item.responsavel}</td>
+         </tr>
+      `;
+   });
+   table += `</tbody></table>`;
+   container.innerHTML = table;
+}
+
+function carregarHistoricoServer() {
+   const container = document.getElementById('containerHistorico');
+   container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-server text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Requisitando Arquivo Morto...</p></div>';
+   
+   google.script.run
+     .withFailureHandler(err => { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-sm text-center">Falha de Servidor: ${err.message}</div>`; })
+     .withSuccessHandler(res => {
+        if(!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-sm text-center">${res.error}</div>`; return; }
+        carregouHistorico = true;
+        historicoGlobalBase = res.data;
+        renderizarHistorico(historicoGlobalBase);
+     }).getDadosHistoricoWeb();
+}
+
+function renderizarHistorico(lista) {
+   const container = document.getElementById('containerHistorico');
+   if(!lista || lista.length === 0) {
+      container.innerHTML = '<div class="p-10 h-full flex flex-col justify-center items-center text-slate-400"><i class="fa-solid fa-wind text-5xl mb-4 opacity-30"></i><p class="text-xs uppercase font-bold tracking-widest">Nenhum registro encontrado.</p></div>';
+      return;
+   }
+   
+   let table = `
+     <table class="w-full text-left border-collapse">
+       <thead class="bg-slate-100 text-[9px] uppercase text-slate-500 tracking-wider sticky top-0 shadow-sm z-10">
+         <tr>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Ref. (Mês/Ano)</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Cliente & Relatório</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200 text-center">Feedback Protocolo</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200 text-center">Recibo de Leitura</th>
+         </tr>
+       </thead>
+       <tbody class="divide-y divide-slate-100">
+   `;
+   
+   lista.forEach(item => {
+      let bEnvio = item.statusEnvio.indexOf("ENVIADO") > -1 ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500";
+      let bLeitura = item.leitura.indexOf("NÃO") > -1 || item.leitura === "---" || item.leitura.indexOf("AGUARDANDO") > -1 ? "bg-slate-100 text-slate-400" : "bg-blue-100 text-blue-700 border border-blue-200 font-bold";
+      
+      table += `
+         <tr class="hover:bg-slate-50 transition bg-white cursor-default">
+           <td class="px-5 py-3 whitespace-nowrap"><span class="bg-indigo-900 text-indigo-50 px-2.5 py-1 rounded text-[10px] font-bold tracking-widest shadow-sm">${item.mesAno}</span></td>
+           <td class="px-5 py-3">
+              <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5">${item.cliente}</div>
+              <div class="text-xs text-slate-600 font-medium">${item.obrigacao}</div>
+           </td>
+           <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 text-[9px] rounded uppercase font-bold tracking-wider ${bEnvio}">${item.statusEnvio}</span></td>
+           <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 text-[9px] rounded uppercase font-bold tracking-wider ${bLeitura}">${item.leitura}</span></td>
+         </tr>
+      `;
+   });
+   table += `</tbody></table>`;
+   container.innerHTML = table;
+}
+
+function filtrarHistoricoWeb() {
+   if (!carregouHistorico) return;
+   const q = document.getElementById('inputBuscaHistorico').value.toLowerCase().trim();
+   if(!q) { renderizarHistorico(historicoGlobalBase); return; }
+   
+   const fList = historicoGlobalBase.filter(i => 
+      i.cliente.toLowerCase().includes(q) || 
+      i.obrigacao.toLowerCase().includes(q) ||
+      i.mesAno.toLowerCase().includes(q)
+   );
+   renderizarHistorico(fList);
+}
+
+// ================= PROTOCOLOS NÃO LIDOS =================
+
+function renderizarProtocolosInfo(lista) {
+   const container = document.getElementById('containerProtocolos');
+   if(!lista || lista.length === 0) {
+      container.innerHTML = '<div class="p-10 h-full flex flex-col justify-center items-center text-slate-400"><i class="fa-solid fa-check-double text-5xl mb-4 opacity-30 text-emerald-500"></i><h2 class="text-lg font-bold text-emerald-600 mb-1">Todos Lidos!</h2><p class="text-xs uppercase font-bold tracking-widest">Nenhum protocolo pendente.</p></div>';
+      return;
+   }
+   
+   let table = `
+     <table class="w-full text-left border-collapse">
+       <thead class="bg-slate-100 text-[9px] uppercase text-slate-500 tracking-wider sticky top-0 shadow-sm z-10">
+         <tr>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Data Envio</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Cliente & Obrigação</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200 text-red-600">Vcto Legal</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Protocolo</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200 text-center">Ação</th>
+         </tr>
+       </thead>
+       <tbody class="divide-y divide-slate-100">
+   `;
+   
+   lista.forEach(p => {
+      table += `
+         <tr class="hover:bg-slate-50 transition bg-white">
+           <td class="px-5 py-4 text-slate-500 text-[11px] font-bold whitespace-nowrap"><i class="fa-regular fa-calendar mr-1"></i> ${p.data}</td>
+           <td class="px-5 py-4">
+              <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5">${p.cliente}</div>
+              <div class="text-xs text-slate-600 font-medium">${p.obrigacao}</div>
+           </td>
+           <td class="px-5 py-4 text-red-600 text-[11px] font-bold whitespace-nowrap">${p.vencimentoLegal}</td>
+           <td class="px-5 py-4">
+              <span class="bg-slate-100 px-2.5 py-1 rounded text-[10px] font-mono text-slate-500 tracking-widest border border-slate-200 shadow-sm whitespace-nowrap">${p.protocolo}</span>
+           </td>
+           <td class="px-5 py-4 text-center">
+              <a href="${p.link}" target="_blank" class="inline-flex items-center justify-center px-4 py-2 bg-jp-navy text-white text-[9px] uppercase font-bold rounded hover:bg-indigo-700 transition shadow">
+                 <i class="fa-solid fa-file-pdf mr-1.5"></i> Arquivo
+              </a>
+           </td>
+         </tr>
+      `;
+   });
+   table += `</tbody></table>`;
+   container.innerHTML = table;
+}
+
+// ================= CRM: CRIAÇÃO DE DEMANDAS E COBRANÇAS =================
+function criarDemandaWeb() {
+   const formObj = {
+       cliente: document.getElementById('demandaClienteWeb').value,
+       tipo: document.getElementById('demandaTipoWeb').value,
+       compl: document.getElementById('demandaComplementoWeb').value,
+       depto: document.getElementById('demandaDeptoWeb').value,
+       acao: document.getElementById('demandaAcaoWeb').value,
+       prazo: document.getElementById('demandaDataWeb').value
+   };
+   
+   if (!formObj.cliente || !formObj.tipo || !formObj.prazo) return;
+   
+   const btn = document.getElementById('btnDemandaWeb');
+   const fb = document.getElementById('demandaFeedbackWeb');
+   btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Acionando Servidor Google...';
+   
+   google.script.run
+     .withFailureHandler(err => {
+        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right mr-2"></i> Tentar Novamente';
+        fb.className = "text-[11px] font-bold text-center mt-3 py-2 border rounded bg-red-50 text-red-700 border-red-200 block";
+        fb.textContent = "Erro na Planilha Mestre: " + err.message;
+     })
+     .withSuccessHandler(res => {
+        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus mr-2"></i> Criar Tarefa na Esteira';
+        fb.className = "text-[11px] font-bold text-center mt-3 py-2 border rounded bg-emerald-50 text-emerald-700 border-emerald-200 block";
+        fb.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Demanda injetada na esteira de produção.`;
+        document.getElementById('formDemandaWeb').reset();
+        setTimeout(() => fb.className = "hidden", 3500);
+     })
+     .salvarTarefaDemanda(formObj);
+}
+
+function aoMudarClienteSolicitarWeb() {
+   const cli = document.getElementById('solicitarClienteWeb').value;
+   const box = document.getElementById('boxSolicitarCamposWeb');
+   const selTarefa = document.getElementById('solicitarTarefaWeb');
+   
+   if (!cli) { box.classList.add('hidden'); return; }
+   
+   selTarefa.innerHTML = '<option value="AVULSA">⏳ Vasculhando banco de dados do cliente...</option>';
+   box.classList.remove('hidden');
+   
+   google.script.run
+     .withSuccessHandler(tarefas => {
+         let html = '<option value="AVULSA">TICKET LIVRE (Solicitação Independente)</option>';
+         tarefas.forEach(t => { html += `<option value="${t.id}">${t.nome} [${t.vencimento}]</option>`; });
+         selTarefa.innerHTML = html;
+     })
+     .getPendenciasCliente(cli);
+}
+
+function enviarSolicitacaoWeb() {
+   const formObj = {
+       cliente: document.getElementById('solicitarClienteWeb').value,
+       idTarefa: document.getElementById('solicitarTarefaWeb').value,
+       solicitacao: document.getElementById('solicitarTextoWeb').value
+   };
+   
+   if (!formObj.cliente || !formObj.solicitacao) return;
+   
+   const btn = document.getElementById('btnSolicitarWeb');
+   const fb = document.getElementById('solicitarFeedbackWeb');
+   btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Criptografando link seguro...';
+   
+   google.script.run
+     .withFailureHandler(err => {
+        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> Disparar Novamente';
+        fb.className = "text-[11px] font-bold text-center mt-3 py-2 border rounded bg-red-50 text-red-700 border-red-200 block";
+        fb.textContent = "Erro de provedor SMS/Email: " + err.message;
+     })
+     .withSuccessHandler(res => {
+        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-envelope-open-text mr-2"></i> Disparar Nova Solicitação Oficial';
+        fb.className = "text-[11px] font-bold text-center mt-3 py-2 border rounded bg-emerald-50 text-emerald-700 border-emerald-200 block";
+        fb.innerHTML = `<i class="fa-solid fa-paper-plane mr-2"></i> Link Rastreável despachado com sucesso.`;
+        document.getElementById('formSolicitarWeb').reset();
+        setTimeout(() => { document.getElementById('boxSolicitarCamposWeb').classList.add('hidden'); fb.className = "hidden"; }, 4000);
+     })
+     .enviarSolicitacaoDocumento(formObj);
+}
+
+// ================= ADMIN & RBAC WRAPPERS =================
+function acionarRoboAdmin(nomeFuncao, idBotao) {
+   const btn = document.getElementById(idBotao);
+   const fb = document.getElementById('adminFeedbackWeb');
+   const oldHtml = btn.innerHTML;
+   const oldClass = btn.className;
+   
+   btn.disabled = true; 
+   btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Robô Online...';
+   btn.className = "w-full bg-slate-300 border border-slate-300 text-slate-500 font-bold py-2.5 rounded text-[10px] uppercase cursor-not-allowed transition mb-0";
+   
+   fb.classList.remove('hidden');
+   const time = new Date().toLocaleTimeString();
+   fb.innerHTML = `> [${time}] Iniciando protocolo remoto: <b class="text-white">${nomeFuncao}()</b>... <i class="fa-solid fa-spinner fa-spin ml-2"></i>`;
+   
+   google.script.run
+     .withFailureHandler(err => {
+        btn.disabled = false; btn.innerHTML = oldHtml; btn.className = oldClass;
+        fb.innerHTML += `<br>> <span class="text-red-400 font-bold">[FALHA CRÍTICA DO GOOGLE] ${err.message}</span>`;
+     })
+     .withSuccessHandler(res => {
+        btn.disabled = false; btn.innerHTML = oldHtml; btn.className = oldClass;
+        fb.innerHTML += `<br>> <span class="text-emerald-400 font-bold">[SUCESSO MESTRE] Tarefa administrativa finalizada. Logs aplicados.</span>`;
+        if (nomeFuncao === 'comandoAtualizarRisco' || nomeFuncao === 'comandoArquivarTarefas') {
+            carregouRisco = false; // Destroy Cache view
+            carregouHistorico = false;
+        }
+     })
+     [nomeFuncao](); // Invoca qualquer função remota global dinamicamente via Prototype
+}
+</script>

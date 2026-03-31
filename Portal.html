@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Janio Pontes SaaS - Gerenciador de Tarefas</title>
+  
+  <!-- Tailwind CSS Framework CDN via Script (Agilidade em Prototipação) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome (Ícones) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Fontes do Google (Inter e Roboto conforme Prompt.md) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Configurações Globais (Paleta de Cores) -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'jp-navy': '#1C3051',    // Cor primária baseada no Prompt.md
+            'jp-light': '#f8fafc',
+            'jp-accent': '#3b82f6'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            roboto: ['Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Injeção de CSS Customizado via Apps Script -->
+  <?!= include('Portal_CSS'); ?>
+  
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 antialiased h-screen overflow-hidden flex">
+
+  <!-- ==================== SIDEBAR (Menu Lateral) ==================== -->
+  <!-- Overlay Mobile -->
+  <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <aside id="sidebarEl" class="w-64 sidebar-premium sidebar-mobile text-white flex flex-col transition-all duration-300 z-20">
+    <!-- Logotipo / Header -->
+    <div class="h-16 flex items-center justify-center border-b border-white/5 shadow-sm relative">
+      <i class="fa-solid fa-rocket text-xl mr-3 text-indigo-400"></i>
+      <span class="text-lg font-bold tracking-wider">JANIO PONTES <span class="text-gradient text-sm font-semibold">SaaS</span></span>
+    </div>
+
+    <!-- Navegação -->
+    <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-1">
+      <button onclick="navigate('dashboard')" class="nav-btn active flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors">
+        <i class="fa-solid fa-chart-line w-6 text-center"></i>
+        <span>Dashboard</span>
+      </button>
+      
+      <button onclick="navigate('tarefas')" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800">
+        <i class="fa-solid fa-list-check w-6 text-center"></i>
+        <span>Tarefas e Prioridades</span>
+      </button>
+
+      <button onclick="navigate('risco')" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800">
+        <i class="fa-solid fa-shield-halved w-6 text-center"></i>
+        <span>Compliance (Risco)</span>
+      </button>
+
+      <button onclick="navigate('historico')" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800">
+        <i class="fa-solid fa-box-archive w-6 text-center"></i>
+        <span>Histórico</span>
+      </button>
+
+      <button onclick="navigate('protocolos')" class="nav-btn flex items-center justify-between w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800">
+        <div class="flex items-center">
+           <i class="fa-solid fa-file-signature w-6 text-center"></i>
+           <span class="ml-1">Protocolos Não Lidos</span>
+        </div>
+        <span id="badgeProtocolosCount" class="hidden bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">0</span>
+      </button>
+
+      <button onclick="navigate('comunicacao')" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 mt-4 border-t border-indigo-900 pt-4">
+        <i class="fa-solid fa-comments w-6 text-center text-indigo-400"></i>
+        <span>Comunicação (CRM)</span>
+      </button>
+
+      <button id="navAdminWeb" onclick="navigate('admin')" class="hidden nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 border-t border-rose-900 pt-3 text-rose-300 hover:text-rose-400">
+        <i class="fa-solid fa-screwdriver-wrench w-6 text-center"></i>
+        <span>Ferramentas (Admin)</span>
+      </button>
+    </nav>
+
+    <!-- Logo / Identidade Visual -->
+    <div class="px-6 py-4 border-t border-indigo-900 bg-jp-navy flex justify-center items-center">
+      <img src="data:image/jpeg;base64,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STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0B0STuWp817QHRJO5anzXtAdEk7lqfNe0DtHXo97Wc71DdS5anR5InfUD1AAAAAAAAAAAAAAAAAGFxfhCzYrsz7XdGdL1VNUt91gl5JI1/FOJUA0rY/g684TTFVsubN/CRPpqlnuc8XBSZPZ/FONFAreFAAACzHM/dbiLw2q/M0IkcAAAAAPHqvHa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa6byn+oBqvPa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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/Z" class="h-14 w-auto object-contain drop-shadow-md rounded-sm" alt="Jânio Pontes Logo">
+    </div>
+
+    <!-- Sincronização Rodapé -->
+    <div class="px-4 py-2 border-t border-white/5 flex items-center justify-between text-[9px] uppercase tracking-widest font-bold text-indigo-400/60">
+       <span><span class="sync-dot mr-1.5"></span> Sync</span>
+       <span id="txtLastSync">Aguardando...</span>
+    </div>
+
+    <!-- Usuário Rodapé -->
+    <div class="p-4 border-t border-white/5 bg-black/15">
+      <div class="flex items-center">
+         <div id="avatarUser" class="w-9 h-9 rounded-full avatar-initials flex items-center justify-center font-bold text-white text-xs tracking-wider shadow-lg">
+            <i class="fa-solid fa-user text-xs"></i>
+         </div>
+         <div class="ml-3">
+           <p class="text-xs font-semibold" id="currentUserEmail">Conectando...</p>
+           <p class="text-[10px] text-indigo-300/70">Núcleo Estratégico</p>
+         </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN CONTENT (Área Principal) ==================== -->
+  <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50 relative">
+    
+    <!-- Topbar Secundária -->
+    <header class="h-14 bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-200/60 flex items-center justify-between px-6 z-10 w-full">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="btn-hamburger items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-jp-navy transition" style="display:none;">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+        <h2 id="pageTitle" class="text-lg font-bold text-slate-800 tracking-tight">Dashboard</h2>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button class="text-slate-400 hover:text-indigo-500 transition-colors relative">
+          <i class="fa-regular fa-bell text-lg"></i>
+          <span class="absolute -top-1 -right-1 flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Conteúdo Dinâmico SPA -->
+    <div class="flex-1 overflow-x-hidden overflow-y-auto p-6 scroll-smooth fade-in">
+      
+      <!-- Section: DASHBOARD -->
+      <section id="view-dashboard" class="view-section active h-full">
+        <!-- Bem Vindo Hero -->
+        <div class="hero-gradient rounded-2xl p-8 text-white shadow-lg mb-6 flex justify-between items-center relative z-10">
+            <div>
+              <h1 class="text-2xl md:text-3xl font-extrabold mb-2 tracking-tight">Portal Janio Pontes SaaS</h1>
+              <p class="text-indigo-200/80 text-sm">Ambiente personalizado, intuitivo e seguro. Bom trabalho!</p>
+            </div>
+            <div class="hidden md:block relative z-10">
+               <i class="fa-solid fa-rocket text-6xl text-white/10"></i>
+            </div>
+        </div>
+        
+        <!-- Cards Superiores -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+          <div class="card-premium p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Obrigações Pendentes</h3>
+              <div class="bg-orange-100 text-orange-500 p-2.5 rounded-xl"><i class="fa-solid fa-clock"></i></div>
+            </div>
+            <p class="text-3xl font-extrabold text-slate-800 kpi-value" id="dash-pendentes"><span class="skeleton inline-block w-16 h-8"></span></p>
+          </div>
+          
+          <div class="card-premium p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Entregas Realizadas</h3>
+              <div class="bg-emerald-100 text-emerald-500 p-2.5 rounded-xl"><i class="fa-solid fa-check"></i></div>
+            </div>
+            <p class="text-3xl font-extrabold text-slate-800 kpi-value" id="dash-entregues"><span class="skeleton inline-block w-16 h-8"></span></p>
+          </div>
+
+          <div class="card-premium p-6 border-l-4 border-l-red-500">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-red-500 font-semibold text-xs uppercase tracking-wider">Risco Legal (Atrasos)</h3>
+              <div class="bg-red-50 text-red-500 p-2.5 rounded-xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+            <p class="text-3xl font-extrabold text-slate-800 kpi-value" id="dash-risco"><span class="skeleton inline-block w-16 h-8"></span></p>
+          </div>
+        </div>
+
+        <!-- Gráficos Nativos (Performance / Produtividade) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <div class="card-premium flex flex-col overflow-hidden">
+               <div class="p-4 border-b border-slate-100 bg-slate-50/80">
+                  <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[10px]"><i class="fa-solid fa-layer-group mr-2 text-indigo-400"></i> Desempenho Setorial (Mês)</h3>
+               </div>
+               <div id="dash-deptos-box" class="p-5 space-y-4">
+                  <div class="space-y-4"><div class="skeleton skeleton-text w-full"></div><div class="skeleton skeleton-text w-4/5"></div><div class="skeleton skeleton-text w-3/5"></div></div>
+               </div>
+            </div>
+            <div class="card-premium flex flex-col overflow-hidden">
+               <div class="p-4 border-b border-slate-100 bg-slate-50/80">
+                  <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[10px]"><i class="fa-solid fa-users mr-2 text-indigo-400"></i> Ranking de Produtividade (Equipe)</h3>
+               </div>
+               <div id="dash-users-box" class="p-5 space-y-4 max-h-[400px] overflow-y-auto">
+                  <div class="space-y-4"><div class="skeleton skeleton-text w-full"></div><div class="skeleton skeleton-text w-4/5"></div><div class="skeleton skeleton-text w-3/5"></div></div>
+               </div>
+            </div>
+        </div>
+
+      </section>
+
+      <!-- Section: TAREFAS -->
+      <section id="view-tarefas" class="view-section hidden h-full">
+         <div class="card-premium h-full flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50/80 gap-4">
+               <h3 class="font-bold text-jp-navy tracking-widest text-[11px] uppercase whitespace-nowrap"><i class="fa-solid fa-list-check mr-2 text-indigo-500"></i> Minhas Tarefas de Produção</h3>
+               <div class="flex items-center w-full md:w-80 gap-2">
+                  <div class="relative w-full">
+                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2 text-slate-400 text-sm"></i>
+                     <input type="text" id="inputBuscaTarefas" onkeyup="debounceTarefas()" placeholder="Pesquisar cliente ou rotina..." class="w-full pl-9 pr-3 py-1.5 glass-input text-sm">
+                  </div>
+                  <button onclick="carregarDadosBase()" title="Recarregar Fila" class="bg-jp-navy hover:bg-indigo-700 text-white h-[34px] px-3 rounded-lg shadow transition flex-shrink-0"><i class="fa-solid fa-rotate"></i></button>
+               </div>
+            </div>
+            <div id="listaTarefasDinamica" class="flex-1 p-6 overflow-y-auto bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 relative">
+                <div class="w-full space-y-3"><div class="skeleton rounded-xl h-20 w-full"></div><div class="skeleton rounded-xl h-20 w-full"></div><div class="skeleton rounded-xl h-20 w-full"></div></div>
+            </div>
+         </div>
+      </section>
+
+      <!-- Section: RISCO / COMPLIANCE -->
+      <section id="view-risco" class="view-section hidden h-full">
+         <div class="card-premium h-full flex flex-col overflow-hidden border-red-100">
+            <div class="p-4 border-b border-red-100 flex justify-between items-center bg-red-50/80">
+               <h3 class="font-bold text-red-700 uppercase tracking-widest text-[11px]"><i class="fa-solid fa-triangle-exclamation mr-2 text-red-500"></i> Painel de Compliance (Ativos Vencidos)</h3>
+            </div>
+            <div id="containerRisco" class="flex-1 overflow-y-auto p-0 relative">
+               <div class="p-6 space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-4/5"></div></div>
+            </div>
+         </div>
+      </section>
+
+      <!-- Section: HISTÓRICO -->
+      <section id="view-historico" class="view-section hidden h-full">
+         <div class="card-premium h-full flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50/80 gap-4">
+               <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-box-archive mr-2 text-indigo-400"></i> Arquivo Morto (Últimas Entregas)</h3>
+               <div class="relative w-full md:w-64">
+                  <i class="fa-solid fa-magnifying-glass absolute left-3 top-2 text-slate-400 text-sm"></i>
+                  <input type="text" id="inputBuscaHistorico" onkeyup="debounceHistorico()" placeholder="Pesquisar registro..." class="w-full pl-9 pr-3 py-1.5 glass-input text-sm">
+               </div>
+            </div>
+            <div id="containerHistorico" class="flex-1 overflow-y-auto p-0 relative">
+               <div class="p-6 space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-4/5"></div></div>
+            </div>
+         </div>
+      </section>
+
+      <!-- Section: PROTOCOLOS NÃO LIDOS -->
+      <section id="view-protocolos" class="view-section hidden h-full">
+         <div class="card-premium h-full flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+               <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-file-signature mr-2 text-indigo-400"></i> Protocolos Pendentes de Leitura</h3>
+            </div>
+            <div id="containerProtocolos" class="flex-1 overflow-y-auto p-0 relative">
+               <div class="p-6 space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div></div>
+            </div>
+         </div>
+      </section>
+
+      <!-- Section: COMUNICAÇÃO (CRM) -->
+      <section id="view-comunicacao" class="view-section hidden h-full">
+         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full pb-8">
+            
+            <!-- NOVA DEMANDA -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
+               <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
+                  <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-bolt mr-2 text-indigo-500"></i> Nova Demanda Interna</h3>
+               </div>
+               <div class="p-6 flex-1 overflow-y-auto">
+                  <form id="formDemandaWeb" class="space-y-4" onsubmit="event.preventDefault(); criarDemandaWeb();">
+                     <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cliente</label>
+                        <select id="demandaClienteWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                            <option value="">Carregando base online...</option>
+                        </select>
+                     </div>
+                     <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tipo de Obrigação / Serviço</label>
+                        <select id="demandaTipoWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                            <option value="">Carregando base online...</option>
+                        </select>
+                     </div>
+                     <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Complemento (Nome Secundário)</label>
+                        <input type="text" id="demandaComplementoWeb" placeholder="Ex: Referente a Maio/2026" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none">
+                     </div>
+                     <div class="grid grid-cols-2 gap-4">
+                        <div>
+                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Departamento</label>
+                           <select id="demandaDeptoWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                              <option value="FISCAL">FISCAL</option>
+                              <option value="PESSOAL">PESSOAL</option>
+                              <option value="CONTABIL">CONTABIL</option>
+                              <option value="LEGAL">LEGAL</option>
+                              <option value="AUDITORIA">AUDITORIA</option>
+                              <option value="GLOBAL">GLOBAL</option>
+                           </select>
+                        </div>
+                        <div>
+                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ação a Executar</label>
+                           <select id="demandaAcaoWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                              <option value="PROCESSAR">Processamento Interno</option>
+                              <option value="ENVIAR PARA CLIENTE">Enviar para Cliente</option>
+                              <option value="AUDITAR CONTABILIDADE">Auditoria de Documentação</option>
+                           </select>
+                        </div>
+                     </div>
+                     <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vencimento (Prazo Legal)</label>
+                        <input type="date" id="demandaDataWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                     </div>
+                     <div id="demandaFeedbackWeb" class="text-[11px] font-bold text-center mt-2 hidden py-2 rounded"></div>
+                     <button type="submit" id="btnDemandaWeb" class="w-full bg-jp-navy hover:bg-indigo-700 text-white font-bold py-3 rounded mt-2 transition text-sm"><i class="fa-solid fa-plus mr-2"></i> Criar Tarefa na Esteira</button>
+                  </form>
+               </div>
+            </div>
+
+            <!-- SOLICITAR CLIENTE -->
+            <div class="bg-white rounded-xl shadow border border-slate-100 flex flex-col overflow-hidden">
+               <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-emerald-50">
+                  <h3 class="font-bold text-emerald-800 uppercase tracking-widest text-[11px]"><i class="fa-solid fa-paper-plane mr-2 text-emerald-500"></i> Solicitar Documento via E-mail Seguro</h3>
+               </div>
+               <div class="p-6 flex-1 overflow-y-auto">
+                  <form id="formSolicitarWeb" class="space-y-4" onsubmit="event.preventDefault(); enviarSolicitacaoWeb();">
+                     <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Selecione o Cliente Emitente</label>
+                        <select id="solicitarClienteWeb" onchange="aoMudarClienteSolicitarWeb()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                            <option value="">Carregando base online...</option>
+                        </select>
+                     </div>
+                     
+                     <div id="boxSolicitarCamposWeb" class="hidden space-y-4">
+                        <div>
+                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vincular a uma Tarefa Legal (Opcional)</label>
+                           <select id="solicitarTarefaWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs focus:border-indigo-500 focus:outline-none">
+                               <option value="AVULSA">SOLICITAÇÃO AVULSA (Ticket Limpo)</option>
+                           </select>
+                        </div>
+                        <div>
+                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mensagem (Corpo do E-mail Rastreável)</label>
+                           <textarea id="solicitarTextoWeb" rows="5" placeholder="Descreva de forma clara os documentos exigidos para que o núcleo NCE inicie as tratativas..." class="w-full bg-slate-50 border border-slate-200 rounded p-3 text-sm focus:border-indigo-500 focus:outline-none" required></textarea>
+                        </div>
+                        <div id="solicitarFeedbackWeb" class="text-[11px] font-bold text-center mt-2 hidden py-2 rounded shadow-sm"></div>
+                        <button type="submit" id="btnSolicitarWeb" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded transition text-sm flex justify-center items-center"><i class="fa-solid fa-envelope-open-text mr-2"></i> Disparar Solicitação Oficial</button>
+                     </div>
+                  </form>
+               </div>
+            </div>
+
+
+
+         </div>
+      </section>
+
+      <!-- Section: ADMINISTRAÇÃO -->
+      <section id="view-admin" class="view-section hidden h-full">
+         <div class="bg-white rounded-xl shadow-sm border border-rose-100 flex flex-col overflow-hidden h-full">
+            <div class="p-5 border-b border-rose-100 flex justify-between items-center bg-rose-50">
+               <h3 class="font-bold text-rose-800 uppercase tracking-widest text-[11px]"><i class="fa-solid fa-user-tie mr-2 text-rose-500"></i> Master Control Panel (Acesso Restrito ao Database)</h3>
+            </div>
+            <div class="p-8 flex-1 overflow-y-auto">
+               <p class="text-xs text-slate-500 mb-8 border-l-4 border-rose-400 pl-4 py-1 bg-slate-50 rounded-r shadow-sm"><b>Atenção Admin:</b> Estes robôs executam cargas pesadas e estruturais no banco de dados, ignorando logs de fila. Evite acioná-los repetidas vezes sem aguardar o retorno visual absoluto na tela.</p>
+               
+               <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  
+                  <!-- Robô 1 -->
+                  <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow transition group flex flex-col justify-between">
+                     <div>
+                        <i class="fa-solid fa-calendar-days text-4xl text-indigo-400 mb-4 opacity-80 group-hover:scale-110 transition-transform"></i>
+                        <h4 class="font-bold text-slate-700 mb-2 truncate">1. Gerar Tarefas (Sincronizar)</h4>
+                        <p class="text-[11px] text-slate-500 mb-5 leading-relaxed">Sincroniza as regras contratuais e repopula a aba Operacional com as demandas exatas deste mês.</p>
+                     </div>
+                     <button id="btnAdmin_gerarTarefas" onclick="acionarRoboAdmin('gerarTarefasDoMes', 'btnAdmin_gerarTarefas')" class="w-full bg-slate-100 border border-slate-200 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 font-bold py-2.5 rounded text-[10px] uppercase tracking-wider transition"><i class="fa-solid fa-play mr-2"></i> Executar Lote</button>
+                  </div>
+                  
+                  <!-- Robô 2 -->
+                  <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow transition group flex flex-col justify-between">
+                     <div>
+                        <i class="fa-solid fa-box-archive text-4xl text-amber-500 mb-4 opacity-80 group-hover:scale-110 transition-transform"></i>
+                        <h4 class="font-bold text-slate-700 mb-2 truncate">2. Arquivar Limpar Base</h4>
+                        <p class="text-[11px] text-slate-500 mb-5 leading-relaxed">Varre a tela de operação drenando todos os entregues/resolvidos, transferindo-os permanentemente para a tabela de Histórico.</p>
+                     </div>
+                     <button id="btnAdmin_arquivar" onclick="acionarRoboAdmin('comandoArquivarTarefas', 'btnAdmin_arquivar')" class="w-full bg-slate-100 border border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 font-bold py-2.5 rounded text-[10px] uppercase tracking-wider transition"><i class="fa-solid fa-play mr-2"></i> Executar Lote</button>
+                  </div>
+                  
+                  <!-- Robô 3 -->
+                  <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow transition group flex flex-col justify-between">
+                     <div>
+                        <i class="fa-solid fa-triangle-exclamation text-4xl text-red-500 mb-4 opacity-80 group-hover:scale-110 transition-transform"></i>
+                        <h4 class="font-bold text-slate-700 mb-2 truncate">3. Forçar Update de Risco</h4>
+                        <p class="text-[11px] text-slate-500 mb-5 leading-relaxed">Recalcula forçadamente os atrasos e o teto da esteira sem depender do robô Trigger Diário do servidor Google.</p>
+                     </div>
+                     <button id="btnAdmin_risco" onclick="acionarRoboAdmin('comandoAtualizarRisco', 'btnAdmin_risco')" class="w-full bg-slate-100 border border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 font-bold py-2.5 rounded text-[10px] uppercase tracking-wider transition"><i class="fa-solid fa-play mr-2"></i> Executar Lote</button>
+                  </div>
+                  
+                  <!-- Robô 4 -->
+                  <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow transition group flex flex-col justify-between">
+                     <div>
+                        <i class="fa-solid fa-server text-4xl text-blue-500 mb-4 opacity-80 group-hover:rotate-180 transition-transform duration-700"></i>
+                        <h4 class="font-bold text-slate-700 mb-2 truncate">4. Refresh Histórico Email</h4>
+                        <p class="text-[11px] text-slate-500 mb-5 leading-relaxed">Pressiona o Arquivo Morto a refazer checagens cruzadas de Confirmação de Leitura e Envio Rastreado contra os protocolos da nuvem.</p>
+                     </div>
+                     <button id="btnAdmin_hist" onclick="acionarRoboAdmin('comandoSincronizarHistorico', 'btnAdmin_hist')" class="w-full bg-slate-100 border border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 font-bold py-2.5 rounded text-[10px] uppercase tracking-wider transition"><i class="fa-solid fa-play mr-2"></i> Executar Lote</button>
+                  </div>
+                  
+                  <!-- Robô 5 -->
+                  <div class="bg-slate-800 border-2 border-slate-900 p-6 rounded-xl shadow-md hover:shadow-lg transition group flex flex-col justify-between relative overflow-hidden">
+                     <div class="absolute right-0 top-0 opacity-10">
+                         <i class="fa-solid fa-database text-9xl text-emerald-300"></i>
+                     </div>
+                     <div class="relative z-10">
+                        <i class="fa-solid fa-lock text-4xl text-emerald-400 mb-4 group-hover:scale-110 transition-transform"></i>
+                        <h4 class="font-bold text-emerald-100 mb-2 truncate">5. Acionamento de Backup Seguro</h4>
+                        <p class="text-[11px] text-slate-400 mb-5 leading-relaxed text-justify">Roteia uma varredura atestada com o Google Drive para fragmentar as abas ativas, contruir log espelho e despachar para o diretório de Backups Criptografados do Janio Pontes SaaS.</p>
+                     </div>
+                     <button id="btnAdmin_backup" onclick="acionarRoboAdmin('comandoBackupManual', 'btnAdmin_backup')" class="relative z-10 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded text-[11px] uppercase tracking-wider transition border border-emerald-500 shadow"><i class="fa-solid fa-shield-cat mr-2"></i> Consolidar Backup Agora</button>
+                  </div>
+
+               </div>
+               
+               <div id="adminFeedbackWeb" class="hidden mt-8 p-5 rounded-lg bg-slate-900 text-emerald-400 font-mono text-xs border-l-4 border-emerald-500 shadow-inner">
+                  > Terminais aguardando pacote de instruções...
+               </div>
+               
+            </div>
+         </div>
+      </section>
+
+
+    </div>
+  </main>
+
+  <!-- ==================== MODAL DE AÇÃO (TAREFA) ==================== -->
+  <div id="modalTarefa" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-300 pointer-events-auto" id="modalTarefaContent">
+      <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <h3 class="font-bold text-jp-navy" id="modalTitulo">Resolver Tarefa</h3>
+        <button onclick="fecharModalTarefa()" class="text-slate-400 hover:text-slate-600 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      
+      <div class="p-6">
+        <div class="mb-4">
+           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cliente</p>
+           <p class="font-semibold text-slate-800" id="modalCliente">--</p>
+        </div>
+        <div class="mb-5 border-b border-slate-100 pb-4">
+           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Obrigação & Vencimento</p>
+           <div class="flex justify-between items-end">
+              <p class="text-sm font-medium text-slate-600" id="modalObrigacao">--</p>
+              <p class="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded" id="modalVcto">--</p>
+           </div>
+        </div>
+
+        <div class="w-full bg-slate-50 rounded p-3 mb-5 text-center border border-slate-200" id="modalAcaoArea">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-600" id="modalAcaoBadge">AÇÃO</span>
+        </div>
+
+        <div id="areaUpload" class="hidden">
+           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Anexar Documento(s)</label>
+           <div class="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-indigo-400 hover:bg-slate-50 transition cursor-pointer relative" onclick="document.getElementById('fileInputObj').click()">
+              <i class="fa-solid fa-cloud-arrow-up text-3xl text-indigo-300 mb-2"></i>
+              <p class="text-xs text-slate-500 font-medium">Clique para Selecionar ou Arraste</p>
+           </div>
+           <input type="file" id="fileInputObj" multiple class="hidden" onchange="adicionarArquivosWeb()">
+           
+           <div id="fileListDisplayWeb" class="mt-3 space-y-2"></div>
+        </div>
+
+        <!-- Feedback Dinâmico do Modal -->
+        <div id="modalFeedback" class="mt-4 text-center text-sm font-semibold hidden p-3 rounded shadow-sm border"></div>
+      </div>
+      
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+         <button onclick="fecharModalTarefa()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded mr-2 transition">Cancelar</button>
+         <button id="btnFinalizarWeb" onclick="finalizarProcessoWeb()" class="px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center">
+            <i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento
+         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Injeção de JS Customizado via Apps Script -->
+  <?!= include('Portal_JS'); ?>
+  
+<div id="overlayBloqueio" class="hidden fixed inset-0 z-[9999] bg-slate-900 flex items-center justify-center p-6 text-center">
+  <div class="max-w-md bg-white rounded-2xl shadow-2xl p-10 border border-slate-200">
+    <div class="w-20 h-20 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6">
+      <i class="fa-solid fa-shield-slash text-4xl"></i>
+    </div>
+    <h2 class="text-2xl font-black text-slate-800 mb-4 tracking-tight">Acesso Interrompido</h2>
+    <p id="msgBloqueio" class="text-slate-600 mb-8 leading-relaxed text-sm whitespace-pre-line">Seu e-mail não possui permissão para acessar este portal.</p>
+    
+    <div class="pt-6 border-t border-slate-100">
+      <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Protocolo de Segurança Ativo</p>
+      <p class="text-[9px] text-slate-400 mt-1">JANIO PONTES SaaS &copy; 2026</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

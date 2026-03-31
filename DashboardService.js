@@ -88,6 +88,10 @@ function getDashboardData(filtroPeriodo) {
  */
 function getProtocolosPendentes() {
   try {
+    // ⚡ CACHE: Tenta retornar resultado cacheado
+    var cached = getViewCached(CACHE_CONFIG.KEYS.PROTOCOLOS_RESULT);
+    if (cached) return cached;
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
@@ -100,16 +104,20 @@ function getProtocolosPendentes() {
     
     function mapearVctos(sheet) {
       if (!sheet) return;
-      var data = sheet.getDataRange().getValues();
+      var lastR = sheet.getLastRow();
+      if (lastR <= 1) return;
+      // OTIMIZAÇÃO: Lê apenas até a coluna L (Índice 11) que é o Vencimento Legal
+      var data = sheet.getRange(1, 1, lastR, 12).getValues();
       for (var i = 1; i < data.length; i++) {
         var id = String(data[i][9]).trim(); // Coluna J
         var vctoLegal = data[i][11];        // Coluna L
-        if (id) mapVctoLegal[id] = vctoLegal;
+        var acao = String(data[i][7]).toUpperCase().trim(); // Coluna H
+        if (id) mapVctoLegal[id] = { vctoLegal: vctoLegal, acao: acao };
       }
     }
     
     mapearVctos(wsTarefas);
-    mapearVctos(wsHist);
+    // mapearVctos(wsHist); // As arquivadas não precisam de acompanhamento
 
     // 2. Processar Protocolos
     var dataP = wsProt.getDataRange().getValues();
@@ -122,7 +130,12 @@ function getProtocolosPendentes() {
       // Filtro: Enviado mas ainda não lido/confirmado
       if (statusEnvio === "ENVIADO" && (confRecto === "" || confRecto === "AGUARDANDO")) {
         var idTarefa = String(dataP[j][3]).trim();
-        var vctoLegalRaw = mapVctoLegal[idTarefa];
+        var infoTarefa = mapVctoLegal[idTarefa];
+        
+        // NOVO FILTRO: Deve existir em DB_TAREFAS e ter ação ENVIAR
+        if (!infoTarefa || infoTarefa.acao !== "ENVIAR") continue;
+
+        var vctoLegalRaw = infoTarefa.vctoLegal;
         var vctoLegalFmt = (vctoLegalRaw instanceof Date) ? Utilities.formatDate(vctoLegalRaw, "GMT-3", "dd/MM/yyyy") : "---";
         
         var dataEnvioRaw = dataP[j][0];
@@ -136,13 +149,18 @@ function getProtocolosPendentes() {
           cliente: String(dataP[j][1]),
           protocolo: String(dataP[j][2]),
           obrigacao: String(dataP[j][4]),
-          vencimentoLegal: vctoLegalFmt, // Novo campo
+          vencimentoLegal: vctoLegalFmt, 
           link: primeiroLink
         });
       }
     }
     
-    return pendentes.reverse(); 
+    var resultado = pendentes.reverse();
+    
+    // ⚡ CACHE: Grava resultado processado
+    setViewCache(CACHE_CONFIG.KEYS.PROTOCOLOS_RESULT, resultado);
+    
+    return resultado; 
   } catch (e) {
     registrarLogSistema("GET_PROTO_DASH_ERR", e.message);
     return [];

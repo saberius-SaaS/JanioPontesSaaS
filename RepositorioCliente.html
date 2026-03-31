@@ -154,6 +154,29 @@
             transform: translateY(-2px);
         }
 
+        /* --- Estilos de Destaque para Novos Protocolos --- */
+        .file-item.highlight {
+            background-color: #ECFDF5; /* Verde esmeralda bem suave */
+            border-left: 5px solid #10B981;
+        }
+
+        .file-item.highlight:hover {
+            background-color: #D1FAE5;
+        }
+
+        .badge-new {
+            background: #10B981;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-left: 10px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
         .empty-state {
             padding: 60px 20px;
             text-align: center;
@@ -210,12 +233,19 @@
 
         <div class="file-list" id="fileList">
             <? if (arquivos && arquivos.length > 0) { ?>
-                <? arquivos.forEach(function(file) { ?>
+                <? arquivos.forEach(function(file) { 
+                    var isHighlight = (typeof protocoloDestaque !== 'undefined' && protocoloDestaque && file.name.indexOf("[" + protocoloDestaque + "]") > -1);
+                ?>
                     <div class="file-item-container">
-                        <a href="<?= file.url ?>" target="_blank" class="file-item">
+                        <a href="<?= file.url ?>" target="_blank" class="file-item <?= isHighlight ? 'highlight' : '' ?>">
                             <div class="file-icon">📄</div>
                             <div class="file-info">
-                                <span class="file-name"><?= file.name ?></span>
+                                <span class="file-name">
+                                    <?= file.name ?>
+                                    <? if (isHighlight) { ?>
+                                        <span class="badge-new">Novo Recebimento</span>
+                                    <? } ?>
+                                </span>
                                 <span class="file-meta">Modificado em: <?= file.date ?> • Tamanho: <?= file.size ?></span>
                             </div>
                             <div class="btn-download">Visualizar</div>

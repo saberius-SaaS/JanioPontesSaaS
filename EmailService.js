@@ -198,8 +198,9 @@ function registrarInteracaoEmail(protocolo, acao, rowIdx) {
         }
       }
       if (targetRow !== -1) {
+        var dataHoraFormatada = Utilities.formatDate(agora, "GMT-3", "dd/MM/yyyy HH:mm:ss");
         wsProt.getRange(targetRow, 9).setValue(CONFIG_SISTEMA.STATUS.ENTREGUE);
-        wsProt.getRange(targetRow, 10).setValue(agora);
+        wsProt.getRange(targetRow, 10).setValue(dataHoraFormatada);
       }
     }
     SpreadsheetApp.flush();

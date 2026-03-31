@@ -3,6 +3,32 @@
 FOCO: Rastreio Seguro e Roteamento de Permissões Elevadas.
 */
 function onOpen() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var userEmail = Session.getActiveUser().getEmail().toLowerCase().trim();
+  var isAuthorized = false;
+  
+  // 1. Validar se o e-mail está na lista de usuários (DB_USUARIOS)
+  var wsUsr = ss.getSheetByName("DB_USUARIOS");
+  if (wsUsr) {
+    var dataU = wsUsr.getDataRange().getValues();
+    for (var i = 1; i < dataU.length; i++) {
+      if (String(dataU[i][0]).toLowerCase().trim() === userEmail) {
+        isAuthorized = true;
+        break;
+      }
+    }
+  }
+
+  // 2. Lógica de Escudo (Shielding)
+  if (!isAuthorized && userEmail !== "") {
+    // USUÁRIO NÃO AUTORIZADO: Esconder tudo e mostrar apenas aviso de segurança
+    garantirEExibirAvisoSeguranca(ss);
+    return; // Aborta a criação do menu e exibição das abas
+  }
+
+  // 3. USUÁRIO AUTORIZADO: Garantir que as abas de trabalho estão visíveis e criar menu
+  restaurarAbasTrabalho(ss);
+
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('🚀 Janio Pontes SaaS')
     .addItem('🚀 ABRIR SISTEMA', 'abrirSistema')
@@ -36,6 +62,49 @@ function onOpen() {
       .addItem('⏰ Instalar Backup Automático', 'instalarGatilhoBackup')
       .addItem('❌ Remover Gatilho de Backup', 'removerGatilhoBackup'))
     .addToUi();
+}
+
+/**
+ * Esconde todas as abas e mostra apenas o aviso de segurança.
+ */
+function garantirEExibirAvisoSeguranca(ss) {
+  var abaAviso = ss.getSheetByName("AVISO_SEGURANCA");
+  if (!abaAviso) {
+    abaAviso = ss.insertSheet("AVISO_SEGURANCA");
+    abaAviso.getRange("A1").setValue("🛡️ PROTOCOLO DE SEGURANÇA ATIVO")
+      .setFontWeight("bold").setFontSize(14).setFontColor("#e11d48");
+    abaAviso.getRange("A2").setValue("Seu acesso a este arquivo de dados não está autorizado nos registros do Janio Pontes SaaS.")
+      .setFontWeight("bold");
+    abaAviso.getRange("A4").setValue("Por favor, utilize o Portal Web para interagir com o sistema ou contate o administrador.");
+    abaAviso.setTabColor("#e11d48");
+  }
+  
+  abaAviso.showSheet();
+  ss.setActiveSheet(abaAviso);
+
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].getName() !== "AVISO_SEGURANCA") {
+      sheets[i].hideSheet();
+    }
+  }
+}
+
+/**
+ * Reexibe todas as abas DB_ e outras necessárias após autorização.
+ */
+function restaurarAbasTrabalho(ss) {
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    var name = sheets[i].getName();
+    if (name.indexOf("DB_") === 0 || name === "LOGS") {
+      sheets[i].showSheet();
+    }
+  }
+  var abaAviso = ss.getSheetByName("AVISO_SEGURANCA");
+  if (abaAviso) {
+    abaAviso.hideSheet();
+  }
 }
 
 function abrirSeletorPerfis() {
@@ -90,11 +159,12 @@ function doGet(e) {
     var params = e.parameter || {};
     var mode = String(params.mode || "").trim();
     var solId = String(params.sol || "").trim().replace(/^["']|["']$/g, "");
-    var p = String(params.p || "").trim();
-    var r = String(params.r || "").trim();
+    var p = String(params.p || "").trim().replace(/^["']|["']$/g, "");
+    var r = String(params.r || "").trim().replace(/^["']|["']$/g, "");
     var dest = params.dest || "";
 
     if (mode === "client" && solId !== "") {
+      registrarInteracaoEmail(p, "PORTAL_SOLICITACAO_ABERTO", r);
       var template = HtmlService.createTemplateFromFile('SolicitacaoCliente');
       template.solId = solId;
       return template.evaluate()
@@ -158,8 +228,10 @@ function doGet(e) {
       }
 
       if (folderId) {
+        registrarInteracaoEmail(p, "REPOSITORIO_ABERTO", r);
         var template = HtmlService.createTemplateFromFile('RepositorioCliente');
         template.arquivos = listarArquivosRepositorioInterno(folderId);
+        template.protocoloDestaque = p;
         return template.evaluate()
           .setTitle('Repositório Digital | JP NCE')
           .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -167,8 +239,11 @@ function doGet(e) {
       }
     }
 
-    return HtmlService.createHtmlOutput("🚀 SISTEMA NCE ATIVO").setTitle('NCE - Status');
-  } catch (err) { return HtmlService.createHtmlOutput("Erro de conexão."); }
+    // Caso base: Se nenhum modo especial for detectado, carrega o Portal principal
+    return renderPage('Portal', 'Gerenciador de Tarefas - Janio Pontes');
+  } catch (err) { 
+    return HtmlService.createHtmlOutput("Erro de conexão: " + err.message); 
+  }
 }
 
 /**

@@ -19,6 +19,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
     registrarLogSistema("UPLOAD_START", "Recebidos: " + (arquivos ? arquivos.length : 0) + " arquivos para tarefa " + taskId);
     
     // Localização da Tarefa
+    // Localização da Tarefa
     var dataTf = wsTarefas.getRange(1, 10, wsTarefas.getLastRow(), 1).getValues(); 
     var rowIdx = -1;
     for(var i=1; i<dataTf.length; i++) if(String(dataTf[i][0]) === String(taskId)) { rowIdx = i + 1; break; }
@@ -60,6 +61,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
        if (cliRowIdx !== -1) wsCli.getRange(cliRowIdx, 13).setValue(target.getUrl());
     }
     
+    var protocolo = gerarProtocoloEntrega();
     var linksParaEmail = [];
     var folderGlobal = DriveApp.getFolderById(CONFIG_SISTEMA.PASTAS.ENVIADOS);
     
@@ -68,7 +70,9 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
       var nomeOriginal = f.name;
       var ext = nomeOriginal.split('.').pop();
       var nomeObrig = norm(obrig).replace(/\s+/g, "_"); 
-      var novoNome = cnpj + "." + nomeObrig + "." + mesRef.replace(/\//g, ".") + (arquivos.length > 1 ? "_" + (idx+1) : "") + "." + ext;
+      var marcadorProtocolo = "_[" + protocolo + "]";
+      var sufixoMultiplo = (arquivos.length > 1 ? "_" + (idx+1) : "");
+      var novoNome = cnpj + "." + nomeObrig + "." + mesRef.replace(/\//g, ".") + sufixoMultiplo + marcadorProtocolo + "." + ext;
       
       var blob = Utilities.newBlob(Utilities.base64Decode(f.base64), "application/octet-stream", novoNome);
       
@@ -81,7 +85,6 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
       linksParaEmail.push({ url: url, name: nomeOriginal });
     });
 
-    var protocolo = gerarProtocoloEntrega();
     var linksDriveStr = linksParaEmail.map(function(item) { return item.url; }).join(" | ");
     
     // --- INTEGRAÇÃO BLOCO AUDITORIA ---
@@ -114,7 +117,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
     }
     // --- FIM BLOCO AUDITORIA ---
 
-    registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, linksDriveStr);
+    var protRowIdx = registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, linksDriveStr);
     wsTarefas.getRange(rowIdx, 6, 1, 2).setValues([[statusFinal, protocolo]]);
     
     acionarWorkflowFaseSeguinte(taskId, rowIdx);
@@ -127,7 +130,8 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
         // Caso seja ARQUIVAR sem arquivos, não envia e-mail ao cliente (Finalização Simples Interna)
         var deveNotificar = (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) || (arquivos && arquivos.length > 0);
         if (deveNotificar) {
-          notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), rowIdx, false);
+          // Passamos o protRowIdx em vez do rowIdx da tarefa para rastreio direto no DB_PROTOCOLOS
+          notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), protRowIdx || "", false);
         }
       }
       
@@ -158,7 +162,10 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
            registrarLogSistema("AUDIT_MAIL_SKIPPED", "Cliente " + clienteNome + " auditado com sucesso mas não é VIP para e-mail.");
         }
       }
-    } catch(e) { console.warn("Email erro: " + e.message); }
+    } catch(e) { 
+       registrarLogSistema("EMAIL_NOTIF_ERR", "Falha ao enviar e-mail: " + e.message);
+       console.warn("Email erro: " + e.message); 
+    }
     
     return { 
       success: true, 

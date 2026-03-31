@@ -139,7 +139,10 @@ function arquivarTarefasConcluidas() {
     var mapProt = {};
     for(var p=1; p<dataProt.length; p++) {
       var idT = String(dataProt[p][3]).trim();
-      if(idT) mapProt[idT] = { statusEnvio: dataProt[p][8] || "MANUAL", confRecto: dataProt[p][9] || "" };
+      if(idT) {
+        var cFmt = (dataProt[p][9] instanceof Date) ? Utilities.formatDate(dataProt[p][9], "GMT-3", "dd/MM/yyyy HH:mm:ss") : String(dataProt[p][9] || "");
+        mapProt[idT] = { statusEnvio: dataProt[p][8] || "MANUAL", confRecto: cFmt };
+      }
     }
 
     var valores = wsTarefas.getRange(2, 1, lr - 1, 12).getValues();
@@ -252,8 +255,11 @@ function sincronizarHistoricoComProtocolos() {
     var id = String(dataHist[h][9]).trim();
     if (mapProt[id]) {
       var p = mapProt[id];
-      if (String(p.status) !== String(dataHist[h][12]) || String(p.conf) !== String(dataHist[h][13])) {
-        wsHist.getRange(h + 1, 13, 1, 2).setValues([[p.status, p.conf]]);
+      var confStr = (p.conf instanceof Date) ? Utilities.formatDate(p.conf, "GMT-3", "dd/MM/yyyy HH:mm:ss") : String(p.conf || "");
+      var histConf = dataHist[h][13];
+      var histConfStr = (histConf instanceof Date) ? Utilities.formatDate(histConf, "GMT-3", "dd/MM/yyyy HH:mm:ss") : String(histConf || "");
+      if (String(p.status) !== String(dataHist[h][12]) || confStr !== histConfStr) {
+        wsHist.getRange(h + 1, 13, 1, 2).setValues([[p.status, confStr]]);
         updates++;
       }
     }

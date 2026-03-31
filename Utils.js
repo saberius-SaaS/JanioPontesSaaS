@@ -124,7 +124,9 @@ function registrarProtocoloDB(clienteNome, protocolo, idTarefa, obrigacao, email
     ]);
     
     SpreadsheetApp.flush();
+    return wsProt.getLastRow(); // Retorna o index da linha para rastreio direto
   } catch(e) {
     registrarLogSistema("PROTO_SAVE_ERR", e.message);
+    return null;
   }
 }

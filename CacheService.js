@@ -7,13 +7,17 @@
 var CACHE_CONFIG = {
   EXPIRACAO: 21600, // 6 horas
   EXPIRACAO_PRIO: 600, // 10 minutos
+  EXPIRACAO_VIEWS: 300, // 5 minutos (Views processadas do Portal)
   CHUNK_SIZE: 45000, // Margem super segura (Abaixo de 100KB)
   KEYS: {
     CLIENTES: "DATA_CLIENTES",
     REGRAS: "DATA_REGRAS",
     USUARIOS: "DATA_USUARIOS",
     VERSION: "CACHE_VERSION",
-    PRIO_PREFIX: "PRIO_USER_"
+    PRIO_PREFIX: "PRIO_USER_",
+    RISCO_RESULT: "VIEW_RISCO",
+    HISTORICO_RESULT: "VIEW_HISTORICO",
+    PROTOCOLOS_RESULT: "VIEW_PROTOCOLOS"
   }
 };
 
@@ -105,6 +109,73 @@ function setPrioridadesCache(userEmail, data) {
   
   // Como são apenas as 7 prioridades, nunca atingirá 100KB, não requer fragmentação aqui
   cache.put(key, JSON.stringify(data), CACHE_CONFIG.EXPIRACAO_PRIO);
+}
+
+/**
+ * ⚡ CACHE DE VIEWS PROCESSADAS (Portal Web)
+ * Cacheia o resultado JSON final de views do portal usando fragmentação.
+ * @param {string} cacheKey - Chave lógica (ex: CACHE_CONFIG.KEYS.RISCO_RESULT)
+ * @returns {Object|null} Resultado cacheado ou null se não existir
+ */
+function getViewCached(cacheKey) {
+  var cache = CacheService.getScriptCache();
+  var props = PropertiesService.getScriptProperties();
+  var version = props.getProperty(CACHE_CONFIG.KEYS.VERSION) || "0";
+  var masterKey = cacheKey + "_" + version;
+
+  var chunkCountStr = cache.get(masterKey + "_chunks");
+  if (chunkCountStr) {
+    var chunkCount = parseInt(chunkCountStr, 10);
+    var fullString = "";
+    var cacheValido = true;
+
+    for (var i = 0; i < chunkCount; i++) {
+      var chunk = cache.get(masterKey + "_" + i);
+      if (chunk) {
+        fullString += chunk;
+      } else {
+        cacheValido = false;
+        break;
+      }
+    }
+
+    if (cacheValido && fullString.length > 0) {
+      try {
+        return JSON.parse(fullString);
+      } catch (e) {
+        // Cache corrompido, segue para recálculo
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * ⚡ GRAVA VIEW PROCESSADA NO CACHE (Fragmentado)
+ * @param {string} cacheKey - Chave lógica
+ * @param {Object} data - Objeto resultado a ser cacheado
+ */
+function setViewCache(cacheKey, data) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var props = PropertiesService.getScriptProperties();
+    var version = props.getProperty(CACHE_CONFIG.KEYS.VERSION) || "0";
+    var masterKey = cacheKey + "_" + version;
+
+    var stringData = JSON.stringify(data);
+    var totalChunks = Math.ceil(stringData.length / CACHE_CONFIG.CHUNK_SIZE);
+
+    cache.put(masterKey + "_chunks", totalChunks.toString(), CACHE_CONFIG.EXPIRACAO_VIEWS);
+
+    for (var j = 0; j < totalChunks; j++) {
+      var startIdx = j * CACHE_CONFIG.CHUNK_SIZE;
+      var endIdx = startIdx + CACHE_CONFIG.CHUNK_SIZE;
+      var chunkData = stringData.substring(startIdx, endIdx);
+      cache.put(masterKey + "_" + j, chunkData, CACHE_CONFIG.EXPIRACAO_VIEWS);
+    }
+  } catch (e) {
+    registrarLogSistema("VIEW_CACHE_SET_ERR", e.message);
+  }
 }
 
 function monitorarEdicaoParaCache(e) {
