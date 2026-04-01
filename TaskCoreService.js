@@ -4,7 +4,11 @@
  */
 
 function safeGetMesAnoStr(valor) {
-  if (valor instanceof Date) return Utilities.formatDate(valor, "GMT-3", "MM/yyyy");
+  if (valor instanceof Date) {
+    var m = valor.getMonth() + 1;
+    var y = valor.getFullYear();
+    return (m < 10 ? "0" + m : m) + "/" + y;
+  }
   return String(valor).trim();
 }
 
@@ -49,7 +53,8 @@ function gerarTarefasDoMes() {
         societario: dataCli[c][10] || "SISTEMA",
         excecoes: excecoes,
         nivel: dataCli[c][13] || "1",
-        perfis: String(dataCli[c][14] || "") 
+        perfis: String(dataCli[c][14] || ""),
+        status: String(dataCli[c][15] || "ATIVO").toUpperCase().trim()
       };
     }
 
@@ -79,6 +84,9 @@ function gerarTarefasDoMes() {
       for (var cliKey in mapaClientes) {
         var cli = mapaClientes[cliKey];
         
+        // ⚡ REGRA MESTRA DE INATIVOS: Se o cliente está inativo, ele não gera NENHUMA tarefa nova retroativa
+        if (cli.status === "INATIVO") continue;
+        
         for (var r = 1; r < dataReg.length; r++) {
           var obrigOriginal = String(dataReg[r][1] || "").trim();
           if (!obrigOriginal) continue;
@@ -104,7 +112,7 @@ function gerarTarefasDoMes() {
           var dtPrazoInterno = calcularDataComplexa(competenciaDate, dataReg[r][2], dataReg[r][8], dataReg[r][10]);
           var dtVencimentoLegal = calcularDataComplexa(competenciaDate, dataReg[r][9], dataReg[r][8], dataReg[r][10]);
           
-          if (!dtPrazoInterno || dtPrazoInterno < inicioMesAtual) continue;
+          if (!dtPrazoInterno) continue;
 
           // Definir Responsável atual
           var dep = norm(dataReg[r][3]), resp = "SISTEMA";
@@ -113,18 +121,20 @@ function gerarTarefasDoMes() {
           else if (dep.indexOf("PESSOAL") > -1) resp = cli.pessoal;
           else if (dep.indexOf("SOCIETARIO") > -1) resp = cli.societario;
 
-          // Verificar se já existe no mapa global (Histórico ou já processado)
-          if (mapaGlobalExistencia[hash]) continue;
+          if (!mapaGlobalExistencia[hash]) {
+            // A regra mestre: só geramos NOVAS tarefas se o vencimento é de agora em diante (ou neste mês)
+            var acaoSincronismo = (dtPrazoInterno >= inicioMesAtual) ? "CRIAR_OU_SINCRONIZAR" : "SINCRONIZAR_BACKLOG";
 
-          // Adicionamos ao mapa de processamento
-          mapaTarefasAtivas[hash] = {
-            acao: "MANTER_OU_SINCRONIZAR",
-            dados: [
-              mesAnoRef, cli.nomeOriginal, obrigOriginal, dtPrazoInterno, dataReg[r][3],
-              CONFIG_SISTEMA.STATUS.PENDENTE, "", dataReg[r][5], resp,
-              "ID_" + new Date().getTime() + (countId++), cli.nivel, dtVencimentoLegal
-            ]
-          };
+            // Adicionamos ao mapa de processamento
+            mapaTarefasAtivas[hash] = {
+              acao: acaoSincronismo,
+              dados: [
+                mesAnoRef, cli.nomeOriginal, obrigOriginal, dtPrazoInterno, dataReg[r][3],
+                CONFIG_SISTEMA.STATUS.PENDENTE, "", dataReg[r][5], resp,
+                "ID_" + new Date().getTime() + (countId++), cli.nivel, dtVencimentoLegal
+              ]
+            };
+          }
         }
       }
     }
@@ -135,8 +145,17 @@ function gerarTarefasDoMes() {
 
     // Primeiro, analisamos o que já estava na planilha
     for (var i = 1; i < dataTf.length; i++) {
-      var h = norm(safeGetMesAnoStr(dataTf[i][0])) + "|" + norm(dataTf[i][1]) + "|" + norm(dataTf[i][2]);
       var statusAtual = String(dataTf[i][5]).toUpperCase();
+      var cliNormBanco = norm(dataTf[i][1]);
+      var cliDados = mapaClientes[cliNormBanco];
+      
+      // EXCLUSÃO INCONDICIONAL: Clientes Inativos ou Removidos da base perdem suas pendências instantaneamente
+      if (statusAtual === CONFIG_SISTEMA.STATUS.PENDENTE && (!cliDados || cliDados.status === "INATIVO")) {
+        tarefasExcluidasCount++;
+        continue; // Ignora TODA E QUALQUER proteção de legado, expulsando a tarefa do vetor
+      }
+
+      var h = norm(safeGetMesAnoStr(dataTf[i][0])) + "|" + cliNormBanco + "|" + norm(dataTf[i][2]);
       
       // Se a tarefa está ENTREGUE, mantemos como está
       if (statusAtual === CONFIG_SISTEMA.STATUS.ENTREGUE) {
@@ -147,7 +166,7 @@ function gerarTarefasDoMes() {
 
       // Se é PENDENTE, verificamos o que o motor decidiu
       var decisao = mapaTarefasAtivas[h];
-      if (decisao && decisao.acao === "MANTER_OU_SINCRONIZAR") {
+      if (decisao && (decisao.acao === "CRIAR_OU_SINCRONIZAR" || decisao.acao === "SINCRONIZAR_BACKLOG")) {
         var d = decisao.dados;
         // SINCRONISMO: Atualizamos os campos da linha existente com os dados frescos
         var linhaSincronizada = [...dataTf[i]];
@@ -163,15 +182,27 @@ function gerarTarefasDoMes() {
 
         novasLinhasDB.push(linhaSincronizada);
         hashesProcessados[h] = true;
+      } else if (decisao && decisao.acao === "EXCLUIR") {
+        // PROTEÇÃO CONTRA DELEÇÃO DE BACKLOG VENCIDO:
+        var vctoTf = dataTf[i][3];
+        var dtVctoAnterior = (vctoTf instanceof Date) ? vctoTf : new Date(vctoTf);
+        if (!isNaN(dtVctoAnterior.getTime()) && dtVctoAnterior < inicioMesAtual) {
+          // Se estava ativa no banco e o vencimento já passou há muito tempo,
+          // preservamos ela, não podemos deletar o backlog histórico do cliente.
+          novasLinhasDB.push(dataTf[i]);
+        } else {
+          tarefasExcluidasCount++;
+        }
       } else {
-        // Se a decisão foi EXCLUIR ou se a regra não existe mais, a tarefa some da lista
-        tarefasExcluidasCount++;
+        // Se não há decisão (fora da janela ou regra removida), preservamos o Backlog Legado
+        novasLinhasDB.push(dataTf[i]);
       }
     }
 
     // Segundo, adicionamos as que são realmente novas (não estavam na planilha)
     for (var hKey in mapaTarefasAtivas) {
-      if (!hashesProcessados[hKey] && mapaTarefasAtivas[hKey].acao === "MANTER_OU_SINCRONIZAR") {
+      // ⚡ APENAS cria tarefas novas do ciclo atual ou de ciclos que vencem agora
+      if (!hashesProcessados[hKey] && mapaTarefasAtivas[hKey].acao === "CRIAR_OU_SINCRONIZAR") {
         novasLinhasDB.push(mapaTarefasAtivas[hKey].dados);
       }
     }

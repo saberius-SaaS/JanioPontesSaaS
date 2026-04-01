@@ -17,8 +17,8 @@ function padronizarLayout() {
     },
     {
       nome: CONFIG_SISTEMA.ABA_CLIENTES, 
-      cols: 15, 
-      cabecalho: ["ID", "CLIENTE", "CNPJ", "RESPONSAVEL", "EMAIL", "TELEFONE", "REGIME", "FISCAL", "CONTABIL", "PESSOAL", "SOCIETARIO", "EXCECOES", "PASTA_DRIVE", "NIVEL", "PERFIS_ATIVOS"]
+      cols: 16, 
+      cabecalho: ["ID", "CLIENTE", "CNPJ", "RESPONSAVEL", "EMAIL", "TELEFONE", "REGIME", "FISCAL", "CONTABIL", "PESSOAL", "SOCIETARIO", "EXCECOES", "PASTA_DRIVE", "NIVEL", "PERFIS_ATIVOS", "STATUS"]
     },
     {
       nome: CONFIG_SISTEMA.ABA_TAREFAS, 
@@ -265,4 +265,105 @@ function sincronizarHistoricoComProtocolos() {
     }
   }
   return updates;
+}
+
+/**
+ * Limpa versões e implantações antigas via Google Apps Script API.
+ * Limite do Google: 200 versões. A função manterá as 30 mais recentes.
+ */
+function limparVersoesAntigas() {
+  try {
+    var scriptId = ScriptApp.getScriptId();
+    var token = ScriptApp.getOAuthToken();
+    var qtdManter = 30;
+    
+    var headersAuth = {
+      Authorization: "Bearer " + token
+    };
+
+    // 1. LIMPAR IMPLANTAÇÕES (Deployments)
+    var urlDeps = 'https://script.googleapis.com/v1/projects/' + scriptId + '/deployments';
+    var deployments = [];
+    var pageTokenDeps = null;
+    
+    do {
+      var urlFmt = urlDeps + (pageTokenDeps ? "?pageToken=" + pageTokenDeps : "");
+      var res = UrlFetchApp.fetch(urlFmt, { method: 'get', headers: headersAuth, muteHttpExceptions: true });
+      if (res.getResponseCode() !== 200) break;
+      var json = JSON.parse(res.getContentText());
+      deployments = deployments.concat(json.deployments || []);
+      pageTokenDeps = json.nextPageToken;
+    } while (pageTokenDeps);
+
+    if (deployments.length > qtdManter) {
+      deployments.sort(function(a, b) { return new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime(); });
+      var depDeletados = 0, depFalhas = 0;
+      for (var i = qtdManter; i < deployments.length; i++) {
+         var dep = deployments[i];
+         // Se não tem versão (ex: @HEAD), não excluímos para não quebrar o acesso atual
+         if (!dep.deploymentConfig || !dep.deploymentConfig.versionNumber) continue;
+         
+         var resDelDep = UrlFetchApp.fetch(urlDeps + '/' + dep.deploymentId, { method: 'delete', headers: headersAuth, muteHttpExceptions: true });
+         if (resDelDep.getResponseCode() === 200) depDeletados++; else depFalhas++;
+      }
+      registrarLogSistema("DEP_CLEAN_STATUS", "Analise: " + deployments.length + " total | " + depDeletados + " deletados | " + depFalhas + " falhas.");
+    }
+
+    // 2. LIMPAR VERSÕES (Versions)
+    var urlVersoes = 'https://script.googleapis.com/v1/projects/' + scriptId + '/versions';
+    var versoes = [];
+    var pageTokenVers = null;
+    
+    do {
+      var vUrlFmt = urlVersoes + (pageTokenVers ? "?pageToken=" + pageTokenVers : "");
+      var resV = UrlFetchApp.fetch(vUrlFmt, { method: 'get', headers: headersAuth, muteHttpExceptions: true });
+      if (resV.getResponseCode() !== 200) break;
+      var jsonV = JSON.parse(resV.getContentText());
+      versoes = versoes.concat(jsonV.versions || []);
+      pageTokenVers = jsonV.nextPageToken;
+    } while (pageTokenVers);
+
+    if (versoes.length > qtdManter) {
+      versoes.sort(function(a, b) { return b.versionNumber - a.versionNumber; });
+      var deletadas = 0, falhasVers = 0, lastErro = "";
+      for (var j = qtdManter; j < versoes.length; j++) {
+        var vNum = versoes[j].versionNumber;
+        var resDel = UrlFetchApp.fetch(urlVersoes + '/' + vNum, { method: 'delete', headers: headersAuth, muteHttpExceptions: true });
+        if (resDel.getResponseCode() === 200) {
+          deletadas++;
+        } else {
+          falhasVers++;
+          lastErro = resDel.getResponseCode();
+        }
+      }
+      registrarLogSistema("VERSION_CLEAN", "Total: " + versoes.length + " | Limpas: " + deletadas + " | Bloqueadas: " + falhasVers + " (Cod: " + lastErro + ")");
+    }
+
+  } catch (e) {
+    registrarLogSistema("CLEANUP_CRITICAL", e.message);
+  }
+}
+
+/**
+ * Instala o gatilho (Trigger) para rodar o Lixeiro de Versões todo dia às 7 da manhã.
+ */
+function instalarGatilhoLimpezaDiaria() {
+  var nomeFuncao = 'limparVersoesAntigas';
+  var triggers = ScriptApp.getProjectTriggers();
+  
+  // Limpa gatilhos antigos para evitar duplicação em múltiplos cliques
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === nomeFuncao) {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  
+  // Cria o novo
+  ScriptApp.newTrigger(nomeFuncao)
+    .timeBased()
+    .everyDays(1)
+    .atHour(7)
+    .create();
+    
+  SpreadsheetApp.getUi().alert("✅ Lixeiro Robótico Ativado!\nA rotina rodará silenciosamente todo dia perto das 07:00h da manhã.");
 }
