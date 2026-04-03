@@ -470,6 +470,40 @@ function renderizarListaArquivosWeb() {
     box.innerHTML = html;
 }
 
+/**
+ * Exibe um alerta de confirmação personalizado com design premium e retorna uma Promise.
+ */
+function confirmarCustom(mensagem) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modalConfirm');
+        const content = document.getElementById('modalConfirmContent');
+        const txt = document.getElementById('modalConfirmTexto');
+        const btnSim = document.getElementById('btnConfirmSim');
+        const btnNao = document.getElementById('btnConfirmCancelar');
+        
+        txt.textContent = mensagem;
+        
+        const fechar = (reposta) => {
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-90');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                resolve(reposta);
+            }, 300);
+        };
+        
+        btnSim.onclick = () => fechar(true);
+        btnNao.onclick = () => fechar(false);
+        
+        // Exibe o modal
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-90');
+        }, 10);
+    });
+}
+
 async function finalizarProcessoWeb() {
     if(!tarefaEmFoco) return;
     const feedback = document.getElementById('modalFeedback');
@@ -545,8 +579,10 @@ async function finalizarProcessoWeb() {
                sucessoFinal = true;
                
              } else if (result.needsConfirmation) {
-                // ⚠️ Alerta de OCR / CNPJ Divergente
-                if (confirm(result.message)) {
+                // ⚠️ Alerta de OCR / CNPJ Divergente (AGORA PERSONALIZADO)
+                const prosseguir = await confirmarCustom(result.message);
+                
+                if (prosseguir) {
                    forcarUpload = true; // Usuário confirmou, tenta de novo forçando
                 } else {
                    // Usuário cancelou

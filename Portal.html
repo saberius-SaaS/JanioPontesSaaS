@@ -562,5 +562,22 @@
   </div>
 </div>
 
+  <!-- ==================== MODAL DE CONFIRMAÇÃO PERSONALIZADO ==================== -->
+  <div id="modalConfirm" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center hidden opacity-0 transition-opacity duration-500">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-90 transition-transform duration-300 pointer-events-auto" id="modalConfirmContent">
+      <div class="p-8 text-center">
+        <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-100 shadow-sm">
+          <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+        </div>
+        <h4 class="text-jp-navy font-black text-xl mb-3" id="modalConfirmTitulo">Divergência Detectada</h4>
+        <p class="text-slate-500 text-sm leading-relaxed mb-2" id="modalConfirmTexto">O CNPJ do documento não corresponde ao cliente selecionado. Deseja continuar?</p>
+      </div>
+      <div class="flex border-t border-slate-100 bg-slate-50/50">
+        <button id="btnConfirmCancelar" class="flex-1 px-6 py-4 text-[11px] font-black text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all border-r border-slate-100 uppercase tracking-widest">Não, Cancelar</button>
+        <button id="btnConfirmSim" class="flex-1 px-6 py-4 text-[11px] font-black text-amber-600 hover:bg-amber-50 transition-all uppercase tracking-widest">Sim, Continuar</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
