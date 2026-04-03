@@ -95,11 +95,18 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
 /**
  * 🛡️ Notificação de Solicitação (SOLICITAR DOCUMENTOS)
  */
-function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitacao) {
+function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitacao, infoTarefa) {
   if(!emailCli || emailCli.indexOf("@") === -1) return;
   var baseUrl = getPublicWebAppUrl(); 
   var portalLink = baseUrl + (baseUrl.indexOf('?') > -1 ? '&' : '?') + "mode=client&sol=" + String(idSolicitacao).trim();
   
+  var htmlExtra = infoTarefa ? `
+    <div style="margin-bottom:15px; padding:10px 15px; background-color:#f1f5f9; border-radius:6px; text-align:left;">
+      <span style="font-size:10px; color:#1C3051; font-weight:800; text-transform:uppercase; display:block; margin-bottom:2px;">Referente à Tarefa:</span>
+      <span style="font-size:12px; font-weight:700; color:#1e293b;">${infoTarefa}</span>
+    </div>
+  ` : "";
+
   try {
     var html = `
       <div style="margin:0; padding:0; background-color:#f8fafc; font-family:sans-serif; padding:40px 20px;">
@@ -111,6 +118,9 @@ function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitaca
           <tr><td style="padding:45px 35px; text-align:center;">
               <h2 style="color:#1e293b; margin:0 0 10px 0; font-size:20px; font-weight:700;">Olá, ${cliente}</h2>
               <p style="color:#64748b; font-size:14px; margin-bottom:25px; line-height:1.6;">Para darmos continuidade aos seus processos contábeis, necessitamos que nos envie o seguinte documento:</p>
+              
+              ${htmlExtra}
+
               <div style="background-color:#fff5f5; border-left:4px solid #ef4444; padding:20px; margin-bottom:30px; text-align:left; border-radius:4px;">
                 <div style="font-size:10px; color:#b91c1c; font-weight:800; text-transform:uppercase; margin-bottom:8px;">Documento/Informação Solicitada:</div>
                 <div style="font-size:14px; font-weight:600; color:#7f1d1d; line-height:1.5;">${solicitacao}</div>
@@ -135,11 +145,18 @@ function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitaca
 /**
  * 📢 LEMBRETE DE COBRANÇA (Novo!) - PADRÃO ELITE
  */
-function enviarLembreteCobranca(cliente, emailCli, solicitacao, idSolicitacao, qtdAvisos) {
+function enviarLembreteCobranca(cliente, emailCli, solicitacao, idSolicitacao, qtdAvisos, infoTarefa) {
   if(!emailCli || emailCli.indexOf("@") === -1) return;
   var baseUrl = getPublicWebAppUrl(); 
   var portalLink = baseUrl + (baseUrl.indexOf('?') > -1 ? '&' : '?') + "mode=client&sol=" + String(idSolicitacao).trim();
   
+  var htmlExtra = infoTarefa ? `
+    <div style="margin-bottom:15px; padding:10px 15px; background-color:#f1f5f9; border-radius:6px; text-align:left;">
+      <span style="font-size:10px; color:#1C3051; font-weight:800; text-transform:uppercase; display:block; margin-bottom:2px;">Referente à Tarefa:</span>
+      <span style="font-size:12px; font-weight:700; color:#1e293b;">${infoTarefa}</span>
+    </div>
+  ` : "";
+
   try {
     var html = `
       <div style="margin:0; padding:0; background-color:#f8fafc; font-family:sans-serif; padding:40px 20px;">
@@ -153,6 +170,8 @@ function enviarLembreteCobranca(cliente, emailCli, solicitacao, idSolicitacao, q
               <h2 style="color:#1e293b; margin:0 0 10px 0; font-size:20px; font-weight:700;">Olá, ${cliente}</h2>
               <p style="color:#64748b; font-size:14px; margin-bottom:25px; line-height:1.6;">Verificamos em nosso sistema que a solicitação abaixo ainda consta como <b>PENDENTE</b>.</p>
               
+              ${htmlExtra}
+
               <div style="background-color:#fff5f5; border:1px solid #fee2e2; padding:20px; margin-bottom:30px; text-align:left; border-radius:8px;">
                 <div style="font-size:10px; color:#991b1b; font-weight:800; text-transform:uppercase; margin-bottom:8px;">Item Pendente (Aviso #${qtdAvisos + 1}):</div>
                 <div style="font-size:14px; font-weight:600; color:#7f1d1d; line-height:1.5;">${solicitacao}</div>
@@ -436,4 +455,41 @@ function formatarDetalhesAudit(texto) {
   if (emLista) html += '</ul>';
   html += '</div>';
   return html;
+}
+
+/**
+ * Envia um Comunicado de Texto (Ação COMUNICAR)
+ */
+function enviarComunicadoCliente(cliente, emailCli, obrigacao, protocolo, mensagem) {
+  if(!emailCli || emailCli.indexOf("@") === -1) return;
+  try {
+    var html = `
+      <div style="margin:0; padding:0; background-color:#f8fafc; font-family:'Inter', sans-serif; padding:40px 20px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:550px; margin:0 auto; background-color:#ffffff; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 10px 15px -3px rgba(0,0,0,0.05);">
+          <tr><td style="padding:25px; background-color:#1C3051; color:#ffffff; text-align:center;">
+            <div style="font-size:16px; font-weight:900; letter-spacing:1px; line-height:1.2;">JANIO PONTES CONTABILIDADE</div>
+            <div style="font-size:10px; font-weight:700; opacity:0.8; text-transform:uppercase; letter-spacing:2px; margin-top:4px;">AVISO IMPORTANTE</div>
+          </td></tr>
+          <tr><td style="padding:45px 35px; text-align:center;">
+              <h2 style="color:#1e293b; margin:0 0 10px 0; font-size:20px; font-weight:700;">Olá, ${cliente}</h2>
+              <p style="color:#64748b; font-size:14px; margin-bottom:25px; line-height:1.5;">O informativo referente à <b>${obrigacao}</b> acaba de ser emitido.</p>
+              
+              <div style="background-color:#f1f5f9; border-left:4px solid #1e40af; padding:20px; margin-bottom:30px; text-align:left; border-radius:4px; margin-top: 15px;">
+                <div style="font-size:14px; font-weight:600; color:#1e293b; line-height:1.6; white-space: pre-wrap;">${mensagem}</div>
+              </div>
+              
+              <div style="font-size:9px; color:#94a3b8; margin-top:25px; font-weight:700; text-transform:uppercase;">Protocolo de Emissão: ${protocolo}</div>
+          </td></tr>
+
+          <tr><td style="padding:25px; background-color:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
+              <div style="font-size:11px; color:#1C3051; font-weight:800; text-transform:uppercase; margin-bottom:4px;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</div>
+              <div style="font-size:9px; color:#64748b; font-weight:400; line-height:1.4;">Atendimento Automatizado NCE.</div>
+          </td></tr>
+        </table>
+      </div>
+    `;
+
+    MailApp.sendEmail({ to: emailCli, subject: "📢 INFORMATIVO DA CONTABILIDADE: " + obrigacao, htmlBody: html });
+    registrarLogSistema("EMAIL_COMUNICADO_SENT", "Prot: " + protocolo);
+  } catch (e) { registrarLogSistema("EMAIL_COMUNICADO_FAIL", e.message); }
 }

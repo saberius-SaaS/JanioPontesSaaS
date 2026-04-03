@@ -3,7 +3,7 @@
  * FOCO: Estabilidade total no Bypass de Permissão e Identidade DriveApp.
  */
 
-function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
+function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, forcar) {
   var lock = LockService.getScriptLock();
   try { 
     lock.waitLock(25000); 
@@ -47,6 +47,62 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
     }
     
     // Gestão de Pasta com Privilégios Elevados
+    var acaoTarefa = rowVal[7];
+    var statusFinal = getSafeStatus("ENTREGUE");
+    var protocolo = gerarProtocoloEntrega();
+
+    // --- BLOCO OCR: VALIDAÇÃO DE CNPJ (Amostragem: Apenas 1º arquivo) ---
+    if (!forcar && arquivos && arquivos.length > 0 && norm(acaoTarefa).indexOf(CONFIG_SISTEMA.ACOES.COMUNICAR) === -1) {
+      try {
+        var f1 = arquivos[0];
+        var ext1 = String(f1.name || "").toLowerCase().split('.').pop();
+        var tiposSuportados = ["pdf", "jpg", "jpeg", "png"];
+        
+        if (tiposSuportados.indexOf(ext1) > -1 && cnpj) {
+          registrarLogSistema("OCR_VALIDATION", "Validando CNPJ p/ " + clienteNome);
+          var blob1 = Utilities.newBlob(Utilities.base64Decode(f1.base64), "application/octet-stream", f1.name);
+          var textoExtraido = extrairTextoOCR(blob1);
+          var textoLimpo = textoExtraido.replace(/\D/g, "");
+          
+          if (textoLimpo.indexOf(cnpj) === -1) {
+             return {
+               success: false,
+               needsConfirmation: true,
+               message: "⚠️ O CNPJ do cliente (" + cnpj + ") não foi localizado no documento '" + f1.name + "'.\n\nDeseja confirmar o envio mesmo assim?"
+             };
+          }
+        }
+      } catch(eOcr) {
+        registrarLogSistema("OCR_VAL_SKIP", "Falha ou OCR não ativo: " + eOcr.message);
+        // Em caso de falha no OCR (ex: serviço não ativo), seguimos sem travar
+      }
+    }
+    // --- FIM BLOCO OCR ---
+
+    // INTERCEPTAÇÃO: AÇÃO COMUNICAR
+    if (norm(acaoTarefa).indexOf(CONFIG_SISTEMA.ACOES.COMUNICAR) > -1) {
+        var protRowIdx = registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, "COMUNICADO: " + mensagem);
+        wsTarefas.getRange(rowIdx, 6, 1, 2).setValues([[statusFinal, protocolo]]);
+        
+        acionarWorkflowFaseSeguinte(taskId, rowIdx);
+        reordenarTarefasElite(); 
+        invalidarCacheSistema(); 
+        
+        try {
+            enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, mensagem);
+        } catch(eMailCom) {
+            registrarLogSistema("EMAIL_COM_ERR", "Falha comunicado: " + eMailCom.message);
+        }
+
+        return { 
+          success: true, 
+          message: "Comunicado enviado com sucesso.",
+          auditoriaRodou: false,
+          dispararEmailVIP: false,
+          backgroundPayload: null
+        };
+    }
+
     var target = null;
     if (pastaId) {
        try { 
@@ -61,7 +117,6 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
        if (cliRowIdx !== -1) wsCli.getRange(cliRowIdx, 13).setValue(target.getUrl());
     }
     
-    var protocolo = gerarProtocoloEntrega();
     var linksParaEmail = [];
     var folderGlobal = DriveApp.getFolderById(CONFIG_SISTEMA.PASTAS.ENVIADOS);
     
@@ -185,11 +240,14 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome) {
 /**
  * Cria uma nova tarefa manualmente via Painel (Demanda)
  */
-function salvarTarefaDemanda(dados) {
+function salvarTarefaDemanda(dados, token) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(20000); } catch(e) { throw new Error("Sistema ocupado."); }
 
   try {
+    var userEmail = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!userEmail) throw new Error("Não foi possível autenticar sua identidade via GIS.");
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     if (!wsTarefas) throw new Error("Aba DB_TAREFAS não localizada.");
@@ -207,7 +265,7 @@ function salvarTarefaDemanda(dados) {
       getSafeStatus("PENDENTE"),
       "",
       dados.acao || "ARQUIVAR",
-      dados.responsavel || Session.getActiveUser().getEmail(),
+      dados.responsavel || userEmail,
       idControle,
       "3", // Nível padrão
       new Date(dados.prazo + "T12:00:00")
@@ -229,11 +287,14 @@ function salvarTarefaDemanda(dados) {
 /**
  * Envia uma solicitação de documento para o cliente e registra na DB_SOLICITACOES
  */
-function enviarSolicitacaoDocumento(dados) {
+function enviarSolicitacaoDocumento(dados, token) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(20000); } catch(e) { throw new Error("Servidor ocupado."); }
 
   try {
+    var userEmail = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!userEmail) throw new Error("Não foi possível autenticar sua identidade via GIS.");
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
     var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
@@ -249,7 +310,36 @@ function enviarSolicitacaoDocumento(dados) {
     }
     if (!emailCli) throw new Error("Email do cliente não localizado.");
 
-    // 2. Registra Solicitação (Schema Rígido)
+    // 2. Busca Dados da Tarefa Vinculada (Se houver)
+    var infoTarefa = "";
+    if (dados.idTarefa && dados.idTarefa !== "AVULSA") {
+      var wsTf = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
+      if (wsTf) {
+        var dataTf = wsTf.getDataRange().getValues();
+        var idProcurado = String(dados.idTarefa).trim();
+        
+        for (var i = 1; i < dataTf.length; i++) {
+          var idBanco = String(dataTf[i][9]).trim();
+          if (idBanco === idProcurado) { // Coluna J: ID_CONTROLE
+            var obrigTf = dataTf[i][2];
+            // Tenta formatar a data, se falhar ou se for string, usa o valor puro
+            var refTf = "";
+            try {
+              refTf = (dataTf[i][0] instanceof Date) ? Utilities.formatDate(dataTf[i][0], "GMT-3", "MM/yyyy") : String(dataTf[i][0]);
+            } catch(eRef) { refTf = String(dataTf[i][0]); }
+            
+            infoTarefa = obrigTf + " (" + refTf + ")";
+            break;
+          }
+        }
+      }
+      
+      if (!infoTarefa) {
+        registrarLogSistema("SOL_TASK_NOT_FOUND", "Tarefa '" + dados.idTarefa + "' não encontrada na DB_TAREFAS para o cliente " + dados.cliente);
+      }
+    }
+
+    // 3. Registra Solicitação (Schema Rígido)
     var solId = "SOL" + new Date().getTime();
     wsSol.appendRow([
       solId,                   // A: ID
@@ -262,12 +352,13 @@ function enviarSolicitacaoDocumento(dados) {
       "",                      // H: DATA_ENVIO (Será preenchido pela rotina de cobrança se necessário)
       new Date(),              // I: ULTIMA_COBRANCA
       0,                       // J: QTD_AVISOS
-      Session.getActiveUser().getEmail() // K: RESPONSAVEL
+      userEmail,               // K: RESPONSAVEL
+      infoTarefa               // L: META_TAREFA (Obrigado por info da tarefa vinculada)
     ]);
 
-    // 3. Dispara E-mail
+    // 4. Dispara E-mail
     try {
-      enviarSolicitacaoAoCliente(dados.cliente, emailCli, dados.solicitacao, solId);
+      enviarSolicitacaoAoCliente(dados.cliente, emailCli, dados.solicitacao, solId, infoTarefa);
     } catch(errMail) {
       registrarLogSistema("SOL_MAIL_FAIL", errMail.message);
     }

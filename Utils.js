@@ -78,6 +78,33 @@ function obterEnesimoDiaUtil(ano, mes, n) {
   return data;
 }
 
+/**
+ * Validador JWT do Google Identity Services (GIS).
+ * Comprova a assinatura via API e extrai o e-mail verificado.
+ * @param {string} token 
+ * @returns {string|null} email verificado
+ */
+function validarTokenGIS(token) {
+  if (!token) return null;
+  
+  try {
+    var response = UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + token, {
+       muteHttpExceptions: true
+    });
+    
+    if (response.getResponseCode() === 200) {
+       var payload = JSON.parse(response.getContentText());
+       // Checa se tem e-mail e se a verificação é truthy (true ou "true")
+       if (payload && payload.email && (payload.email_verified === true || payload.email_verified === "true")) {
+           return String(payload.email).toLowerCase().trim();
+       }
+    }
+  } catch (e) {
+    registrarLogSistema("GIS_VALIDATION_ERROR", e.message);
+  }
+  return null;
+}
+
 function isDiaUtil(data) {
   var dow = data.getDay();
   if (dow === 0 || dow === 6) return false; 
@@ -129,4 +156,55 @@ function registrarProtocoloDB(clienteNome, protocolo, idTarefa, obrigacao, email
     registrarLogSistema("PROTO_SAVE_ERR", e.message);
     return null;
   }
+}
+
+/**
+ * Extrai texto de um PDF ou Imagem usando OCR do Google Drive.
+ * REQUER: Serviço Avançado 'Drive' ativado.
+ */
+function extrairTextoOCR(blob) {
+  try {
+    var resource = {
+      title: "OCR_TEMP_" + new Date().getTime(),
+      mimeType: blob.getContentType()
+    };
+    
+    // Insere o arquivo no Drive com OCR ativado (Gera um Google Doc temporário)
+    var tempFile = Drive.Files.insert(resource, blob, { ocr: true, ocrLanguage: "pt" });
+    
+    // Abre o documento gerado e lê o texto
+    var doc = DocumentApp.openById(tempFile.id);
+    var text = doc.getBody().getText();
+    
+    // Deleta o arquivo temporário imediatamente
+    Drive.Files.remove(tempFile.id);
+    
+    return text;
+  } catch (e) {
+    registrarLogSistema("OCR_ERROR", e.message);
+    return "";
+  }
+}
+
+/**
+ * Busca o CNPJ do cliente na aba DB_CLIENTES (Coluna C)
+ */
+function obterCnpjCliente(clienteNome) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ws = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
+    if (!ws) return "";
+    
+    var data = ws.getDataRange().getValues();
+    var nomeNorm = norm(clienteNome);
+    
+    for (var i = 1; i < data.length; i++) {
+      if (norm(data[i][1]) === nomeNorm) {
+        return String(data[i][2] || "").replace(/\D/g, ""); // Apenas números
+      }
+    }
+  } catch (e) {
+    registrarLogSistema("GET_CNPJ_ERR", e.message);
+  }
+  return "";
 }

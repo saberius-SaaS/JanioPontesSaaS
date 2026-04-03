@@ -6,7 +6,7 @@
 var CONFIG_SISTEMA = {
   VERSAO: "v131.06",
   // 🌐 URLs E CONEXÕES
-  URL_WEBAPP: "https://script.google.com/macros/s/AKfycbwJcvRtk-ZI5ja_h_hLU4KNUyDIeSYO-tok_DYEa11wVRrqQ6f_3rh7sZzF_fOd3oMpDQ/exec", 
+  URL_WEBAPP: "https://script.google.com/macros/s/AKfycby828QsUFLVmtQ1WegcdkaNVMtW4s3xQvhRFcrK0hEiw62xwE-Cqq3SwHMEw5521Euelw/exec", 
 
   DIAS_INTERVALO_COBRANCA: 2,
   TURNOS_PARA_CHECKPOINT: 5,
@@ -43,7 +43,8 @@ var CONFIG_SISTEMA = {
   ACOES: {
     ENVIAR: "ENVIAR",
     ARQUIVAR: "ARQUIVAR",
-    AUDITAR: "AUDITAR"
+    AUDITAR: "AUDITAR",
+    COMUNICAR: "COMUNICAR"
   },
 
   EMAILS: {

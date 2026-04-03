@@ -319,4 +319,15 @@
   background-clip: text;
 }
 .border-glow { border-color: #c7d2fe; box-shadow: 0 0 0 1px rgba(99,102,241,0.08); }
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fadeIn { animation: fadeInScale 0.4s var(--transition-smooth) forwards; }
 </style>

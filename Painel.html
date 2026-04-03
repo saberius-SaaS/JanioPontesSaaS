@@ -32,6 +32,10 @@
             <option value="">Selecione o cliente</option>
           </select>
           <div id="statusAcaoArea"></div>
+          <div id="areaComunicacao" style="display:none; margin-top:20px;">
+            <label>3. Mensagem para o Cliente</label>
+            <textarea id="textoComunicar" rows="5" placeholder="Digite o texto do comunicado (ex: alíquota, aviso) que será enviado ao cliente..."></textarea>
+          </div>
           <div id="areaArquivos" style="display:none">
             <label>3. Documentos</label>
             <div class="file-list" id="fileListDisplay">
@@ -83,6 +87,7 @@
             <label>6. Ação</label>
             <select id="demandaAcao">
               <option value="ENVIAR">ENVIAR</option>
+              <option value="COMUNICAR">COMUNICAR</option>
               <option value="ARQUIVAR">ARQUIVAR</option>
             </select>
             

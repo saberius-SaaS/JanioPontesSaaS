@@ -17,8 +17,10 @@ function gerarTarefasDoMes() {
   try { 
     lock.waitLock(30000); 
   } catch (e) { 
-    SpreadsheetApp.getUi().alert("⏳ Sistema ocupado. Tente novamente em instantes.");
-    return;
+    try {
+      SpreadsheetApp.getUi().alert("⏳ Sistema ocupado. Tente novamente em instantes.");
+    } catch (uiErr) {}
+    return "⏳ Sistema ocupado. Tente novamente em instantes.";
   }
 
   try {
@@ -70,7 +72,7 @@ function gerarTarefasDoMes() {
     }
 
     // 3. VARREDURA RETROATIVA E GERAÇÃO/SINCRONISMO
-    var novasTarefas = [];
+    var novasTarefasCount = 0;
     var tarefasExcluidasCount = 0;
     var tarefasAtualizadasCount = 0;
     var countId = 0;
@@ -204,6 +206,7 @@ function gerarTarefasDoMes() {
       // ⚡ APENAS cria tarefas novas do ciclo atual ou de ciclos que vencem agora
       if (!hashesProcessados[hKey] && mapaTarefasAtivas[hKey].acao === "CRIAR_OU_SINCRONIZAR") {
         novasLinhasDB.push(mapaTarefasAtivas[hKey].dados);
+        novasTarefasCount++;
       }
     }
 
@@ -213,7 +216,9 @@ function gerarTarefasDoMes() {
     
     SpreadsheetApp.flush();
     reordenarTarefasElite();
-    registrarLogSistema("SYNC_V131.10", "Atualizadas: " + tarefasAtualizadasCount + " | Expurgos: " + tarefasExcluidasCount);
+    registrarLogSistema("SYNC_V131.10", "Sinc: " + tarefasAtualizadasCount + " | Novas: " + novasTarefasCount + " | Expurgos: " + tarefasExcluidasCount);
+
+    return "Sincronização concluída: " + tarefasAtualizadasCount + " atualizadas, " + novasTarefasCount + " novas, " + tarefasExcluidasCount + " expurgos.";
 
   } finally { 
     lock.releaseLock();

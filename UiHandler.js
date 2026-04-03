@@ -247,15 +247,27 @@ function doGet(e) {
 }
 
 /**
- * Recepção de POST via Web App (Bypass de Permissão do DriveApp).
- * Permite que usuários normais façam upload usando as permissões do dono do script.
+ * Recepção de POST via Web App.
+ * 1. Processa Uploads (JSON payload).
+ * 2. Processa Retorno de Login GIS (Form payload via Redirect Mode).
  */
 function doPost(e) {
   try {
+    // ⚡ CENÁRIO A: Retorno de Autenticação GIS (Modo Redirecionamento)
+    // O Google envia um POST com Content-Type: application/x-www-form-urlencoded contendo 'credential'
+    if (e.parameter && e.parameter.credential) {
+      var token = e.parameter.credential;
+      return renderPage('Portal', 'Gerenciador de Tarefas - Janio Pontes', token);
+    }
+
+    // ⚡ CENÁRIO B: Chamadas de API do Portal (Upload, etc)
     var payload = JSON.parse(e.postData.contents);
+    var token = payload.token || "";
+    var userEmail = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!userEmail) throw new Error("Acesso Negado: Identidade não pôde ser confirmada via GIS.");
     
     if (payload.action === "uploadBatch") {
-      var resultado = processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome);
+      var resultado = processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar);
       return ContentService.createTextOutput(JSON.stringify(resultado))
         .setMimeType(ContentService.MimeType.JSON);
     }
@@ -320,17 +332,39 @@ function getPayloadInicialPainel() {
   };
 }
 
-function forcarAutorizacao() { SpreadsheetApp.getUi().alert("🛡️ Autorizado."); }
+function forcarAutorizacao() { 
+  try { SpreadsheetApp.getUi().alert("🛡️ Autorizado."); } catch (e) {}
+  return "🛡️ Autorizado."; 
+}
 function comandoSincronizarProvas() { sincronizarProvasDeEntregaAPI(); }
-function comandoSincronizarHistorico() { sincronizarHistoricoComProtocolos(); }
-function comandoArquivarTarefas() { arquivarTarefasConcluidas(); }
-function comandoAtualizarRisco() { atualizarRelatorioRisco(); }
-function comandoLimparCache() { invalidarCacheSistema(); SpreadsheetApp.getUi().alert("⚡ Cache invalidado."); }
+function comandoSincronizarHistorico() { 
+  var count = sincronizarHistoricoComProtocolos(); 
+  return "Sincronismo de histórico concluído: " + count + " atualizações.";
+}
+function comandoArquivarTarefas() { 
+  var count = arquivarTarefasConcluidas(); 
+  return "Arquivamento concluído: " + count + " tarefas movidas.";
+}
+function comandoAtualizarRisco() { 
+  var count = atualizarRelatorioRisco(); 
+  return "Relatório de risco atualizado: " + count + " itens identificados.";
+}
+function comandoLimparCache() { 
+  invalidarCacheSistema(); 
+  try { SpreadsheetApp.getUi().alert("⚡ Cache invalidado."); } catch (e) {}
+  return "⚡ Cache invalidado com sucesso.";
+}
 function comandoMapearPastas() { mapearPastasClientesAutomatico(); }
 function instalarGatilhoSincronismo() { removerGatilhosSincronismo(); ScriptApp.newTrigger('sincronizarProvasDeEntregaAPI').timeBased().everyHours(1).create(); SpreadsheetApp.getUi().alert("✅ Automação Ativa."); }
 function removerGatilhosSincronismo() { var triggers = ScriptApp.getProjectTriggers(); for (var i = 0; i < triggers.length; i++) { if (triggers[i].getHandlerFunction() === 'sincronizarProvasDeEntregaAPI') ScriptApp.deleteTrigger(triggers[i]); } }
 function abrirDashboardVisual() { SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutputFromFile('Dashboard').setWidth(1000).setHeight(750), 'DASHBOARD'); }
-function comandoBackupManual() { var res = executarBackupTotal(); if (res) SpreadsheetApp.getUi().alert("✅ " + res); }
+function comandoBackupManual() { 
+  var res = executarBackupTotal(); 
+  if (res) {
+    try { SpreadsheetApp.getUi().alert("✅ " + res); } catch (e) {}
+  }
+  return res || "Falha ao executar backup.";
+}
 function instalarGatilhoBackup() { removerGatilhoBackup(); ScriptApp.newTrigger('executarBackupTotal').timeBased().everyDays(1).atHour(23).create(); SpreadsheetApp.getUi().alert("✅ Backup Diário Agendado."); }
 function removerGatilhoBackup() { var triggers = ScriptApp.getProjectTriggers(); for (var i = 0; i < triggers.length; i++) { if (triggers[i].getHandlerFunction() === 'executarBackupTotal') ScriptApp.deleteTrigger(triggers[i]); } }
 function abrirAuditorRegras() {

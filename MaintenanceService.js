@@ -101,8 +101,13 @@ function executarRotinaCobrancas() {
     var diffTime = Math.abs(hoje - dataBaseCalculo);
     var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     if (diffDays >= intervaloDias) {
-      var idSolicitacao = dataSol[i][0], cliente = dataSol[i][2], email = dataSol[i][3], pedido = dataSol[i][4];
-      enviarLembreteCobranca(cliente, email, pedido, idSolicitacao, qtdAvisos);
+      var idSolicitacao = dataSol[i][0], 
+          cliente = dataSol[i][2], 
+          email = dataSol[i][3], 
+          pedido = dataSol[i][4],
+          infoTarefa = dataSol[i][11]; // Coluna L: META_TAREFA
+
+      enviarLembreteCobranca(cliente, email, pedido, idSolicitacao, qtdAvisos, infoTarefa);
       wsSol.getRange(i + 1, 9).setValue(hoje); 
       wsSol.getRange(i + 1, 10).setValue(qtdAvisos + 1); 
       totalEnviados++;
@@ -209,7 +214,7 @@ function atualizarRelatorioRisco() {
       var dataObj = (dtVcto instanceof Date) ? dtVcto : new Date(dtVcto);
       if (isNaN(dataObj.getTime())) continue;
 
-      if (dataObj < hoje) {
+      if (dataObj <= hoje) {
         var diasAtraso = Math.floor((hoje - dataObj) / (1000 * 60 * 60 * 24));
         var linha = [data[i][1], data[i][2], data[i][3], statusCelula, diasAtraso, data[i][8]];
         linha._nivel = parseInt(data[i][10]) || 1; 

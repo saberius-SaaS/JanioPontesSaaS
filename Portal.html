@@ -9,6 +9,9 @@
   <!-- Tailwind CSS Framework CDN via Script (Agilidade em Prototipação) -->
   <script src="https://cdn.tailwindcss.com"></script>
   
+  <!-- Google Identity Services (GIS) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
   <!-- FontAwesome (Ícones) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -263,37 +266,42 @@
          </div>
       </section>
 
-      <!-- Section: COMUNICAÇÃO (CRM) -->
-      <section id="view-comunicacao" class="view-section hidden h-full">
-         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full pb-8">
+      <section id="view-comunicacao" class="view-section hidden h-full bg-slate-50/50 rounded-2xl p-4 lg:p-8">
+         <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-8 lg:gap-12 h-full pb-10">
             
-            <!-- NOVA DEMANDA -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
-               <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
-                  <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-bolt mr-2 text-indigo-500"></i> Nova Demanda Interna</h3>
+            <!-- QUADRO: NOVA DEMANDA -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 flex flex-col overflow-hidden transition-all hover:shadow-md">
+               <div class="p-5 border-b border-indigo-900/10 flex justify-between items-center bg-indigo-900 shadow-md">
+                  <div class="flex items-center text-white">
+                    <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center mr-3 shadow-inner">
+                      <i class="fa-solid fa-bolt text-sm"></i>
+                    </div>
+                    <h3 class="font-black uppercase tracking-widest text-xs">DEMANDAS INTERNAS</h3>
+                  </div>
+                  <span class="text-[9px] font-bold text-indigo-100 bg-white/10 px-2.5 py-1 rounded-full uppercase tracking-tighter">Motor NCE</span>
                </div>
-               <div class="p-6 flex-1 overflow-y-auto">
-                  <form id="formDemandaWeb" class="space-y-4" onsubmit="event.preventDefault(); criarDemandaWeb();">
+               <div class="p-8 flex-1 overflow-y-auto custom-scrollbar">
+                  <form id="formDemandaWeb" class="space-y-5" onsubmit="event.preventDefault(); criarDemandaWeb();">
                      <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cliente</label>
-                        <select id="demandaClienteWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Cliente Solicitante</label>
+                        <select id="demandaClienteWeb" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all" required>
                             <option value="">Carregando base online...</option>
                         </select>
                      </div>
                      <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tipo de Obrigação / Serviço</label>
-                        <select id="demandaTipoWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Serviço/Obrigação Relacionada</label>
+                        <select id="demandaTipoWeb" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all" required>
                             <option value="">Carregando base online...</option>
                         </select>
                      </div>
                      <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Complemento (Nome Secundário)</label>
-                        <input type="text" id="demandaComplementoWeb" placeholder="Ex: Referente a Maio/2026" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Especificação (Complemento)</label>
+                        <input type="text" id="demandaComplementoWeb" placeholder="Ex: Referente ao período de 05/2026" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all">
                      </div>
-                     <div class="grid grid-cols-2 gap-4">
+                     <div class="grid grid-cols-2 gap-5">
                         <div>
-                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Departamento</label>
-                           <select id="demandaDeptoWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Departamento</label>
+                           <select id="demandaDeptoWeb" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all" required>
                               <option value="FISCAL">FISCAL</option>
                               <option value="PESSOAL">PESSOAL</option>
                               <option value="CONTABIL">CONTABIL</option>
@@ -303,57 +311,74 @@
                            </select>
                         </div>
                         <div>
-                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ação a Executar</label>
-                           <select id="demandaAcaoWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Ação Planejada</label>
+                           <select id="demandaAcaoWeb" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all" required>
                               <option value="PROCESSAR">Processamento Interno</option>
                               <option value="ENVIAR PARA CLIENTE">Enviar para Cliente</option>
                               <option value="AUDITAR CONTABILIDADE">Auditoria de Documentação</option>
+                              <option value="COMUNICAR">Comunicar Informação</option>
                            </select>
                         </div>
                      </div>
                      <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vencimento (Prazo Legal)</label>
-                        <input type="date" id="demandaDataWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Vencimento Estratégico</label>
+                        <input type="date" id="demandaDataWeb" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all" required>
                      </div>
-                     <div id="demandaFeedbackWeb" class="text-[11px] font-bold text-center mt-2 hidden py-2 rounded"></div>
-                     <button type="submit" id="btnDemandaWeb" class="w-full bg-jp-navy hover:bg-indigo-700 text-white font-bold py-3 rounded mt-2 transition text-sm"><i class="fa-solid fa-plus mr-2"></i> Criar Tarefa na Esteira</button>
+                     <div id="demandaFeedbackWeb" class="text-[11px] font-bold text-center mt-2 hidden py-3 rounded-lg animate-pulse"></div>
+                     <button type="submit" id="btnDemandaWeb" class="w-full bg-jp-navy hover:bg-indigo-700 text-white font-extrabold py-4 rounded-xl mt-4 shadow-lg shadow-indigo-900/10 transition-all active:scale-[0.98] text-sm uppercase tracking-widest">
+                       <i class="fa-solid fa-plus-circle mr-2"></i> Criar Tarefa na Esteira
+                     </button>
                   </form>
                </div>
             </div>
 
-            <!-- SOLICITAR CLIENTE -->
-            <div class="bg-white rounded-xl shadow border border-slate-100 flex flex-col overflow-hidden">
-               <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-emerald-50">
-                  <h3 class="font-bold text-emerald-800 uppercase tracking-widest text-[11px]"><i class="fa-solid fa-paper-plane mr-2 text-emerald-500"></i> Solicitar Documento via E-mail Seguro</h3>
+            <!-- DIVISOR VISUAL -->
+            <div class="hidden lg:flex items-center justify-center">
+               <div class="w-px h-3/4 bg-gradient-to-b from-transparent via-slate-200 to-transparent"></div>
+            </div>
+            <div class="lg:hidden flex items-center justify-center py-2">
+               <div class="w-1/2 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
+            </div>
+
+            <!-- QUADRO: SOLICITAR CLIENTE -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 flex flex-col overflow-hidden transition-all hover:shadow-md">
+               <div class="p-5 border-b border-emerald-800/10 flex justify-between items-center bg-emerald-800 shadow-md">
+                  <div class="flex items-center text-white">
+                    <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center mr-3 shadow-inner">
+                      <i class="fa-solid fa-paper-plane text-sm"></i>
+                    </div>
+                    <h3 class="font-black uppercase tracking-widest text-xs">SOLICITAÇÃO / PENDÊNCIAS</h3>
+                  </div>
+                  <span class="text-[9px] font-bold text-emerald-100 bg-white/10 px-2.5 py-1 rounded-full uppercase tracking-tighter">Canal Seguro</span>
                </div>
-               <div class="p-6 flex-1 overflow-y-auto">
-                  <form id="formSolicitarWeb" class="space-y-4" onsubmit="event.preventDefault(); enviarSolicitacaoWeb();">
+               <div class="p-8 flex-1 overflow-y-auto custom-scrollbar">
+                  <form id="formSolicitarWeb" class="space-y-5" onsubmit="event.preventDefault(); enviarSolicitacaoWeb();">
                      <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Selecione o Cliente Emitente</label>
-                        <select id="solicitarClienteWeb" onchange="aoMudarClienteSolicitarWeb()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:border-indigo-500 focus:outline-none" required>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Cliente Alvo</label>
+                        <select id="solicitarClienteWeb" onchange="aoMudarClienteSolicitarWeb()" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none transition-all" required>
                             <option value="">Carregando base online...</option>
                         </select>
                      </div>
                      
-                     <div id="boxSolicitarCamposWeb" class="hidden space-y-4">
+                     <div id="boxSolicitarCamposWeb" class="hidden space-y-5 animate-fadeIn">
                         <div>
-                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vincular a uma Tarefa Legal (Opcional)</label>
-                           <select id="solicitarTarefaWeb" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs focus:border-indigo-500 focus:outline-none">
+                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tarefa de Referência (Opcional)</label>
+                           <select id="solicitarTarefaWeb" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none transition-all">
                                <option value="AVULSA">SOLICITAÇÃO AVULSA (Ticket Limpo)</option>
                            </select>
                         </div>
                         <div>
-                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mensagem (Corpo do E-mail Rastreável)</label>
-                           <textarea id="solicitarTextoWeb" rows="5" placeholder="Descreva de forma clara os documentos exigidos para que o núcleo NCE inicie as tratativas..." class="w-full bg-slate-50 border border-slate-200 rounded p-3 text-sm focus:border-indigo-500 focus:outline-none" required></textarea>
+                           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Corpo da Mensagem Rastreada</label>
+                           <textarea id="solicitarTextoWeb" rows="6" placeholder="Descreva de forma clara os documentos exigidos para que o núcleo NCE inicie as tratativas..." class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none transition-all resize-none" required></textarea>
                         </div>
-                        <div id="solicitarFeedbackWeb" class="text-[11px] font-bold text-center mt-2 hidden py-2 rounded shadow-sm"></div>
-                        <button type="submit" id="btnSolicitarWeb" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded transition text-sm flex justify-center items-center"><i class="fa-solid fa-envelope-open-text mr-2"></i> Disparar Solicitação Oficial</button>
+                        <div id="solicitarFeedbackWeb" class="text-[11px] font-bold text-center mt-2 hidden py-3 rounded-lg shadow-inner"></div>
+                        <button type="submit" id="btnSolicitarWeb" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-4 rounded-xl shadow-lg shadow-emerald-900/10 transition-all active:scale-[0.98] text-sm uppercase tracking-widest flex justify-center items-center">
+                          <i class="fa-solid fa-envelope-open-text mr-2"></i> Disparar Solicitação Oficial
+                        </button>
                      </div>
                   </form>
                </div>
             </div>
-
-
 
          </div>
       </section>
@@ -461,6 +486,11 @@
             <span class="text-xs font-bold uppercase tracking-wider text-slate-600" id="modalAcaoBadge">AÇÃO</span>
         </div>
 
+        <div id="areaComunicacaoWeb" class="hidden mb-5">
+           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Mensagem Exclusiva para o Cliente</label>
+           <textarea id="textoComunicarWeb" rows="5" placeholder="Digite o texto do comunicado (ex: alíquota, aviso) que será enviado ao cliente..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none"></textarea>
+        </div>
+
         <div id="areaUpload" class="hidden">
            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Anexar Documento(s)</label>
            <div class="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-indigo-400 hover:bg-slate-50 transition cursor-pointer relative" onclick="document.getElementById('fileInputObj').click()">
@@ -485,10 +515,39 @@
     </div>
   </div>
 
+  <!-- Injetando Variáveis de Ambiente no Escopo Global do Navegador -->
+  <script>
+    window.GOOGLE_CLIENT_ID = "<?!= GOOGLE_CLIENT_ID ?>";
+    window.INITIAL_TOKEN = "<?!= typeof INITIAL_TOKEN !== 'undefined' ? INITIAL_TOKEN : '' ?>";
+    window.SCRIPT_URL = "<?!= SCRIPT_URL ?>";
+  </script>
+
   <!-- Injeção de JS Customizado via Apps Script -->
   <?!= include('Portal_JS'); ?>
   
-<div id="overlayBloqueio" class="hidden fixed inset-0 z-[9999] bg-slate-900 flex items-center justify-center p-6 text-center">
+<div id="gisLoginOverlay" class="fixed inset-0 z-[9999] bg-slate-900 flex items-center justify-center p-6 text-center transition-opacity duration-500">
+  <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-10 border border-slate-200 flex flex-col items-center justify-center relative overflow-hidden">
+    <!-- Gradient background effect -->
+    <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl"></div>
+    
+    <div class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-white relative z-10">
+      <i class="fa-solid fa-user-shield text-4xl"></i>
+    </div>
+    <h2 class="text-2xl font-black text-slate-800 mb-2 tracking-tight relative z-10">Acesso Corporativo</h2>
+    <p class="text-slate-500 mb-8 leading-relaxed text-sm relative z-10">Confirme sua identidade via Google Identity Services para acessar o portal seguro Janio Pontes SaaS.</p>
+    
+    <!-- Container onde o botão do Google será renderizado -->
+    <div id="gisButtonContainer" class="flex justify-center mb-6 relative z-10 min-h-[40px]"></div>
+    <div id="gisFeedback" class="text-xs font-bold px-3 py-2 rounded mb-4 hidden relative z-10"></div>
+    
+    <div class="pt-6 border-t border-slate-100 w-full relative z-10">
+      <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Plataforma NCE &copy; 2026</p>
+    </div>
+  </div>
+</div>
+
+<div id="overlayBloqueio" class="hidden fixed inset-0 z-[10000] bg-slate-900 flex items-center justify-center p-6 text-center">
   <div class="max-w-md bg-white rounded-2xl shadow-2xl p-10 border border-slate-200">
     <div class="w-20 h-20 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6">
       <i class="fa-solid fa-shield-slash text-4xl"></i>

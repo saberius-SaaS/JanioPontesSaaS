@@ -4,13 +4,74 @@
  * Single Page Application Controller
  */
 
+window.GIS_TOKEN = window.INITIAL_TOKEN || null; // Token de Segurança do GIS (pode vir via Redirect)
+const GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID;
+
+// Callback do Google Identity Services (Executado no modo Popup ou manualmente no Redirect)
+function handleCredentialResponse(response) {
+   if (response && response.credential) {
+      window.GIS_TOKEN = response.credential;
+      const fb = document.getElementById('gisFeedback');
+      if (fb) {
+         fb.classList.remove('hidden', 'bg-red-50', 'text-red-600');
+         fb.classList.add('bg-emerald-50', 'text-emerald-600');
+         fb.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Autenticado. Carregando seus dados...';
+      }
+      
+      // Tenta decodificar o e-mail no cliente apenas para exibição inicial
+      try {
+         const payload = JSON.parse(atob(response.credential.split('.')[1]));
+         if (payload && payload.email) {
+            document.getElementById('currentUserEmail').textContent = payload.email.toLowerCase();
+            setAvatarInitials(payload.email);
+         }
+      } catch (e) {}
+      
+      // Esconde o botão e inicia a autorização com o backend
+      document.getElementById('gisButtonContainer').classList.add('hidden');
+      carregarDadosBase();
+   }
+}
+
+// Inicialização do Google Identity Services Onload
+window.onload = function () {
+   if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.indexOf('SEU_CLIENT_ID_AQUI') > -1) {
+      const fb = document.getElementById('gisFeedback');
+      fb.classList.remove('hidden');
+      fb.className = "text-xs font-bold px-4 py-3 rounded mb-4 bg-orange-100 text-orange-700 border border-orange-200 relative z-10 w-full text-center";
+      fb.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Client ID não configurado no servidor. O Login está desabilitado.';
+      return;
+   }
+
+   // 🚀 Se já temos um token (vindo do Redirect), processamos ele direto
+   if (window.GIS_TOKEN) {
+      handleCredentialResponse({ credential: window.GIS_TOKEN });
+      return;
+   }
+   
+   google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      ux_mode: 'redirect',
+      login_uri: window.SCRIPT_URL,
+      auto_select: true, // Tenta logar automaticamente caso tenha apenas 1 conta
+      cancel_on_tap_outside: false
+   });
+   
+   google.accounts.id.renderButton(
+      document.getElementById("gisButtonContainer"),
+      { theme: "outline", size: "large", type: "standard", shape: "pill", width: 280 }
+   );
+};
+
 // Ao carregar a página
 document.addEventListener("DOMContentLoaded", function(event) {
-    document.getElementById('currentUserEmail').textContent = "Conectando...";
-    carregarDadosBase();
+    document.getElementById('currentUserEmail').textContent = "Aguardando Login...";
+    // O carregamento agora é engatilhado apenas APÓS o login (handleCredentialResponse)
     
-    // Configura sincronização periódica (30 segundos)
-    setInterval(() => carregarDadosBase(true), 30000);
+    // Configura sincronização periódica (30 segundos) - Mas checa se o token existe primeiro
+    setInterval(() => {
+        if (window.GIS_TOKEN) carregarDadosBase(true);
+    }, 30000);
 });
 
 let tarefasGlobaisBase = []; // Cache das tarefas para busca Local
@@ -174,7 +235,16 @@ function carregarDadosBase(isAutoSync) {
              if(btnAdv && btnAdv.classList.contains('hidden')) btnAdv.classList.remove('hidden');
           }
           
-      }).getDadosPortalWeb();
+          // Oculta a tela de Login caso seja o primeiro acesso bem sucedido
+          const loginOverlay = document.getElementById('gisLoginOverlay');
+          if (loginOverlay && !loginOverlay.classList.contains('hidden')) {
+             loginOverlay.classList.add('opacity-0');
+             setTimeout(() => loginOverlay.classList.add('hidden'), 500);
+             const fb = document.getElementById('gisFeedback');
+             if(fb) fb.classList.add('hidden');
+          }
+          
+      }).getDadosPortalWeb(window.GIS_TOKEN);
 }
 
 function renderizarBarrasPerformance(elementId, dataObj, colorBase) {
@@ -292,10 +362,12 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw) {
     const acao = String(acaoRaw || "").toUpperCase().trim();
     const ehEnvio = acao.indexOf("ENVIAR") > -1;
     const ehAuditoria = acao.indexOf("AUDITAR") > -1;
+    const ehComunicar = acao.indexOf("COMUNICAR") > -1;
     
     let colorClass = "text-slate-600 border-slate-200 bg-slate-100";
     if(ehEnvio) colorClass = "text-emerald-700 border-emerald-200 bg-emerald-50";
     if(ehAuditoria) colorClass = "text-amber-700 border-amber-200 bg-amber-50";
+    if(ehComunicar) colorClass = "text-white border-indigo-500 bg-indigo-600 shadow-md";
     
     const badge = document.getElementById('modalAcaoBadge');
     badge.className = `inline-flex text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded border ${colorClass}`;
@@ -303,6 +375,12 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw) {
     
     precisaUploadWeb = ehEnvio || ehAuditoria;
     document.getElementById('areaUpload').style.display = precisaUploadWeb ? 'block' : 'none';
+    
+    const areaCom = document.getElementById('areaComunicacaoWeb');
+    if (areaCom) areaCom.style.display = ehComunicar ? 'block' : 'none';
+    
+    const txtCom = document.getElementById('textoComunicarWeb');
+    if (txtCom) txtCom.value = '';
     
     // Reset modal state
     arquivosStagedWeb = [];
@@ -396,6 +474,15 @@ async function finalizarProcessoWeb() {
     if(!tarefaEmFoco) return;
     const feedback = document.getElementById('modalFeedback');
     
+    const textoComunicar = document.getElementById('textoComunicarWeb') ? document.getElementById('textoComunicarWeb').value.trim() : "";
+    const acaoAtual = String(tarefaEmFoco.acao || "").toUpperCase().trim();
+
+    if (acaoAtual.indexOf("COMUNICAR") > -1 && !textoComunicar) {
+      feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-orange-50 border-orange-200 text-orange-700 block";
+      feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Escreva a mensagem do comunicado antes de avançar.`;
+      return;
+    }
+
     if (precisaUploadWeb && arquivosStagedWeb.length === 0) {
       feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-orange-50 border-orange-200 text-orange-700 block";
       feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Anexe os documentos mandatórios para avançar.`;
@@ -419,41 +506,67 @@ async function finalizarProcessoWeb() {
          btnFin.className = "px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center";
       })
       .withSuccessHandler(async urlWebApp => {
-         try {
-           const payload = {
-             action: "uploadBatch",
-             arquivos: arquivosStagedWeb,
-             taskId: tarefaEmFoco.id,
-             clienteNome: tarefaEmFoco.cliente
-           };
-           
-           const resposta = await fetch(urlWebApp, {
-             method: 'POST',
-             body: JSON.stringify(payload),
-             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-           });
-           
-           const result = await resposta.json();
-           if (result.success) {
-             feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-emerald-50 border-emerald-200 text-emerald-700 block";
-             feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-2 text-emerald-500"></i> Sucesso! Tarefa concluída e rotinas acionadas.`;
+         let forcarUpload = false;
+         let sucessoFinal = false;
+         
+         while (!sucessoFinal) {
+           try {
+             feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-indigo-50 border-indigo-200 text-indigo-700 block";
+             feedback.innerHTML = `<i class="fa-solid fa-cloud-arrow-up mr-2 text-indigo-500 text-lg align-middle"></i> ${forcarUpload ? 'Forçando Upload...' : 'Acessando nuvem (Motor REST)...'}`;
+
+             const payload = {
+               action: "uploadBatch",
+               token: window.GIS_TOKEN,
+               arquivos: arquivosStagedWeb,
+               mensagem: acaoAtual.indexOf("COMUNICAR") > -1 ? textoComunicar : "",
+               taskId: tarefaEmFoco.id,
+               clienteNome: tarefaEmFoco.cliente,
+               forcar: forcarUpload
+             };
              
-             if (result.dispararEmailVIP) {
-               google.script.run.processarAuditoriaRelatorioBackground(result.backgroundPayload);
+             const resposta = await fetch(urlWebApp, {
+               method: 'POST',
+               body: JSON.stringify(payload),
+               headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+             });
+             
+             const result = await resposta.json();
+             
+             if (result.success) {
+               feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-emerald-50 border-emerald-200 text-emerald-700 block";
+               feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-2 text-emerald-500"></i> Sucesso! Tarefa concluída e rotinas acionadas.`;
+               
+               if (result.dispararEmailVIP) {
+                 google.script.run.processarAuditoriaRelatorioBackground(result.backgroundPayload);
+               }
+               
+               carregarDadosBase(); // Refresh data quietly
+               setTimeout(() => { fecharModalTarefa(); }, 2000);
+               sucessoFinal = true;
+               
+             } else if (result.needsConfirmation) {
+                // ⚠️ Alerta de OCR / CNPJ Divergente
+                if (confirm(result.message)) {
+                   forcarUpload = true; // Usuário confirmou, tenta de novo forçando
+                } else {
+                   // Usuário cancelou
+                   btnFin.disabled = false;
+                   btnFin.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento`;
+                   btnFin.className = "px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center";
+                   feedback.className = "hidden";
+                   return;
+                }
+             } else {
+               throw new Error(result.error || result.message);
              }
-             
-             carregarDadosBase(); // Refresh data quietly
-             setTimeout(() => { fecharModalTarefa(); }, 2000);
-             
-           } else {
-             throw new Error(result.error || result.message);
+           } catch (errFetch) {
+              feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-red-50 border-red-200 text-red-700 block";
+              feedback.innerHTML = `<i class="fa-solid fa-xmark mr-2 text-red-500"></i> <b>Erro:</b> ${errFetch.message}`;
+              btnFin.disabled = false;
+              btnFin.innerHTML = `<i class="fa-solid fa-rotate-right mr-2"></i> Tentar Novamente`;
+              btnFin.className = "px-6 py-2 text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white rounded shadow transition flex items-center";
+              return;
            }
-         } catch (errFetch) {
-            feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-red-50 border-red-200 text-red-700 block";
-            feedback.innerHTML = `<i class="fa-solid fa-xmark mr-2 text-red-500"></i> <b>Erro:</b> ${errFetch.message}`;
-            btnFin.disabled = false;
-            btnFin.innerHTML = `<i class="fa-solid fa-rotate-right mr-2"></i> Tentar Novamente`;
-            btnFin.className = "px-6 py-2 text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white rounded shadow transition flex items-center";
          }
       }).getUrlParaFetch();
 }
@@ -712,7 +825,7 @@ function criarDemandaWeb() {
         document.getElementById('formDemandaWeb').reset();
         setTimeout(() => fb.className = "hidden", 3500);
      })
-     .salvarTarefaDemanda(formObj);
+     .salvarTarefaDemanda(formObj, window.GIS_TOKEN);
 }
 
 function aoMudarClienteSolicitarWeb() {
@@ -731,7 +844,7 @@ function aoMudarClienteSolicitarWeb() {
          tarefas.forEach(t => { html += `<option value="${t.id}">${t.nome} [${t.vencimento}]</option>`; });
          selTarefa.innerHTML = html;
      })
-     .getPendenciasCliente(cli);
+     .getPendenciasCliente(cli, window.GIS_TOKEN);
 }
 
 function enviarSolicitacaoWeb() {
@@ -760,7 +873,7 @@ function enviarSolicitacaoWeb() {
         document.getElementById('formSolicitarWeb').reset();
         setTimeout(() => { document.getElementById('boxSolicitarCamposWeb').classList.add('hidden'); fb.className = "hidden"; }, 4000);
      })
-     .enviarSolicitacaoDocumento(formObj);
+     .enviarSolicitacaoDocumento(formObj, window.GIS_TOKEN);
 }
 
 // ================= ADMIN & RBAC WRAPPERS =================
@@ -785,7 +898,7 @@ function acionarRoboAdmin(nomeFuncao, idBotao) {
      })
      .withSuccessHandler(res => {
         btn.disabled = false; btn.innerHTML = oldHtml; btn.className = oldClass;
-        fb.innerHTML += `<br>> <span class="text-emerald-400 font-bold">[SUCESSO MESTRE] Tarefa administrativa finalizada. Logs aplicados.</span>`;
+        fb.innerHTML += `<br>> <span class="text-emerald-400 font-bold">[SUCESSO MESTRE] ${res || "Tarefa administrativa finalizada. Logs aplicados."}</span>`;
         if (nomeFuncao === 'comandoAtualizarRisco' || nomeFuncao === 'comandoArquivarTarefas') {
             carregouRisco = false; // Destroy Cache view
             carregouHistorico = false;

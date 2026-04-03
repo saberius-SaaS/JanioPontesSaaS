@@ -189,6 +189,8 @@
         document.getElementById('statusAcaoArea').innerHTML = '';
         if (arq) arq.style.display = 'none';
         if (esc) esc.style.display = 'none';
+        const areaCom = document.getElementById('areaComunicacao');
+        if (areaCom) areaCom.style.display = 'none';
         return;
     }
 
@@ -198,18 +200,27 @@
     
     const ehEnvio = acao.indexOf("ENVIAR") > -1;
     const ehAuditoria = acao.indexOf("AUDITAR") > -1;
+    const ehComunicar = acao.indexOf("COMUNICAR") > -1;
     
     let statusHtml = `<div class="status-badge">AÇÃO: ${acao}</div>`;
     if (ehEnvio) statusHtml = '<div class="status-badge badge-enviar">AÇÃO: ENVIAR PARA CLIENTE</div>';
     if (ehAuditoria) statusHtml = '<div class="status-badge badge-auditar">AÇÃO: AUDITAGEM CONTÁBIL</div>';
+    if (ehComunicar) statusHtml = '<div class="status-badge badge-enviar" style="background-color:#1e40af; color:white;">AÇÃO: COMUNICAR INFORMAÇÃO</div>';
     
     document.getElementById('statusAcaoArea').innerHTML = statusHtml;
     
+    const areaCom = document.getElementById('areaComunicacao');
+    if (areaCom) areaCom.style.display = ehComunicar ? 'block' : 'none';
+
     precisaUploadGlobal = ehEnvio || ehAuditoria;
     if (arq) arq.style.display = precisaUploadGlobal ? 'block' : 'none'; 
     if (esc) esc.style.display = precisaUploadGlobal ? 'block' : 'none';
     
-    btnFin.disabled = precisaUploadGlobal && (!arquivosStaged || !arquivosStaged.length);
+    if (ehComunicar) {
+      btnFin.disabled = false;
+    } else {
+      btnFin.disabled = precisaUploadGlobal && (!arquivosStaged || !arquivosStaged.length);
+    }
   }
 
   async function adicionarArquivos() {
@@ -282,6 +293,16 @@
     const cli = document.getElementById('clienteUpload').value;
     if(!id || !cli) { showFeedback("Selecione os campos", true); return; }
     
+    const t = pendenciasLocal.find(p => String(p.id) === String(id));
+    const acaoAtual = t ? String(t.acao).toUpperCase().trim() : "";
+    const textoComunicar = document.getElementById('textoComunicar') ? document.getElementById('textoComunicar').value.trim() : "";
+
+    // Validar se há mensagens
+    if (acaoAtual.indexOf("COMUNICAR") > -1 && !textoComunicar) {
+      showFeedback("Por favor, digite a mensagem antes de finalizar.", true);
+      return;
+    }
+
     // Validar se há arquivos (Obrigatório apenas se a AÇÃO exigir envio ou auditoria)
     if (precisaUploadGlobal && arquivosStaged.length === 0) {
       showFeedback("Por favor, anexe o arquivo antes de finalizar.", true);
@@ -300,6 +321,7 @@
            const payload = {
              action: "uploadBatch",
              arquivos: arquivosStaged,
+             mensagem: acaoAtual.indexOf("COMUNICAR") > -1 ? textoComunicar : "",
              taskId: id,
              clienteNome: cli
            };
@@ -379,6 +401,10 @@
     const obriSel = document.getElementById('obrigacao');
     if (obriSel) { obriSel.innerHTML = '<option value="">Selecione o cliente</option>'; obriSel.disabled = true; }
     document.getElementById('statusAcaoArea').innerHTML = '';
+    const txtCom = document.getElementById('textoComunicar');
+    if (txtCom) txtCom.value = '';
+    const areaCom = document.getElementById('areaComunicacao');
+    if (areaCom) areaCom.style.display = 'none';
     document.getElementById('areaArquivos').style.display = 'none';
     document.getElementById('btnEscolher').style.display = 'none';
     const btnFin = document.getElementById('btnFinalizar');

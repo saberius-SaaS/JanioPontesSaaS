@@ -8,8 +8,12 @@
  * Função unificada para gerar as páginas web a partir do Apps Script
  * O Prompt.md obriga o uso da MetaTag 'viewport'
  */
-function renderPage(templateFile, title) {
+function renderPage(templateFile, title, initialToken) {
   const template = HtmlService.createTemplateFromFile(templateFile);
+  var gisId = PropertiesService.getScriptProperties().getProperty("GOOGLE_CLIENT_ID");
+  template.GOOGLE_CLIENT_ID = gisId ? gisId : "";
+  template.INITIAL_TOKEN = initialToken || "";
+  template.SCRIPT_URL = ScriptApp.getService().getUrl();
   
   return template.evaluate()
     .setTitle(title)
@@ -31,7 +35,7 @@ function include(filename) {
  * ⚡ CORE DATA FETCH (Portal Web)
  * Busca consolidada para extrema performance no carregamento inicial da SPA.
  */
-function getDadosPortalWeb() {
+function getDadosPortalWeb(token) {
   try {
     var hoje = new Date();
     // 1. Dados Básicos do Dashboard (Mês Atual)
@@ -42,28 +46,34 @@ function getDadosPortalWeb() {
     var totalRisco = 0;
     if (wsTarefas) {
        var dados = wsTarefas.getDataRange().getValues();
+       var hojeNormal = new Date();
+       hojeNormal.setHours(0,0,0,0);
+       
        for (var i = 1; i < dados.length; i++) {
          if (String(dados[i][5]).toUpperCase() === "PENDENTE") {
            var vcto = dados[i][3];
-           if (vcto && (vcto instanceof Date || !isNaN(new Date(vcto).getTime())) && new Date(vcto) < hoje) {
-             totalRisco++;
+           if (vcto && (vcto instanceof Date || !isNaN(new Date(vcto).getTime()))) {
+              var dataV = new Date(vcto);
+              dataV.setHours(0,0,0,0);
+              if (dataV <= hojeNormal) {
+                totalRisco++;
+              }
            }
          }
        }
     }
     
-    // Captura de contexto de usuário
-    var emailAtivo = Session.getActiveUser().getEmail();
-    var emailFinal = emailAtivo;
+    // ⚡ CAPTURA DE CONTEXTO DE USUÁRIO (GIS Token como prioridade, com Fallback para DevMode)
+    var emailFinal = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
 
-    // TRAVA DE SEGURANÇA: Bloqueia fakes e acessos anônimos
-      if (!emailFinal) {
+    // TRAVA DE SEGURANÇA: Bloqueia acessos anônimos absolutos  
+    if (!emailFinal || emailFinal === "") {
         return { 
           success: false, 
           error: "LOGIN_REQUERIDO", 
-          message: "⚠️ LOGIN DO GOOGLE NECESSÁRIO\n\nNão detectamos sua conta ativa no navegador. Por favor, faça login no Google Chrome com seu e-mail autorizado para acessar o portal." 
+          message: "⚠️ LOGIN CORPORATIVO NECESSÁRIO\n\nNenhuma credencial válida foi identificada. Por favor, autentique-se no portal principal." 
         };
-      }
+    }
 
     // 2. Calcula o UserLevel Real baseado na Aba Usuários
     var userLevel = null; // Inicia nulo para forçar validação
@@ -204,7 +214,7 @@ function getDadosRiscoWeb() {
        if (isNaN(dataVcto.getTime())) continue;
        dataVcto.setHours(0,0,0,0);
        
-       if (dataVcto < hoje) {
+       if (dataVcto <= hoje) {
           var diffTime = Math.abs(hoje - dataVcto);
           var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           
