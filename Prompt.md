@@ -47,7 +47,7 @@ A estrutura abaixo é rígida. Scripts dependem da posição exata dessas coluna
 * K = NIVEL (Prioridade 1-5)
 
 ### Aba DB_REGRAS
-* A = ID | B = OBRIGACAO | C = DIA | D = DEPARTAMENTO | E = REGIME | F = ACAO | G = MESES | H = TIPOS | I = DESLOCA
+* A = ID | B = OBRIGACAO | C = DIA | D = DEPARTAMENTO | E = REGIME | F = ACAO | G = MESES | H = TIPOS | I = DESLOCA | ... | M = REVISÃO? (S/N)
 
 ### Aba DB_WORKFLOWS (Motor de Esteiras)
 * A = FASE_ATUAL (Obrigação gatilho)
@@ -104,11 +104,13 @@ Esta aba é recriada automaticamente e contém estritamente 6 colunas visíveis:
 
 ## 4.2. Upload e Entrega
 * Se ACAO = ENVIAR: Obrigatório anexar arquivo.
+* **Validação OCR:** O sistema realiza a leitura do CNPJ no primeiro arquivo do lote. Se houver divergência com o cadastro (`DB_CLIENTES`), um alerta impeditivo/confirmação é exibido no portal.
 * Nomenclatura do Arquivo: `CNPJ.OBRIGACAO.MES.ANO.ext`
 * Gera link público no Drive, envia e-mail ao cliente, registra em `DB_PROTOCOLOS`.
 
 ## 4.3. Motor de Workflows e Esteiras
-* **Gatilho:** Ocorre no momento da Baixa Administrativa (`STATUS = ENTREGUE`) na aba `DB_TAREFAS`.
+* **Gatilho:** Ocorre no momento da Baixa Administrativa (`STATUS = ENTREGUE`) na aba `DB_TAREFAS`. 
+* *Nota:* Se a tarefa estiver em `REVISÃO`, o motor aguarda a aprovação do Administrador para disparar.
 * **Lógica de Busca:** O motor pesquisa a aba `DB_WORKFLOWS` lendo as strings mapeadas ordenadas por tamanho (da mais longa para a mais curta) para evitar loops e garantir a correspondência mais específica (ex: `"ABERTURA - FASE 1"` vence `"ABERTURA"`).
 * **Herança de Complemento:** Se a tarefa finalizada tiver um complemento na string original (ex: separação por ` - `), o motor extrai esse complemento e acopla automaticamente no nome da Próxima Fase gerada.
 * **Ação:** Injeta a nova fase na aba `DB_TAREFAS` com status `"PENDENTE"`, calculando o novo vencimento via `PRAZO_DIAS` estipulado e identificando o `RESP_TIPO` atual na tabela de Clientes (preservando o Case-Sensitive para e-mails diretos).
@@ -134,10 +136,15 @@ Esta aba é recriada automaticamente e contém estritamente 6 colunas visíveis:
 * **Cobrança:** O sistema varre `DB_SOLICITACOES` pendentes. Se `(Hoje - DataRef) >= CONFIG.DIAS_INTERVALO`, envia e-mail e incrementa contador.
 
 ## 4.8. Lista de Prioridades (Painel)
-* **Objetivo:** Exibir as **7 maiores prioridades** do usuário.
-* **Conteúdo:** Cliente, Obrigação, Vencimento, Departamento e AÇÃO.
-* **Lógica de Permissão:** ADMIN visualiza global. USER visualiza por responsável.
-* **Interatividade:** O clique redireciona para a aba UPLOAD para baixa.
+* **Objetivo:** Exibir as principais pendências do usuário logado.
+* **Status REVISÃO:** Tarefas nesta condição aparecem com destaque visual (Púrpura).
+* **Lógica de Permissão:** 
+    * **ADMIN:** Visualiza globalmente e possui o botão "Validar" para tarefas em `REVISÃO`.
+    * **USER:** Visualiza apenas suas tarefas. Tarefas em `REVISÃO` ficam bloqueadas para edição/re-envio até aprovação sênior.
+
+## 4.9. Hierarquia de Aprovação e Governança
+* **Condição:** Se a regra (`DB_REGRAS`) tiver "S" na coluna M e o executor for nível "USER", a tarefa entra em `REVISÃO`.
+* **Fluxo Final:** Somente o administrador pode converter `REVISÃO` em `ENTREGUE`, o que efetivamente dispara os e-mails ao cliente e gera protocolos.
 
 ---
 

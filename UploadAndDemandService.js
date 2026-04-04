@@ -3,7 +3,7 @@
  * FOCO: Estabilidade total no Bypass de Permissão e Identidade DriveApp.
  */
 
-function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, forcar) {
+function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, forcar, userLevel) {
   var lock = LockService.getScriptLock();
   try { 
     lock.waitLock(25000); 
@@ -48,8 +48,27 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
     
     // Gestão de Pasta com Privilégios Elevados
     var acaoTarefa = rowVal[7];
-    var statusFinal = getSafeStatus("ENTREGUE");
     var protocolo = gerarProtocoloEntrega();
+    
+    // --- LÓGICA DE STATUS: REVISAO VS ENTREGUE ---
+    var statusFinal = getSafeStatus("ENTREGUE");
+    var dataR = getSheetDataCached("DB_REGRAS", "DATA_REGRAS");
+    var exigeRevisao = false;
+    for (var r = 1; r < dataR.length; r++) {
+        if (norm(dataR[r][1]) === norm(obrig)) { // Coluna B: Obrigação
+            exigeRevisao = String(dataR[r][12] || "").toUpperCase().trim() === "S"; // Coluna M: REVISAO?
+            break;
+        }
+    }
+    
+    // Somente exige revisão se a regra pedir E se o usuário for nível USER
+    if (exigeRevisao && userLevel === "USER") {
+       if (!arquivos || arquivos.length === 0) {
+          throw new Error("Esta tarefa requer validação de arquivo. Por favor, anexe o documento necessário.");
+       }
+       statusFinal = getSafeStatus("REVISAO");
+       registrarLogSistema("WORKFLOW_REVISAO", "Tarefa movida para REVISAO (Executor: " + userLevel + ")");
+    }
 
     // --- BLOCO OCR: VALIDAÇÃO DE CNPJ (Amostragem: Apenas 1º arquivo) ---
     if (!forcar && arquivos && arquivos.length > 0 && norm(acaoTarefa).indexOf(CONFIG_SISTEMA.ACOES.COMUNICAR) === -1) {
@@ -62,9 +81,10 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
           registrarLogSistema("OCR_VALIDATION", "Validando CNPJ p/ " + clienteNome);
           var blob1 = Utilities.newBlob(Utilities.base64Decode(f1.base64), "application/octet-stream", f1.name);
           var textoExtraido = extrairTextoOCR(blob1);
-          var textoLimpo = textoExtraido.replace(/\D/g, "");
+          var textoLimpo = limparTextoOcrParaComparacao(textoExtraido);
           
           if (textoLimpo.indexOf(cnpj) === -1) {
+             registrarLogSistema("OCR_MISMATCH", "CNPJ Esperado: " + cnpj + " | Texto Limpo (Primeiros 50 dígitos): " + textoLimpo.substring(0, 50));
              return {
                success: false,
                needsConfirmation: true,
@@ -81,15 +101,20 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
 
     // INTERCEPTAÇÃO: AÇÃO COMUNICAR
     if (norm(acaoTarefa).indexOf(CONFIG_SISTEMA.ACOES.COMUNICAR) > -1) {
-        var protRowIdx = registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, "COMUNICADO: " + mensagem);
+        var vctoLegal = typeof rowVal[11] === 'object' && rowVal[11] instanceof Date ? Utilities.formatDate(rowVal[11], "GMT-3", "dd/MM/yyyy") : (rowVal[11] || "---");
+        var protRowIdx = registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, "COMUNICADO: " + mensagem, vctoLegal, acaoTarefa);
         wsTarefas.getRange(rowIdx, 6, 1, 2).setValues([[statusFinal, protocolo]]);
         
-        acionarWorkflowFaseSeguinte(taskId, rowIdx);
+        if (statusFinal !== getSafeStatus("REVISAO")) {
+           acionarWorkflowFaseSeguinte(taskId, rowIdx);
+        }
         reordenarTarefasElite(); 
         invalidarCacheSistema(); 
         
         try {
-            enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, mensagem);
+            if (statusFinal !== getSafeStatus("REVISAO")) {
+               enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, mensagem);
+            }
         } catch(eMailCom) {
             registrarLogSistema("EMAIL_COM_ERR", "Falha comunicado: " + eMailCom.message);
         }
@@ -144,7 +169,6 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
     
     // --- INTEGRAÇÃO BLOCO AUDITORIA ---
     var acaoTarefa = rowVal[7];
-    var statusFinal = getSafeStatus("ENTREGUE");
     var resAudit = null;
 
     if (norm(acaoTarefa) === CONFIG_SISTEMA.ACOES.AUDITAR) {
@@ -172,55 +196,63 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
     }
     // --- FIM BLOCO AUDITORIA ---
 
-    var protRowIdx = registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, linksDriveStr);
+    var vctoLegal = typeof rowVal[11] === 'object' && rowVal[11] instanceof Date ? Utilities.formatDate(rowVal[11], "GMT-3", "dd/MM/yyyy") : (rowVal[11] || "---");
+    var protRowIdx = registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, linksDriveStr, vctoLegal, acaoTarefa);
+    
+    // --- BLOCO TRANSACIONAL: E-MAIL E COMUNICAÇÃO PRIMEIRO ---
+    // Se falhar o envio de email, vai abortar o cadastro do Status na esteira da planilha para evitar "baixas fantasmas"
+    var dispararEmailVIP = false;
+    var backgroundPayload = null;
+    
+    // Se for REVISAO, não envia e-mail agora (aguarda aprovação do Admin)
+    if (statusFinal !== getSafeStatus("REVISAO")) {
+       // Se não for auditoria (ex: envio comum), manda a notificação genérica "Processado com sucesso"
+       if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.AUDITAR) {
+         // Caso seja ARQUIVAR sem arquivos, não envia e-mail ao cliente (Finalização Simples Interna)
+         var deveNotificar = (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) || (arquivos && arquivos.length > 0);
+         if (deveNotificar) {
+           // Passamos o protRowIdx em vez do rowIdx da tarefa para rastreio direto no DB_PROTOCOLOS
+           // NOVO: Sem try-catch silencioso. Se estourar erro de OAuth ou Permissão, vai abortar tudo e subir pro Frontend.
+           notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), protRowIdx || "", false);
+         }
+       }
+    }
+  
+    // Se houve auditoria aprovada, PREPARA o Relatório IA por E-mail APENAS se cliente for VIP
+    if (resAudit && resAudit.dadosAtuais) {
+      var iaConfInfo = garantirConfigIA();
+      var dConf = iaConfInfo.sheet.getDataRange().getValues();
+      var vips = "";
+      for (var idxC = 1; idxC < dConf.length; idxC++) {
+         if (dConf[idxC][0] === "CLIENTES_AUDITORIA_ATIVOS") { vips = String(dConf[idxC][1]).toUpperCase(); break; }
+      }
+      var authVips = vips.split(',').map(function(n) { return n.trim(); });
+      
+      if (authVips.indexOf(String(clienteNome).toUpperCase().trim()) > -1) {
+         dispararEmailVIP = true;
+         backgroundPayload = {
+           emailCli: emailCli,
+           nomeResp: nomeResp,
+           clienteNome: clienteNome,
+           obrig: obrig + " (" + mesRef + ")",
+           dadosAtuais: resAudit.dadosAtuais,
+           historicoDados: resAudit.historicoDados
+         };
+      } else {
+         registrarLogSistema("AUDIT_MAIL_SKIPPED", "Cliente " + clienteNome + " auditado com sucesso mas não é VIP para e-mail.");
+      }
+    }
+    // --- FIM BLOCO TRANSACIONAL DE COMUNICAÇÃO ---
+
+    // COMUNICAÇÃO OK? DAR BAIXA FÍSICA E WORKFLOW (Commit da Transação)
     wsTarefas.getRange(rowIdx, 6, 1, 2).setValues([[statusFinal, protocolo]]);
     
-    acionarWorkflowFaseSeguinte(taskId, rowIdx);
-    reordenarTarefasElite(); 
-    invalidarCacheSistema(); 
- 
-    try {
-      // Se não for auditoria (ex: envio comum), manda a notificação genérica "Processado com sucesso"
-      if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.AUDITAR) {
-        // Caso seja ARQUIVAR sem arquivos, não envia e-mail ao cliente (Finalização Simples Interna)
-        var deveNotificar = (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) || (arquivos && arquivos.length > 0);
-        if (deveNotificar) {
-          // Passamos o protRowIdx em vez do rowIdx da tarefa para rastreio direto no DB_PROTOCOLOS
-          notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), protRowIdx || "", false);
-        }
-      }
-      
-      var dispararEmailVIP = false;
-      var backgroundPayload = null;
-      
-      // Se houve auditoria aprovada, PREPARA o Relatório IA por E-mail APENAS se cliente for VIP
-      if (resAudit && resAudit.dadosAtuais) {
-        var iaConfInfo = garantirConfigIA();
-        var dConf = iaConfInfo.sheet.getDataRange().getValues();
-        var vips = "";
-        for (var idxC = 1; idxC < dConf.length; idxC++) {
-           if (dConf[idxC][0] === "CLIENTES_AUDITORIA_ATIVOS") { vips = String(dConf[idxC][1]).toUpperCase(); break; }
-        }
-        var authVips = vips.split(',').map(function(n) { return n.trim(); });
-        
-        if (authVips.indexOf(String(clienteNome).toUpperCase().trim()) > -1) {
-           dispararEmailVIP = true;
-           backgroundPayload = {
-             emailCli: emailCli,
-             nomeResp: nomeResp,
-             clienteNome: clienteNome,
-             obrig: obrig + " (" + mesRef + ")",
-             dadosAtuais: resAudit.dadosAtuais,
-             historicoDados: resAudit.historicoDados
-           };
-        } else {
-           registrarLogSistema("AUDIT_MAIL_SKIPPED", "Cliente " + clienteNome + " auditado com sucesso mas não é VIP para e-mail.");
-        }
-      }
-    } catch(e) { 
-       registrarLogSistema("EMAIL_NOTIF_ERR", "Falha ao enviar e-mail: " + e.message);
-       console.warn("Email erro: " + e.message); 
+    // Só aciona fase seguinte se NÃO for revisão
+    if (statusFinal !== getSafeStatus("REVISAO")) {
+       acionarWorkflowFaseSeguinte(taskId, rowIdx);
     }
+    reordenarTarefasElite(); 
+    invalidarCacheSistema();
     
     return { 
       success: true, 

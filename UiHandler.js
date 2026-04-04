@@ -263,11 +263,36 @@ function doPost(e) {
     // ⚡ CENÁRIO B: Chamadas de API do Portal (Upload, etc)
     var payload = JSON.parse(e.postData.contents);
     var token = payload.token || "";
+    
+    if (!token) registrarLogSistema("DOPONT_TOKEN_EMPTY", "Payload recebido sem token.");
+    
     var userEmail = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
-    if (!userEmail) throw new Error("Acesso Negado: Identidade não pôde ser confirmada via GIS.");
+    
+    if (!userEmail) {
+       var reason = !token ? "Token Ausente" : "Token Inválido/Expirado";
+       var logMsg = "Identidade não confirmada (" + reason + "). Token len: " + (token ? token.length : 0);
+       registrarLogSistema("ACCESS_DENIED", logMsg);
+       throw new Error("Acesso Negado: " + reason + ". Por favor, recarregue a página ou faça login novamente.");
+    }
+    
+    // ⚡ EXTRAÇÃO DE NÍVEL DE USUÁRIO PARA WORKFLOW
+    var userLevel = "USER";
+    var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+    for (var u = 1; u < dataU.length; u++) {
+        if (String(dataU[u][0]).toLowerCase().trim() === userEmail.toLowerCase().trim()) { 
+            userLevel = String(dataU[u][2]).toUpperCase().trim(); 
+            break; 
+        }
+    }
     
     if (payload.action === "uploadBatch") {
-      var resultado = processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar);
+      var resultado = processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar, userLevel);
+      return ContentService.createTextOutput(JSON.stringify(resultado))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    if (payload.action === "aprovarTarefa") {
+      var resultado = aprovarTarefaRevisao(payload.taskId, userLevel);
       return ContentService.createTextOutput(JSON.stringify(resultado))
         .setMimeType(ContentService.MimeType.JSON);
     }
@@ -294,15 +319,27 @@ function getPrioridades() {
     }
     var wsTasks = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     if (!wsTasks) return [];
+    
+    var dataProt = getSheetDataCached(CONFIG_SISTEMA.ABA_PROTOCOLOS, "DATA_PROTOCOLOS") || [];
+    var mapDocLinks = {};
+    for (var p = 1; p < dataProt.length; p++) {
+       if (dataProt[p][7] && String(dataProt[p][7]).indexOf("http") > -1) {
+          mapDocLinks[String(dataProt[p][3])] = String(dataProt[p][7]); 
+       }
+    }
+    
     var dataT = wsTasks.getDataRange().getValues();
     var tasks = [];
     for (var j = 1; j < dataT.length; j++) {
-      if (String(dataT[j][5]).toUpperCase().trim() !== getSafeStatus("PENDENTE")) continue;
+      var statusObj = String(dataT[j][5] || "").toUpperCase().trim();
+      if (statusObj !== getSafeStatus("PENDENTE") && statusObj !== getSafeStatus("REVISAO")) continue;
       var resp = String(dataT[j][8]).toLowerCase().trim();
       if (userLevel === "ADMIN" || resp === userEmail) {
         var rawVcto = dataT[j][3];
         var dateObj = (rawVcto instanceof Date) ? rawVcto : new Date(rawVcto);
-        tasks.push({ id: dataT[j][9], cliente: String(dataT[j][1]), obrigacao: String(dataT[j][2]), vencimentoSort: dateObj.getTime(), vencimentoStr: Utilities.formatDate(dateObj, "GMT-3", "dd/MM/yyyy"), depto: dataT[j][4], acao: String(dataT[j][7]).toUpperCase().trim(), nivel: dataT[j][10] || "1" });
+        var mesAnoRaw = dataT[j][0];
+        var mesAnoStr = (mesAnoRaw instanceof Date) ? Utilities.formatDate(mesAnoRaw, "GMT-3", "MM/yyyy") : String(mesAnoRaw);
+        tasks.push({ id: dataT[j][9], cliente: String(dataT[j][1]), obrigacao: String(dataT[j][2]), vencimentoSort: dateObj.getTime(), vencimentoStr: Utilities.formatDate(dateObj, "GMT-3", "dd/MM/yyyy"), mesAno: mesAnoStr, depto: dataT[j][4], status: String(dataT[j][5]).toUpperCase().trim(), docLinks: mapDocLinks[String(dataT[j][9])] || "", acao: String(dataT[j][7]).toUpperCase().trim(), nivel: dataT[j][10] || "1" });
       }
     }
     tasks.sort((a, b) => (a.nivel !== b.nivel) ? b.nivel - a.nivel : a.vencimentoSort - b.vencimentoSort);
@@ -333,8 +370,13 @@ function getPayloadInicialPainel() {
 }
 
 function forcarAutorizacao() { 
-  try { SpreadsheetApp.getUi().alert("🛡️ Autorizado."); } catch (e) {}
-  return "🛡️ Autorizado."; 
+  try { 
+    var resultado = renovarTodosEscopos();
+    SpreadsheetApp.getUi().alert(resultado); 
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("⚠️ ERRO: " + e.message + "\n\nTente executar a função 'renovarTodosEscopos' diretamente pelo Editor de Scripts (Extensões → Apps Script).");
+  }
+  return "🛡️ Processo de autorização acionado."; 
 }
 function comandoSincronizarProvas() { sincronizarProvasDeEntregaAPI(); }
 function comandoSincronizarHistorico() { 
@@ -467,3 +509,95 @@ function abrirPainelConfigIA() {
   SpreadsheetApp.getUi().showModalDialog(html, '⚙️ PAINEL VIP DE AUDITORIA IA');
 }
 
+/**
+ * Aprova uma tarefa que está em REVISAO, movendo-a para ENTREGUE.
+ * Exclusivo para perfis ADMIN / MASTER.
+ */
+function aprovarTarefaRevisao(taskId, userLevel) {
+  if (["ADMIN", "MASTER", "CONSULTOR"].indexOf(userLevel) === -1) {
+    return { success: false, message: "Acesso Negado: Nível insuficiente para aprovação." };
+  }
+  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
+  var dataT = wsTarefas.getDataRange().getValues();
+  
+  for (var i = 1; i < dataT.length; i++) {
+    if (String(dataT[i][9]) === String(taskId)) { // Coluna J: ID_CONTROLE
+       var statusAtual = String(dataT[i][5]).toUpperCase().trim();
+       if (statusAtual !== "REVISAO") {
+         return { success: false, message: "Esta tarefa não está em status de REVISAO." };
+       }
+              // 1. Coleta dados para notificação final (vindos da tarefa e do protocolo gerado anteriormente)
+        var clienteNome = dataT[i][1];
+        var obrig = dataT[i][2];
+        var protocolo = dataT[i][6];
+        
+        // 2. Busca e-mail do cliente e URL da pasta
+        var emailCli = "";
+        var folderUrl = "";
+        var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
+        var dataC = wsCli.getDataRange().getValues();
+        for (var c = 1; c < dataC.length; c++) {
+           if (norm(dataC[c][1]) === norm(clienteNome)) {
+              emailCli = dataC[c][4];
+              folderUrl = dataC[c][12];
+              break;
+           }
+        }
+
+        // 3. Busca links dos arquivos no protocolo
+        var linksParaEmail = [];
+        var protRowIdx = -1;
+        var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+        var dataP = wsProt.getDataRange().getValues();
+        for (var p = dataP.length - 1; p >= 1; p--) {
+           if (String(dataP[p][2]) === String(protocolo)) {
+              var linksRaw = String(dataP[p][7] || ""); // Coluna H: Arquivos/Links (Index 7)
+              if (linksRaw.indexOf("http") === 0 || linksRaw.indexOf("COMUNICADO:") === -1) {
+                 var urls = linksRaw.split(" | ");
+                 urls.forEach(u => {
+                    if (u.trim()) linksParaEmail.push({ url: u.trim(), name: "Documento Enviado" });
+                 });
+              }
+              protRowIdx = p + 1;
+              break;
+           }
+        }
+
+        // 4. Move para ENTREGUE na planilha
+        wsTarefas.getRange(i + 1, 6).setValue("ENTREGUE");
+        
+        // 5. Aciona o workflow de fase seguinte
+        acionarWorkflowFaseSeguinte(taskId, i + 1);
+        
+        // 6. Envia as notificações finais baseadas no tipo de ação
+        var acaoTarefa = dataT[i][7];
+        try {
+           if (!emailCli || emailCli.indexOf("@") === -1) {
+              registrarLogSistema("APROVA_EMAIL_SKIP", "Email do cliente não localizado para " + clienteNome);
+           } else {
+              if (norm(acaoTarefa).indexOf(CONFIG_SISTEMA.ACOES.COMUNICAR) > -1) {
+                 // Recupera a mensagem do protocolo se for COMUNICAR
+                 var msgComunicado = "";
+                 if (protRowIdx !== -1) {
+                    msgComunicado = String(dataP[protRowIdx-1][7]).replace("COMUNICADO: ", ""); // Coluna H: Index 7
+                 }
+                 enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, msgComunicado);
+              } else {
+                 notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, folderUrl, protRowIdx, false);
+              }
+           }
+        } catch(eNotif) {
+           registrarLogSistema("APROVA_NOTIF_ERR", "Falha ao notificar após aprovação: " + eNotif.message);
+        }
+
+        registrarLogSistema("WORKFLOW_APROVACAO", "Tarefa " + taskId + " aprovada por Admin. Ciclo completo.");
+        invalidarCacheSistema();
+        
+        return { success: true, message: "Tarefa aprovada e cliente notificado com sucesso." };
+     }
+  }
+  
+  return { success: false, message: "Tarefa não localizada na base de dados." };
+}

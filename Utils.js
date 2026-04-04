@@ -86,21 +86,32 @@ function obterEnesimoDiaUtil(ano, mes, n) {
  */
 function validarTokenGIS(token) {
   if (!token) return null;
+  token = String(token).trim();
   
   try {
-    var response = UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + token, {
+    // Debug: Logar o header do JWT para conferência de emissor
+    var parts = token.split('.');
+    if (parts.length === 3) {
+      var header = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString());
+      registrarLogSistema("GIS_DEBUG_HEADER", JSON.stringify(header));
+    }
+
+    var response = UrlFetchApp.fetch("https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" + encodeURIComponent(token), {
        muteHttpExceptions: true
     });
     
-    if (response.getResponseCode() === 200) {
+    var respCode = response.getResponseCode();
+    if (respCode === 200) {
        var payload = JSON.parse(response.getContentText());
-       // Checa se tem e-mail e se a verificação é truthy (true ou "true")
        if (payload && payload.email && (payload.email_verified === true || payload.email_verified === "true")) {
            return String(payload.email).toLowerCase().trim();
        }
+       registrarLogSistema("GIS_VERIFY_FAIL", "Email não verificado ou ausente no payload.");
+    } else {
+       registrarLogSistema("GIS_API_ERROR", "Código " + respCode + ": " + response.getContentText().substring(0, 100));
     }
   } catch (e) {
-    registrarLogSistema("GIS_VALIDATION_ERROR", e.message);
+    registrarLogSistema("GIS_VALIDATION_FATAL", e.message);
   }
   return null;
 }
@@ -127,13 +138,13 @@ function gerarProtocoloEntrega() {
 /**
  * Registra a entrega de documento na aba DB_PROTOCOLOS
  */
-function registrarProtocoloDB(clienteNome, protocolo, idTarefa, obrigacao, emailCli, linksDrive) {
+function registrarProtocoloDB(clienteNome, protocolo, idTarefa, obrigacao, emailCli, linksDrive, vctoLegal, acaoTarefa) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
     if (!wsProt) return;
 
-    // A = DATA | B = CLIENTE | C = PROTOCOLO | D = ID_TAREFA | E = OBRIGACAO | F = EMAIL | G = RESPONSAVEL | H = LINKS | I = STATUS_ENVIO | J = CONF_RECTO
+    // A = DATA | B = CLIENTE | C = PROTOCOLO | D = ID_TAREFA | E = OBRIGACAO | F = EMAIL | G = RESPONSAVEL | H = LINKS | I = STATUS_ENVIO | J = CONF_RECTO | K = VCTO_LEGAL | L = ACAO
     var hoje = new Date();
     var responsavel = Session.getActiveUser().getEmail() || "SISTEMA";
     
@@ -147,7 +158,9 @@ function registrarProtocoloDB(clienteNome, protocolo, idTarefa, obrigacao, email
       responsavel,             // G: RESPONSAVEL
       linksDrive || "-",       // H: LINK_ARQUIVO
       "ENVIADO",               // I: STATUS_ENVIO
-      ""                       // J: CONF_RECTO (Vazio inicialmente)
+      "",                      // J: CONF_RECTO (Vazio inicialmente)
+      vctoLegal || "",         // K: VCTO_LEGAL
+      acaoTarefa || ""         // L: ACAO_TAREFA
     ]);
     
     SpreadsheetApp.flush();
@@ -207,4 +220,18 @@ function obterCnpjCliente(clienteNome) {
     registrarLogSistema("GET_CNPJ_ERR", e.message);
   }
   return "";
+}
+
+/**
+ * Limpa o texto do OCR para comparação de dados sensíveis (CNPJ, valores).
+ * Trata erros comuns de reconhecimento (ex: O -> 0, I -> 1).
+ */
+function limparTextoOcrParaComparacao(texto) {
+  if (!texto) return "";
+  return String(texto).toUpperCase()
+    .replace(/O/g, "0")
+    .replace(/[IL|]/g, "1")
+    .replace(/S/g, "5")
+    .replace(/B/g, "8")
+    .replace(/\D/g, ""); // Remove tudo que não for dígito após a normalização
 }

@@ -85,6 +85,9 @@ function getDadosPortalWeb(token) {
        }
     }
 
+    // LOG DE DIAGNÓSTICO: Confirmar resolução do nível de acesso
+    registrarLogSistema("PORTAL_AUTH", "Email: " + emailFinal + " | Nível Resolvido: " + userLevel);
+
     // TRAVA DE SEGURANÇA: Se não estiver na lista, bloqueia tudo
     if (userLevel === null) {
        return { 
@@ -94,8 +97,8 @@ function getDadosPortalWeb(token) {
        };
     }
 
-    // 3. Fila de Prioridades Exclusiva do WebApp (Usa o email final)
-    var prioridades = getPrioridadesPortal(emailFinal);
+    // 3. Fila de Prioridades Exclusiva do WebApp (Usa o email final + nível autenticado)
+    var prioridades = getPrioridadesPortal(emailFinal, userLevel);
     
     // 4. Listas de Metadados para o Módulo de Comunicação
     var clientes = getListaClientes();
@@ -114,8 +117,7 @@ function getDadosPortalWeb(token) {
       },
       prioridades: prioridades,
       clientes: clientes,
-      tiposDemanda: tiposDemanda,
-      protocolos: getProtocolosPendentes()
+      tiposDemanda: tiposDemanda
     };
   } catch (err) {
     return { success: false, error: err.message };
@@ -127,47 +129,81 @@ function getDadosPortalWeb(token) {
  * Semelhante ao getPrioridades() legado, mas aceita injeção do E-mail Efetivo
  * para contornar o anonimato de execução do WebApp.
  */
-function getPrioridadesPortal(activeEmail) {
+function getPrioridadesPortal(activeEmail, userLevelOverride) {
   try {
     var userEmail = activeEmail.toLowerCase().trim();
-    // Busca do cache usando a infraestrutura legada
-    var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
-    var userLevel = "USER";
-    for (var i = 1; i < dataU.length; i++) {
-       if (String(dataU[i][0]).toLowerCase().trim() === userEmail) { 
-           userLevel = String(dataU[i][2]).toUpperCase().trim(); 
-           break; 
-       }
+    // Usa o nível já validado pelo caller (getDadosPortalWeb) para evitar inconsistência
+    var userLevel = userLevelOverride || "USER";
+    if (!userLevelOverride) {
+      var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+      for (var i = 1; i < dataU.length; i++) {
+         if (String(dataU[i][0]).toLowerCase().trim() === userEmail) { 
+             userLevel = String(dataU[i][2]).toUpperCase().trim(); 
+             break; 
+         }
+      }
     }
     
     var wsTasks = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_TAREFAS");
     if (!wsTasks) return [];
+    
+    // Mapa de email → nome para exibição do responsável
+    var dataUsuarios = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+    var mapNomes = {};
+    for (var u = 1; u < dataUsuarios.length; u++) {
+       var emailKey = String(dataUsuarios[u][0]).toLowerCase().trim();
+       var nomeVal = String(dataUsuarios[u][1]).trim();
+       if (emailKey) mapNomes[emailKey] = nomeVal;
+    }
+    
+    var dataProt = getSheetDataCached(CONFIG_SISTEMA.ABA_PROTOCOLOS, "DATA_PROTOCOLOS") || [];
+    var mapDocLinks = {};
+    for (var p = 1; p < dataProt.length; p++) {
+       if (dataProt[p][7] && String(dataProt[p][7]).indexOf("http") > -1) {
+          mapDocLinks[String(dataProt[p][3])] = String(dataProt[p][7]); 
+       }
+    }
+    
+    
     var dataT = wsTasks.getDataRange().getValues();
+    var dataRegras = getSheetDataCached("DB_REGRAS", "DATA_REGRAS");
+    var mapRegrasRevisao = {};
+    for (var r = 1; r < dataRegras.length; r++) {
+        var nRegra = norm(dataRegras[r][1]);
+        if (nRegra) mapRegrasRevisao[nRegra] = String(dataRegras[r][12] || "").toUpperCase().trim() === "S";
+    }
+
     var tasks = [];
     for (var j = 1; j < dataT.length; j++) {
-      var statusObj = String(dataT[j][5]).toUpperCase().trim();
-      if (statusObj !== "PENDENTE") continue;
-      
-      var resp = String(dataT[j][8]).toLowerCase().trim();
-      if (userLevel === "ADMIN" || resp === userEmail) {
-        var rawVcto = dataT[j][3];
-        var dateObj = (rawVcto instanceof Date) ? rawVcto : new Date(rawVcto);
-        
-        var mesAnoRaw = dataT[j][0];
-        var mesAnoStr = (mesAnoRaw instanceof Date) ? Utilities.formatDate(mesAnoRaw, "GMT-3", "MM/yyyy") : String(mesAnoRaw);
+       var statusObj = norm(dataT[j][5]);
+       if (statusObj !== "PENDENTE" && statusObj !== "REVISAO") continue;
+       
+       var resp = String(dataT[j][8]).toLowerCase().trim();
+       if (userLevel === "ADMIN" || resp === userEmail) {
+         var rawVcto = dataT[j][3];
+         var dateObj = (rawVcto instanceof Date) ? rawVcto : new Date(rawVcto);
+         
+         var mesAnoRaw = dataT[j][0];
+         var mesAnoStr = (mesAnoRaw instanceof Date) ? Utilities.formatDate(mesAnoRaw, "GMT-3", "MM/yyyy") : String(mesAnoRaw);
+         var obrigNome = dataT[j][2];
+         var exigeRevisao = mapRegrasRevisao[norm(obrigNome)] || false;
 
-        tasks.push({ 
-           id: dataT[j][9], 
-           cliente: String(dataT[j][1]), 
-           obrigacao: String(dataT[j][2]), 
-           vencimentoSort: dateObj.getTime(), 
-           vencimentoStr: Utilities.formatDate(dateObj, "GMT-3", "dd/MM/yyyy"), 
-           mesAno: mesAnoStr,
-           depto: String(dataT[j][4]), 
-           acao: String(dataT[j][7]).toUpperCase().trim(), 
-           nivel: dataT[j][10] || "1" 
-        });
-      }
+         tasks.push({ 
+            id: dataT[j][9], 
+            cliente: String(dataT[j][1]), 
+            obrigacao: String(obrigNome), 
+            vencimentoSort: dateObj.getTime(), 
+            vencimentoStr: Utilities.formatDate(dateObj, "GMT-3", "dd/MM/yyyy"), 
+            mesAno: mesAnoStr,
+            depto: String(dataT[j][4]), 
+            status: String(dataT[j][5]).toUpperCase().trim(),
+            docLinks: mapDocLinks[String(dataT[j][9])] || "",
+            acao: String(dataT[j][7]).toUpperCase().trim(), 
+            nivel: dataT[j][10] || "1",
+            responsavel: mapNomes[resp] || resp || "Não Atribuído",
+            exigeRevisao: exigeRevisao
+         });
+       }
     }
     
     tasks.sort((a, b) => (a.nivel !== b.nivel) ? b.nivel - a.nivel : a.vencimentoSort - b.vencimentoSort);
@@ -181,11 +217,24 @@ function getPrioridadesPortal(activeEmail) {
  * ⚡ RISK FETCH (Portal Web)
  * Busca tarefas vencidas para montar o painel de Compliance.
  */
-function getDadosRiscoWeb() {
+function getDadosRiscoWeb(token) {
   try {
-    // ⚡ CACHE: Tenta retornar resultado cacheado
-    var cached = getViewCached(CACHE_CONFIG.KEYS.RISCO_RESULT);
+    var emailFinal = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!emailFinal) return { success: false, error: "AUTENTICACAO_REQUERIDA" };
+
+    // ⚡ CACHE: Tenta retornar resultado cacheado específico por usuário
+    var cached = getViewCached(CACHE_CONFIG.KEYS.RISCO_RESULT + "_" + emailFinal.replace(/[^a-zA-Z0-9]/g, ""));
     if (cached) return cached;
+
+    // 2. Calcula o UserLevel Real
+    var userLevel = "USER";
+    var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+    for (var u = 1; u < dataU.length; u++) {
+       if (String(dataU[u][0]).toLowerCase().trim() === emailFinal) { 
+           userLevel = String(dataU[u][2]).toUpperCase().trim(); 
+           break; 
+       }
+    }
 
     var wsTasks = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_TAREFAS");
     if (!wsTasks) return { success: false, error: "Tabela não encontrada" };
@@ -206,7 +255,12 @@ function getDadosRiscoWeb() {
     }
 
     for (var i = 1; i < dataT.length; i++) {
-       if (String(dataT[i][5]).toUpperCase() !== "PENDENTE") continue;
+       if (norm(dataT[i][5]) !== "PENDENTE") continue;
+       
+       var respEmail = String(dataT[i][8]).toLowerCase().trim();
+       // FILTRO DE SEGURANÇA: Usuários comuns só vêem seu próprio risco
+       if (userLevel !== "ADMIN" && respEmail !== emailFinal) continue;
+
        var vctoRaw = dataT[i][3];
        if (!vctoRaw) continue;
        
@@ -218,12 +272,12 @@ function getDadosRiscoWeb() {
           var diffTime = Math.abs(hoje - dataVcto);
           var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           
-          var respEmail = String(dataT[i][8]).toLowerCase().trim();
           var respDisplay = mapUsuarios[respEmail] || dataT[i][8] || "Não Atribuído";
           
           riskList.push({
              cliente: String(dataT[i][1]),
              obrigacao: String(dataT[i][2]),
+             depto: String(dataT[i][4]),
              vencimento: Utilities.formatDate(dataVcto, "GMT-3", "dd/MM/yyyy"),
              atraso: diffDays,
              responsavel: respDisplay
@@ -234,8 +288,8 @@ function getDadosRiscoWeb() {
     riskList.sort((a,b) => b.atraso - a.atraso);
     var resultado = { success: true, data: riskList };
     
-    // ⚡ CACHE: Grava resultado processado
-    setViewCache(CACHE_CONFIG.KEYS.RISCO_RESULT, resultado);
+    // ⚡ CACHE: Grava resultado processado com chave de usuário
+    setViewCache(CACHE_CONFIG.KEYS.RISCO_RESULT + "_" + emailFinal.replace(/[^a-zA-Z0-9]/g, ""), resultado);
     
     return resultado;
   } catch (err) {

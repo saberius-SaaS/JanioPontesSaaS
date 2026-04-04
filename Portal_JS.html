@@ -75,6 +75,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
 });
 
 let tarefasGlobaisBase = []; // Cache das tarefas para busca Local
+let historicoGlobalBase = []; // Cache do arquivo morto
+window.userDataGlobal = null; // Armazena nível e e-mail do usuário logado
 window.currentView = 'dashboard'; 
 
 // ═══════════════ UTILITÁRIOS PREMIUM ═══════════════
@@ -171,8 +173,11 @@ function carregarDadosBase(isAutoSync) {
           }
           
           if (txtSync) txtSync.textContent = agora;
+          window.userDataGlobal = res; // Salva para uso em modais e filtros
+          
           const userEmailStr = String(res.userEmail).toLowerCase();
           document.getElementById('currentUserEmail').textContent = userEmailStr;
+          document.getElementById('currentUserLevel').textContent = res.userLevel;
           setAvatarInitials(userEmailStr);
           
           // 1. Injetar numéricos de Dashboard
@@ -188,11 +193,28 @@ function carregarDadosBase(isAutoSync) {
           renderizarBarrasPerformance('dash-deptos-box', res.dash.departamentos, 'indigo');
           renderizarBarrasPerformance('dash-users-box', res.dash.usuarios, 'emerald');
 
-          // 2. Injetar layout HTML puro para a Fila de Prioridades (Todas sem limitador 7)
+          // 2. Injetar layout HTML puro para a Fila de Prioridades
           tarefasGlobaisBase = res.prioridades;
           renderizarTarefas(tarefasGlobaisBase);
           
-          // 3. Popular Metabase CRM (Só se NÃO for auto-sync para não quebrar preenchimento)
+          // 2. Contador de Revisões (Badge)
+          const revCount = tarefasGlobaisBase.filter(t => (t.status || "").toUpperCase() === "REVISAO").length;
+          const badgeRev = document.getElementById('badgeRevisoesCount');
+          if (badgeRev) {
+             if (revCount > 0) {
+                badgeRev.textContent = revCount;
+                badgeRev.classList.remove('hidden');
+             } else {
+                badgeRev.classList.add('hidden');
+             }
+          }
+          
+          // 2.2 Injetar Revisões se for Admin
+          if (res.userLevel === "ADMIN") {
+             renderizarRevisoes(tarefasGlobaisBase);
+          }
+          
+          // 3. Popular Metabase CRM
           if (isAutoSync !== true) {
               const cliDemanda = document.getElementById('demandaClienteWeb');
               const cliSol = document.getElementById('solicitarClienteWeb');
@@ -212,27 +234,19 @@ function carregarDadosBase(isAutoSync) {
               }
           }
           
-          // 5. Injetar Protocolos
-          if (res.protocolos) {
-              const badge = document.getElementById('badgeProtocolosCount');
-              if (badge) {
-                  if (res.protocolos.length > 0) {
-                      badge.textContent = res.protocolos.length;
-                      badge.classList.remove('hidden');
-                  } else {
-                      badge.classList.add('hidden');
-                  }
-              }
-              // Se estiver na vista de protocolos, renderiza agora (Sincronização Ativa)
-              if (window.currentView === 'protocolos') {
-                  renderizarProtocolosInfo(res.protocolos);
-              }
+          // 5. Protocolos agora usam Lazy Loading (carregados sob demanda na aba)
+          // NOVO: Forçamos o refresh do Lazy Load em background sempre que recarregarDados ocorrer.
+          if (typeof carregarProtocolosServer === "function") {
+             carregarProtocolosServer(true, true);
           }
-
+          
           // 6. Exposição de Super Privilégios (RBAC)
           if (res.userLevel === "ADMIN") {
              const btnAdv = document.getElementById('navAdminWeb');
              if(btnAdv && btnAdv.classList.contains('hidden')) btnAdv.classList.remove('hidden');
+             
+             const btnRev = document.getElementById('navRevisoes');
+             if(btnRev && btnRev.classList.contains('hidden')) btnRev.classList.remove('hidden');
           }
           
           // Oculta a tela de Login caso seja o primeiro acesso bem sucedido
@@ -301,9 +315,17 @@ function renderizarTarefas(tarefas) {
     let html = '<div class="space-y-3">';
     tarefas.forEach(t => {
         const textoAcao = t.acao || "PROCESSAR";
+        const status = (t.status || "").toUpperCase();
+        const ehRevisao = status === "REVISAO";
         const ehEnvio = textoAcao.toUpperCase().indexOf('ENVIAR') > -1;
-        const colorClass = ehEnvio ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700';
-        const borderClass = ehEnvio ? 'border-l-emerald-500' : 'border-l-slate-400 hover:border-l-indigo-500';
+        
+        let colorClass = ehEnvio ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700';
+        let borderClass = ehEnvio ? 'border-l-emerald-500' : 'border-l-slate-400 hover:border-l-indigo-500';
+        
+        if (ehRevisao) {
+            colorClass = 'bg-purple-100 text-purple-700';
+            borderClass = 'border-l-purple-500 bg-purple-50/30';
+        }
         
         // Escape characters para previnir sintaxe error
         const idSafe = String(t.id).replace(/'/g, "\\'");
@@ -311,11 +333,58 @@ function renderizarTarefas(tarefas) {
         const obriSafe = String(t.obrigacao).replace(/'/g, "\\'");
         
          html += `
-          <div onclick="abrirModalTarefa('${idSafe}', '${clienteSafe}', '${obriSafe}', '${t.vencimentoStr}', '${t.acao}')" class="task-card flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group cursor-pointer border-l-4 ${borderClass}">
+          <div onclick="abrirModalTarefa('${idSafe}', '${clienteSafe}', '${obriSafe}', '${t.vencimentoStr}', '${t.acao}', '${status}', '${t.docLinks || ''}', ${t.exigeRevisao || false})" class="task-card flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group cursor-pointer border-l-4 ${borderClass}">
              <div>
                 <div class="flex items-center gap-2 mb-0.5">
                    <span class="bg-slate-800 text-slate-100 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-widest shadow-sm">${t.mesAno}</span>
+                   ${ehRevisao ? '<span class="bg-purple-600 text-white px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest shadow-sm animate-pulse">EM REVISÃO</span>' : ''}
                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nível ${t.nivel} | Ref: ${t.id}</p>
+                </div>
+                <p class="text-xs font-bold text-jp-navy uppercase tracking-wider">${t.cliente}</p>
+                <div class="flex items-center gap-2">
+                   <p class="text-sm text-slate-600 font-medium">${t.obrigacao}</p>
+                   <span class="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 uppercase">${t.depto}</span>
+                </div>
+                ${t.responsavel ? `<p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1"><i class="fa-solid fa-user-tag mr-1 text-slate-300"></i>${t.responsavel}</p>` : ''}
+             </div>
+             <div class="text-right flex flex-col items-end">
+                <p class="text-[11px] font-bold ${ehRevisao ? 'text-purple-600' : 'text-red-500'} mb-2"><i class="fa-regular fa-clock mr-1"></i> ${t.vencimentoStr}</p>
+                <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${colorClass}">${ehRevisao ? 'VALIDAR ENTREGA' : textoAcao}</span>
+             </div>
+          </div>
+        `;
+    });
+    html += '</div>';
+    
+    box.innerHTML = html;
+}
+
+/**
+ * Filtra e renderiza apenas tarefas com status REVISÃO para o Admin
+ */
+function renderizarRevisoes(tarefas) {
+    const box = document.getElementById('listaRevisoesDinamica');
+    if (!box) return;
+    
+    const revisoes = tarefas.filter(t => (t.status || "").toUpperCase() === "REVISAO");
+    
+    if (revisoes.length === 0) {
+        box.innerHTML = '<div class="flex-1 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-stamp text-5xl mb-4 opacity-50"></i><p>Nenhuma tarefa aguardando validação.</p></div>';
+        return;
+    }
+    
+    let html = '<div class="space-y-3">';
+    revisoes.forEach(t => {
+        const idSafe = String(t.id).replace(/'/g, "\\'");
+        const clienteSafe = String(t.cliente).replace(/'/g, "\\'");
+        const obriSafe = String(t.obrigacao).replace(/'/g, "\\'");
+        
+        html += `
+          <div onclick="abrirModalTarefa('${idSafe}', '${clienteSafe}', '${obriSafe}', '${t.vencimentoStr}', '${t.acao}', 'REVISAO', '${t.docLinks || ''}')" class="task-card flex items-center justify-between p-4 bg-white border border-purple-100 rounded-xl shadow-sm hover:shadow transition group cursor-pointer border-l-4 border-l-purple-500 bg-purple-50/20">
+             <div>
+                <div class="flex items-center gap-2 mb-0.5">
+                   <span class="bg-purple-600 text-white px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest shadow-sm animate-pulse">REVISÃO PENDENTE</span>
+                   <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ref: ${t.id}</p>
                 </div>
                 <p class="text-xs font-bold text-jp-navy uppercase tracking-wider">${t.cliente}</p>
                 <div class="flex items-center gap-2">
@@ -324,14 +393,13 @@ function renderizarTarefas(tarefas) {
                 </div>
              </div>
              <div class="text-right flex flex-col items-end">
-                <p class="text-[11px] font-bold text-red-500 mb-2"><i class="fa-regular fa-clock mr-1 text-red-400"></i> ${t.vencimentoStr}</p>
-                <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${colorClass}">${textoAcao}</span>
+                <p class="text-[11px] font-bold text-purple-600 mb-2"><i class="fa-regular fa-clock mr-1"></i> ${t.vencimentoStr}</p>
+                <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 shadow-sm">VALIDAR AGORA</span>
              </div>
           </div>
         `;
     });
     html += '</div>';
-    
     box.innerHTML = html;
 }
 
@@ -352,32 +420,53 @@ let tarefaEmFoco = null;
 let arquivosStagedWeb = [];
 let precisaUploadWeb = false;
 
-function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw) {
-    tarefaEmFoco = { id, cliente, obrigacao, vencimento, acao: acaoRaw };
+function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw, status, docLinks, exigeRevisao) {
+    tarefaEmFoco = { id, cliente, obrigacao, vencimento, acao: acaoRaw, status: status, exigeRevisao: exigeRevisao };
     
     document.getElementById('modalCliente').textContent = cliente;
     document.getElementById('modalObrigacao').textContent = obrigacao;
     document.getElementById('modalVcto').textContent = vencimento;
     
     const acao = String(acaoRaw || "").toUpperCase().trim();
+    const ehRevisao = (status || "").toUpperCase() === "REVISAO";
     const ehEnvio = acao.indexOf("ENVIAR") > -1;
     const ehAuditoria = acao.indexOf("AUDITAR") > -1;
     const ehComunicar = acao.indexOf("COMUNICAR") > -1;
+    const isAdmin = window.userDataGlobal && (["ADMIN", "MASTER", "CONSULTOR"].indexOf(window.userDataGlobal.userLevel) > -1);
     
     let colorClass = "text-slate-600 border-slate-200 bg-slate-100";
     if(ehEnvio) colorClass = "text-emerald-700 border-emerald-200 bg-emerald-50";
     if(ehAuditoria) colorClass = "text-amber-700 border-amber-200 bg-amber-50";
     if(ehComunicar) colorClass = "text-white border-indigo-500 bg-indigo-600 shadow-md";
+    if(ehRevisao) colorClass = "text-purple-700 border-purple-200 bg-purple-50 shadow-sm";
     
     const badge = document.getElementById('modalAcaoBadge');
     badge.className = `inline-flex text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded border ${colorClass}`;
-    badge.textContent = `AÇÃO EXIGIDA: ${acao}`;
+    badge.textContent = ehRevisao ? `AGUARDANDO VALIDAÇÃO SÊNIOR` : `AÇÃO EXIGIDA: ${acao}`;
     
-    precisaUploadWeb = ehEnvio || ehAuditoria;
+    const linksContainer = document.getElementById('areaDocumentosRevisaoWeb');
+    if (linksContainer) {
+       linksContainer.innerHTML = '';
+       if (ehRevisao && docLinks) {
+          const links = docLinks.split('|');
+          let htmlLinks = '<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Documentos em Análise</p><div class="flex flex-col gap-2">';
+          links.forEach((l, i) => {
+             const url = l.trim();
+             if (url) htmlLinks += `<a href="${url}" target="_blank" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 px-3 py-2 rounded-lg flex items-center shadow-sm w-full transition"><i class="fa-solid fa-file-contract mr-2"></i> ${links.length === 1 ? 'Acessar Documento Único' : 'Acessar Documento ' + (i+1)}</a>`;
+          });
+          htmlLinks += '</div>';
+          linksContainer.innerHTML = htmlLinks;
+          linksContainer.style.display = 'block';
+       } else {
+          linksContainer.style.display = 'none';
+       }
+    }
+    
+    precisaUploadWeb = (ehEnvio || ehAuditoria || exigeRevisao) && !ehRevisao;
     document.getElementById('areaUpload').style.display = precisaUploadWeb ? 'block' : 'none';
     
     const areaCom = document.getElementById('areaComunicacaoWeb');
-    if (areaCom) areaCom.style.display = ehComunicar ? 'block' : 'none';
+    if (areaCom) areaCom.style.display = (ehComunicar && !ehRevisao) ? 'block' : 'none';
     
     const txtCom = document.getElementById('textoComunicarWeb');
     if (txtCom) txtCom.value = '';
@@ -389,11 +478,28 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw) {
     document.getElementById('modalFeedback').className = "hidden";
     
     const btnFin = document.getElementById('btnFinalizarWeb');
-    btnFin.disabled = false;
-    btnFin.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento`;
-    btnFin.className = "px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center";
+    
+    if (ehRevisao) {
+       if (isAdmin) {
+          btnFin.disabled = false;
+          btnFin.innerHTML = `<i class="fa-solid fa-stamp mr-2"></i> Validar e Encerrar Agora`;
+          btnFin.className = "px-6 py-2 text-sm font-black bg-purple-600 hover:bg-purple-700 text-white rounded shadow-lg transition flex items-center uppercase tracking-widest";
+          btnFin.onclick = aprovarTarefaWeb;
+       } else {
+          btnFin.disabled = true;
+          btnFin.innerHTML = `<i class="fa-solid fa-hourglass-half mr-2"></i> Em Revisão pelo Gerente`;
+          btnFin.className = "px-6 py-2 text-sm font-bold bg-slate-200 text-slate-400 rounded cursor-not-allowed flex items-center";
+          btnFin.onclick = null;
+       }
+    } else {
+       btnFin.disabled = false;
+       btnFin.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento`;
+       btnFin.className = "px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center";
+       btnFin.onclick = finalizarProcessoWeb;
+    }
 
     // Show modal fade in
+
     const modal = document.getElementById('modalTarefa');
     const content = document.getElementById('modalTarefaContent');
     modal.classList.remove('hidden');
@@ -402,6 +508,61 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw) {
        modal.classList.remove('opacity-0'); 
        content.classList.remove('scale-95');
     }, 10);
+}
+
+/**
+ * Acionada pelo Administrador para aprovar uma tarefa em REVISÃO.
+ */
+async function aprovarTarefaWeb() {
+    if (!tarefaEmFoco || !tarefaEmFoco.id) return;
+    
+    const feedback = document.getElementById('modalFeedback');
+    const btnFin = document.getElementById('btnFinalizarWeb');
+    
+    btnFin.disabled = true;
+    btnFin.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Validando...`;
+    
+    feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-indigo-50 border-indigo-200 text-indigo-700 block";
+    feedback.innerHTML = `<i class="fa-solid fa-stamp mr-2 text-indigo-500"></i> Comunicando aprovação ao servidor...`;
+    
+    google.script.run
+      .withFailureHandler(err => {
+         feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-red-50 border-red-200 text-red-700 block";
+         feedback.textContent = "Erro na Aprovação: " + err.message;
+         btnFin.disabled = false;
+         btnFin.innerHTML = `<i class="fa-solid fa-stamp mr-2"></i> Tentar Validar Novamente`;
+      })
+      .withSuccessHandler(async urlWebApp => {
+         try {
+           const payload = {
+             action: "aprovarTarefa",
+             token: window.GIS_TOKEN,
+             taskId: tarefaEmFoco.id
+           };
+           
+           const resposta = await fetch(urlWebApp, {
+             method: 'POST',
+             body: JSON.stringify(payload),
+             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+           });
+           
+           const result = await resposta.json();
+           if (result.success) {
+             feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-emerald-50 border-emerald-200 text-emerald-700 block";
+             feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-2 text-emerald-500"></i> Sucesso! Tarefa aprovada e movida para o histórico.`;
+             
+             carregarDadosBase(); // Refresh data quietly
+             setTimeout(() => { fecharModalTarefa(); }, 2000);
+           } else {
+             throw new Error(result.message);
+           }
+         } catch (errFetch) {
+            feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-red-50 border-red-200 text-red-700 block";
+            feedback.innerHTML = `<b>Erro:</b> ${errFetch.message}`;
+            btnFin.disabled = false;
+            btnFin.innerHTML = `<i class="fa-solid fa-rotate-right mr-2"></i> Tentar Novamente`;
+         }
+      }).getUrlParaFetch();
 }
 
 function fecharModalTarefa() {
@@ -651,6 +812,7 @@ function navigate(pageId) {
         'risco': 'Painel de Risco (Compliance)',
         'historico': 'Arquivo Morto e Auditoria',
         'protocolos': 'Protocolos Pendentes de Leitura',
+        'revisoes': 'Validação Sênior (Fila de Revisão)',
         'comunicacao': 'Comunicação Oficial e Relacionamento Interno',
         'admin': 'Robótica e Administração Geral'
     };
@@ -659,12 +821,14 @@ function navigate(pageId) {
     // Gatilho Lazy Load
     if (pageId === 'risco' && !carregouRisco) { carregarRiscoServer(); }
     if (pageId === 'historico' && !carregouHistorico) { carregarHistoricoServer(); }
+    if (pageId === 'protocolos' && !carregouProtocolos) { carregarProtocolosServer(); }
+    if (pageId === 'admin' && !carregouLogs) { carregarLogsServer(); }
 }
 
 // ================= LÓGICA DE DADOS SECUNDÁRIOS (LAZY LOADING) =================
 let carregouRisco = false;
 let carregouHistorico = false;
-let historicoGlobalBase = [];
+let carregouProtocolos = false;
 
 function carregarRiscoServer() {
    const container = document.getElementById('containerRisco');
@@ -676,7 +840,7 @@ function carregarRiscoServer() {
         if(!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">${res.error}</div>`; return; }
         carregouRisco = true;
         renderizarRisco(res.data);
-     }).getDadosRiscoWeb();
+     }).getDadosRiscoWeb(window.GIS_TOKEN);
 }
 
 function renderizarRisco(lista) {
@@ -692,6 +856,7 @@ function renderizarRisco(lista) {
          <tr>
            <th class="px-5 py-3 font-bold border-b border-slate-200">Cliente</th>
            <th class="px-5 py-3 font-bold border-b border-slate-200">Obrigação</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Departamento</th>
            <th class="px-5 py-3 font-bold border-b border-slate-200">Vencimento Original</th>
            <th class="px-5 py-3 font-bold border-b border-slate-200 text-center">Dias de Atraso</th>
            <th class="px-5 py-3 font-bold border-b border-slate-200 text-right">Owner Assigned</th>
@@ -707,6 +872,7 @@ function renderizarRisco(lista) {
          <tr class="hover:bg-red-50/30 transition bg-white">
            <td class="px-5 py-3.5 font-bold text-jp-navy text-[11px] uppercase tracking-wider">${item.cliente}</td>
            <td class="px-5 py-3.5 text-slate-600 text-[13px] font-medium">${item.obrigacao}</td>
+           <td class="px-5 py-3.5 text-[9px] font-bold text-indigo-500 uppercase">${item.depto || 'GENÉRICO'}</td>
            <td class="px-5 py-3.5 text-slate-500 text-[11px] font-bold">${item.vencimento}</td>
            <td class="px-5 py-3.5 text-center"><span class="px-2.5 py-1 text-[10px] uppercase font-bold rounded border ${badgeCor}">${item.atraso} Dias</span></td>
            <td class="px-5 py-3.5 text-[9px] uppercase font-bold text-slate-400 text-right bg-slate-50 border-l border-slate-100">${item.responsavel}</td>
@@ -784,7 +950,36 @@ function filtrarHistoricoWeb() {
    renderizarHistorico(fList);
 }
 
-// ================= PROTOCOLOS NÃO LIDOS =================
+// ================= PROTOCOLOS NÃO LIDOS (LAZY LOADING) =================
+
+function carregarProtocolosServer(forcarRefresh, isQuiet) {
+   if (forcarRefresh) carregouProtocolos = false;
+   
+   const container = document.getElementById('containerProtocolos');
+   if (!isQuiet && container) {
+      container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-file-signature text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Consolidando protocolos pendentes...</p></div>';
+   }
+
+   google.script.run
+     .withFailureHandler(err => { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">Erro: ${err.message}</div>`; })
+     .withSuccessHandler(res => {
+        if (!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">${res.error}</div>`; return; }
+        carregouProtocolos = true;
+        
+        // Atualiza o badge na sidebar
+        const badge = document.getElementById('badgeProtocolosCount');
+        if (badge) {
+           if (res.data && res.data.length > 0) {
+              badge.textContent = res.data.length;
+              badge.classList.remove('hidden');
+           } else {
+              badge.classList.add('hidden');
+           }
+        }
+        
+        renderizarProtocolosInfo(res.data);
+     }).getDadosProtocolosWeb(window.GIS_TOKEN);
+}
 
 function renderizarProtocolosInfo(lista) {
    const container = document.getElementById('containerProtocolos');
@@ -938,8 +1133,80 @@ function acionarRoboAdmin(nomeFuncao, idBotao) {
         if (nomeFuncao === 'comandoAtualizarRisco' || nomeFuncao === 'comandoArquivarTarefas') {
             carregouRisco = false; // Destroy Cache view
             carregouHistorico = false;
+            carregouProtocolos = false;
         }
      })
      [nomeFuncao](); // Invoca qualquer função remota global dinamicamente via Prototype
+}
+
+// ================= LOGS DO SISTEMA (ADMIN) =================
+let carregouLogs = false;
+let logsGlobalBase = [];
+
+const _debouncedLogs = debounce(() => filtrarLogsWeb(), 300);
+function debounceLogs() { _debouncedLogs(); }
+
+function carregarLogsServer(forcarRefresh) {
+   if (forcarRefresh) carregouLogs = false;
+
+   const container = document.getElementById('containerLogs');
+   container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-scroll text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Carregando registros de atividade...</p></div>';
+
+   google.script.run
+     .withFailureHandler(err => { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">Erro: ${err.message}</div>`; })
+     .withSuccessHandler(res => {
+        if (!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">${res.error}</div>`; return; }
+        carregouLogs = true;
+        logsGlobalBase = res.data;
+        renderizarLogs(logsGlobalBase);
+     }).getDadosLogsWeb(window.GIS_TOKEN);
+}
+
+function renderizarLogs(lista) {
+   const container = document.getElementById('containerLogs');
+   if (!lista || lista.length === 0) {
+      container.innerHTML = '<div class="p-10 h-full flex flex-col justify-center items-center text-slate-400"><i class="fa-solid fa-wind text-5xl mb-4 opacity-30"></i><p class="text-xs uppercase font-bold tracking-widest">Nenhum registro encontrado.</p></div>';
+      return;
+   }
+
+   let table = `
+     <table class="w-full text-left border-collapse">
+       <thead class="bg-slate-100 text-[9px] uppercase text-slate-500 tracking-wider sticky top-0 shadow-sm z-10">
+         <tr>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Data/Hora</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Usuário</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Ação</th>
+           <th class="px-5 py-3 font-bold border-b border-slate-200">Detalhe</th>
+         </tr>
+       </thead>
+       <tbody class="divide-y divide-slate-100">
+   `;
+
+   lista.forEach(item => {
+      table += `
+         <tr class="hover:bg-slate-50 transition bg-white">
+           <td class="px-5 py-3 text-slate-500 text-[11px] font-bold whitespace-nowrap"><i class="fa-regular fa-clock mr-1 text-slate-300"></i> ${item.data}</td>
+           <td class="px-5 py-3 text-[10px] font-bold text-jp-navy uppercase tracking-wider">${item.usuario}</td>
+           <td class="px-5 py-3"><span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">${item.acao}</span></td>
+           <td class="px-5 py-3 text-slate-600 text-xs font-medium max-w-md truncate" title="${item.detalhe}">${item.detalhe}</td>
+         </tr>
+      `;
+   });
+   table += `</tbody></table>`;
+   container.innerHTML = table;
+}
+
+function filtrarLogsWeb() {
+   if (!carregouLogs) return;
+   const q = document.getElementById('inputBuscaLogs').value.toLowerCase().trim();
+   if (!q) { renderizarLogs(logsGlobalBase); return; }
+
+   const fList = logsGlobalBase.filter(i =>
+      i.usuario.toLowerCase().includes(q) ||
+      i.acao.toLowerCase().includes(q) ||
+      i.detalhe.toLowerCase().includes(q) ||
+      i.data.toLowerCase().includes(q)
+   );
+   renderizarLogs(fList);
 }
 </script>

@@ -48,8 +48,7 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
           htmlLinks += `
             <div style="margin-bottom:12px;">
               <a href="${urlTrack}" target="_blank" style="display:flex; align-items:center; background-color:#ffffff; color:#1C3051; border:1px solid #e2e8f0; padding:18px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:700; width:100%; box-sizing:border-box;">
-                <span style="margin-right:12px; font-size:18px;">📄</span>
-                <div style="flex-grow:1;">${nomeExibicao}</div>
+                <div style="flex-grow:1;">[DOCUMENTO] ${nomeExibicao}</div>
               </a>
             </div>
           `;
@@ -75,7 +74,7 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
               
               <div style="margin-top:20px; border-top:1px solid #f1f5f9; padding-top:30px;">
                 <p style="color:#94a3b8; font-size:11px; margin-bottom:15px; font-weight:600;">Acesse seu repositório digital para ver este e outros documentos:</p>
-                <a href="${urlTrackRepo}" target="_blank" style="display:inline-block; background-color:transparent; border:2px solid #1C3051; color:#1C3051; padding:14px; border-radius:12px; text-decoration:none; font-size:11px; font-weight:800; text-transform:uppercase; width:100%; box-sizing:border-box;">📂 REPOSITÓRIO DE ARQUIVOS</a>
+                <a href="${urlTrackRepo}" target="_blank" style="display:inline-block; background-color:transparent; border:2px solid #1C3051; color:#1C3051; padding:14px; border-radius:12px; text-decoration:none; font-size:11px; font-weight:800; text-transform:uppercase; width:100%; box-sizing:border-box;">[ACESSAR] REPOSITÓRIO DE ARQUIVOS</a>
               </div>
           </td></tr>
 
@@ -87,9 +86,12 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
       </div>
     `;
 
-    MailApp.sendEmail({ to: emailCli, subject: "📄 DOCUMENTO DISPONÍVEL: " + obrigacao + " [" + protocolo + "]", htmlBody: html });
+    GmailApp.sendEmail(emailCli, "[DOCUMENTO DISPONÍVEL] " + obrigacao + " [" + protocolo + "]", "", { htmlBody: html });
     registrarLogSistema("EMAIL_SENT", "Prot: " + protocolo);
-  } catch (e) { registrarLogSistema("EMAIL_SEND_FAIL", e.message); }
+  } catch (e) {
+    registrarLogSistema("EMAIL_SEND_FAIL", e.message);
+    throw new Error("Falha no disparo do E-mail (GmailApp): " + e.message);
+  }
 }
 
 /**
@@ -137,9 +139,12 @@ function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitaca
         </table>
       </div>
     `;
-    MailApp.sendEmail({ to: emailCli, subject: "⚠️ SOLICITAÇÃO DE DOCUMENTO: " + cliente, htmlBody: html });
+    GmailApp.sendEmail(emailCli, "[SOLICITAÇÃO DE DOCUMENTO] " + cliente, "", { htmlBody: html });
     registrarLogSistema("SOLICITATION_EMAIL_SENT", "Cliente: " + cliente);
-  } catch (e) { registrarLogSistema("EMAIL_REQ_FAIL", e.message); }
+  } catch (e) {
+    registrarLogSistema("EMAIL_REQ_FAIL", e.message);
+    throw new Error("Falha no envio de Solicitação: " + e.message);
+  }
 }
 
 /**
@@ -191,7 +196,7 @@ function enviarLembreteCobranca(cliente, emailCli, solicitacao, idSolicitacao, q
       </div>
     `;
 
-    MailApp.sendEmail({ to: emailCli, subject: "🔴 PENDÊNCIA: " + cliente + " (Aviso " + (qtdAvisos + 1) + ")", htmlBody: html });
+    GmailApp.sendEmail(emailCli, "[PENDÊNCIA IMPORTANTE] " + cliente + " (Aviso " + (qtdAvisos + 1) + ")", "", { htmlBody: html });
     registrarLogSistema("COBRANCA_AUTO_SENT", "Cliente: " + cliente + " | Aviso #" + (qtdAvisos + 1));
   } catch (e) { registrarLogSistema("EMAIL_COB_FAIL", e.message); }
 }
@@ -220,6 +225,7 @@ function registrarInteracaoEmail(protocolo, acao, rowIdx) {
         var dataHoraFormatada = Utilities.formatDate(agora, "GMT-3", "dd/MM/yyyy HH:mm:ss");
         wsProt.getRange(targetRow, 9).setValue(CONFIG_SISTEMA.STATUS.ENTREGUE);
         wsProt.getRange(targetRow, 10).setValue(dataHoraFormatada);
+        invalidarCacheSistema(); 
       }
     }
     SpreadsheetApp.flush();
@@ -229,7 +235,7 @@ function registrarInteracaoEmail(protocolo, acao, rowIdx) {
 function notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, links) {
   try {
     var listItems = links.map(function(l) {
-       return '<li style="margin-bottom:8px;"><a href="' + l + '" target="_blank" style="color:#1C3051; font-weight:700; text-decoration:none;">📄 Visualizar Arquivo</a></li>';
+       return '<li style="margin-bottom:8px;"><a href="' + l + '" target="_blank" style="color:#1C3051; font-weight:700; text-decoration:none;">[Visualizar Arquivo]</a></li>';
     }).join('');
     var html = `
       <div style="margin:0; padding:0; background-color:#f8fafc; font-family:sans-serif; padding:40px 20px;">
@@ -256,7 +262,7 @@ function notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, links) 
         </table>
       </div>
     `;
-    MailApp.sendEmail({ to: responsavel, subject: "✅ ARQUIVOS RECEBIDOS: " + cliente, htmlBody: html });
+    GmailApp.sendEmail(responsavel, "[ARQUIVOS RECEBIDOS] " + cliente, "", { htmlBody: html });
   } catch (e) { registrarLogSistema("NOTIF_RESP_FAIL", e.message); }
 }
 
@@ -340,7 +346,7 @@ function enviarRelatorioAnaliseIA(emailResponsavel, nomeResponsavel, cliente, ob
 
               <!-- Footer Interno (CTA ou Contato) -->
               <div style="margin-top:50px; background-color:#f8fafc; border-radius:12px; padding:25px; text-align:center; border: 1px dashed #cbd5e1;">
-                <p style="color:#475569; font-size:14px; margin:0; line-height:1.5;">✨ Dúvidas sobre o rumo das métricas?<br><strong style="color:#1C3051; font-weight:700;">Agende uma conversa com seu consultor estratégico.</strong></p>
+                <p style="color:#475569; font-size:14px; margin:0; line-height:1.5;">Dúvidas sobre o rumo das métricas?<br><strong style="color:#1C3051; font-weight:700;">Agende uma conversa com seu consultor estratégico.</strong></p>
               </div>
             </td>
           </tr>
@@ -356,11 +362,7 @@ function enviarRelatorioAnaliseIA(emailResponsavel, nomeResponsavel, cliente, ob
       </div>
     `;
 
-    MailApp.sendEmail({
-      to: emailResponsavel,
-      subject: "📊 DIAGNÓSTICO ESTRATÉGICO: " + cliente + " (" + obrigacao + ")",
-      htmlBody: html
-    });
+    GmailApp.sendEmail(emailResponsavel, "[DIAGNÓSTICO ESTRATÉGICO] " + cliente + " (" + obrigacao + ")", "", { htmlBody: html });
     
     registrarLogSistema("EMAIL_AI_REPORT_SENT", "Cliente: " + cliente);
   } catch (e) {
@@ -405,11 +407,7 @@ function notificarAuditAdmin(cliente, obrigacao, aprovado, detalhes) {
       </div>
   `;
 
-  MailApp.sendEmail({
-    to: emailAdmin,
-    subject: (aprovado ? "✅" : "🚨") + " AUDITORIA " + statusTexto + ": " + cliente,
-    htmlBody: html
-  });
+  GmailApp.sendEmail(emailAdmin, (aprovado ? "[APROVADO]" : "[ALERTA REPROVADO]") + " AUDITORIA " + statusTexto + ": " + cliente, "", { htmlBody: html });
 }
 
 /**
@@ -434,7 +432,7 @@ function formatarDetalhesAudit(texto) {
       }
       var status = trimL.indexOf('[OK]') > -1 ? 'OK' : 'FALHA';
       var cor = status === 'OK' ? '#10b981' : '#ef4444';
-      var icone = status === 'OK' ? '✅' : '❌';
+      var icone = status === 'OK' ? '[OK]' : '[FALHA]';
       var conteudo = trimL.replace('- [OK]', '').replace('- [FALHA]', '').trim();
       
       html += `
@@ -489,7 +487,10 @@ function enviarComunicadoCliente(cliente, emailCli, obrigacao, protocolo, mensag
       </div>
     `;
 
-    MailApp.sendEmail({ to: emailCli, subject: "📢 INFORMATIVO DA CONTABILIDADE: " + obrigacao, htmlBody: html });
+    GmailApp.sendEmail(emailCli, "[INFORMATIVO DA CONTABILIDADE] " + obrigacao, "", { htmlBody: html });
     registrarLogSistema("EMAIL_COMUNICADO_SENT", "Prot: " + protocolo);
-  } catch (e) { registrarLogSistema("EMAIL_COMUNICADO_FAIL", e.message); }
+  } catch (e) {
+    registrarLogSistema("EMAIL_COMUNICADO_FAIL", e.message);
+    throw new Error("Falha no envio do Comunicado: " + e.message);
+  }
 }

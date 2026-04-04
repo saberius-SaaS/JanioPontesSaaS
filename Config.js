@@ -37,6 +37,7 @@ var CONFIG_SISTEMA = {
     ABERTA: "ABERTA",
     PENDENTE: "PENDENTE",
     ENTREGUE: "ENTREGUE",
+    REVISAO: "REVISAO",
     REPROVADA: "REPROVADA"
   },
 
@@ -61,5 +62,5 @@ var CONFIG_SISTEMA = {
  * Permite que o frontend evite usar google.script.run em chamadas de alto privilégio.
  */
 function getUrlParaFetch() {
-  return CONFIG_SISTEMA.URL_WEBAPP;
+  return ScriptApp.getService().getUrl();
 }

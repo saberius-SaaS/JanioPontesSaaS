@@ -28,9 +28,13 @@ function gerarTarefasDoMes() {
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
     
-    // Cache de dados para performance
-    var dataCli = getSheetDataCached(CONFIG_SISTEMA.ABA_CLIENTES, CACHE_CONFIG.KEYS.CLIENTES);
-    var dataReg = getSheetDataCached(CONFIG_SISTEMA.ABA_REGRAS, CACHE_CONFIG.KEYS.REGRAS);
+    // Busca dados ORIGINAIS da planilha (sem cache) para garantir sincronismo real
+    var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
+    var wsReg = ss.getSheetByName(CONFIG_SISTEMA.ABA_REGRAS);
+    if (!wsCli || !wsReg) return "Erro: Abas mestres não encontradas.";
+
+    var dataCli = wsCli.getDataRange().getValues();
+    var dataReg = wsReg.getDataRange().getValues();
     var dataTf = wsTarefas.getDataRange().getValues();
     var dataHist = wsHist ? wsHist.getDataRange().getValues() : [[]];
     
@@ -56,6 +60,7 @@ function gerarTarefasDoMes() {
         excecoes: excecoes,
         nivel: dataCli[c][13] || "1",
         perfis: String(dataCli[c][14] || ""),
+        responsavelGeral: String(dataCli[c][3] || "SISTEMA").toLowerCase().trim(),
         status: String(dataCli[c][15] || "ATIVO").toUpperCase().trim()
       };
     }
@@ -116,8 +121,8 @@ function gerarTarefasDoMes() {
           
           if (!dtPrazoInterno) continue;
 
-          // Definir Responsável atual
-          var dep = norm(dataReg[r][3]), resp = "SISTEMA";
+          // Definir Responsável atual (Com Fallback para Responsável Geral do Cliente)
+          var dep = norm(dataReg[r][3]), resp = cli.responsavelGeral || "SISTEMA";
           if (dep.indexOf("FISCAL") > -1) resp = cli.fiscal;
           else if (dep.indexOf("CONTABIL") > -1) resp = cli.contabil;
           else if (dep.indexOf("PESSOAL") > -1) resp = cli.pessoal;
@@ -190,14 +195,43 @@ function gerarTarefasDoMes() {
         var dtVctoAnterior = (vctoTf instanceof Date) ? vctoTf : new Date(vctoTf);
         if (!isNaN(dtVctoAnterior.getTime()) && dtVctoAnterior < inicioMesAtual) {
           // Se estava ativa no banco e o vencimento já passou há muito tempo,
-          // preservamos ela, não podemos deletar o backlog histórico do cliente.
-          novasLinhasDB.push(dataTf[i]);
+          // preservamos ela, mas atualizamos o Responsável se estiver Pendente/Revisão
+          var linhaPreservada = [...dataTf[i]];
+          if (cliDados && (statusAtual === CONFIG_SISTEMA.STATUS.PENDENTE || statusAtual === CONFIG_SISTEMA.STATUS.REVISAO)) {
+            var depT = norm(linhaPreservada[4]);
+            var nResp = cliDados.responsavelGeral || "SISTEMA";
+            if (depT.indexOf("FISCAL") > -1) nResp = cliDados.fiscal;
+            else if (depT.indexOf("CONTABIL") > -1) nResp = cliDados.contabil;
+            else if (depT.indexOf("PESSOAL") > -1) nResp = cliDados.pessoal;
+            else if (depT.indexOf("SOCIETARIO") > -1) nResp = cliDados.societario;
+            
+            if (linhaPreservada[8] !== nResp) {
+              linhaPreservada[8] = nResp;
+              tarefasAtualizadasCount++;
+            }
+          }
+          novasLinhasDB.push(linhaPreservada);
         } else {
           tarefasExcluidasCount++;
         }
       } else {
         // Se não há decisão (fora da janela ou regra removida), preservamos o Backlog Legado
-        novasLinhasDB.push(dataTf[i]);
+        // MAS atualizamos o responsável se for PENDENTE ou REVISÃO
+        var linhaLegada = [...dataTf[i]];
+        if (cliDados && (statusAtual === CONFIG_SISTEMA.STATUS.PENDENTE || statusAtual === CONFIG_SISTEMA.STATUS.REVISAO)) {
+          var depL = norm(linhaLegada[4]);
+          var nRespL = cliDados.responsavelGeral || "SISTEMA";
+          if (depL.indexOf("FISCAL") > -1) nRespL = cliDados.fiscal;
+          else if (depL.indexOf("CONTABIL") > -1) nRespL = cliDados.contabil;
+          else if (depL.indexOf("PESSOAL") > -1) nRespL = cliDados.pessoal;
+          else if (depL.indexOf("SOCIETARIO") > -1) nRespL = cliDados.societario;
+          
+          if (linhaLegada[8] !== nRespL) {
+             linhaLegada[8] = nRespL;
+             tarefasAtualizadasCount++;
+          }
+        }
+        novasLinhasDB.push(linhaLegada);
       }
     }
 
@@ -217,7 +251,7 @@ function gerarTarefasDoMes() {
     SpreadsheetApp.flush();
     reordenarTarefasElite();
     registrarLogSistema("SYNC_V131.10", "Sinc: " + tarefasAtualizadasCount + " | Novas: " + novasTarefasCount + " | Expurgos: " + tarefasExcluidasCount);
-
+    invalidarCacheSistema(); // ⚡ Garante visibilidade imediata no Portal
     return "Sincronização concluída: " + tarefasAtualizadasCount + " atualizadas, " + novasTarefasCount + " novas, " + tarefasExcluidasCount + " expurgos.";
 
   } finally { 

@@ -106,44 +106,33 @@ function getProtocolosPendentes() {
     
     if (!wsProt) return [];
     
-    // 1. Criar Mapa de Vencimento Legal (ID_CONTROLE -> VENCIMENTO_LEGAL)
-    var mapVctoLegal = {};
+    // 1. Processar Protocolos (Apenas os últimos 200 para performance extrema sem DB_TAREFAS)
+    var lastRowP = wsProt.getLastRow();
+    if (lastRowP <= 1) return [];
     
-    function mapearVctos(sheet) {
-      if (!sheet) return;
-      var lastR = sheet.getLastRow();
-      if (lastR <= 1) return;
-      // OTIMIZAÇÃO: Lê apenas até a coluna L (Índice 11) que é o Vencimento Legal
-      var data = sheet.getRange(1, 1, lastR, 12).getValues();
-      for (var i = 1; i < data.length; i++) {
-        var id = String(data[i][9]).trim(); // Coluna J
-        var vctoLegal = data[i][11];        // Coluna L
-        var acao = String(data[i][7]).toUpperCase().trim(); // Coluna H
-        if (id) mapVctoLegal[id] = { vctoLegal: vctoLegal, acao: acao };
-      }
-    }
+    var numRowsP = Math.min(lastRowP - 1, 200);
+    var startRowP = lastRowP - numRowsP + 1;
+    var dataP = wsProt.getRange(startRowP, 1, numRowsP, 12).getValues(); // A até L
     
-    mapearVctos(wsTarefas);
-    // mapearVctos(wsHist); // As arquivadas não precisam de acompanhamento
-
-    // 2. Processar Protocolos
-    var dataP = wsProt.getDataRange().getValues();
     var pendentes = [];
-    
-    for (var j = 1; j < dataP.length; j++) {
-      var statusEnvio = String(dataP[j][8]).toUpperCase().trim();
-      var confRecto = String(dataP[j][9]).toUpperCase().trim();
+    for (var j = 0; j < dataP.length; j++) {
+      var statusEnvio = String(dataP[j][8]).toUpperCase().trim(); // Coluna I (9)
+      var confRecto = String(dataP[j][9]).toUpperCase().trim();   // Coluna J (10)
+      var vctoLegalData = dataP[j][10];                           // Coluna K (11 - VCTO_LEGAL)
+      var acaoProt = String(dataP[j][11] || "").toUpperCase().trim(); // Coluna L (12 - ACAO)
       
-      // Filtro: Enviado mas ainda não lido/confirmado
-      if (statusEnvio === "ENVIADO" && (confRecto === "" || confRecto === "AGUARDANDO")) {
-        var idTarefa = String(dataP[j][3]).trim();
-        var infoTarefa = mapVctoLegal[idTarefa];
-        
-        // NOVO FILTRO: Deve existir em DB_TAREFAS e ter ação ENVIAR
-        if (!infoTarefa || infoTarefa.acao !== "ENVIAR") continue;
+      var vctoLegalFmt = "---";
+      if (vctoLegalData) {
+        vctoLegalFmt = (vctoLegalData instanceof Date) ? Utilities.formatDate(vctoLegalData, "GMT-3", "dd/MM/yyyy") : String(vctoLegalData);
+      }
 
-        var vctoLegalRaw = infoTarefa.vctoLegal;
-        var vctoLegalFmt = (vctoLegalRaw instanceof Date) ? Utilities.formatDate(vctoLegalRaw, "GMT-3", "dd/MM/yyyy") : "---";
+      // Restaura o filtro: Ignora protocolos gerados para tarefas que NÃO são de ENVIAR (ex: REVISAO, ARQUIVAMENTO)
+      if (acaoProt && acaoProt.indexOf("ENVIAR") === -1 && acaoProt.indexOf("COMUNICAR") === -1) {
+         continue; // Apenas tarefas cujas ações enviam algo ao cliente geram notificação de "Não Lido"
+      }
+      
+      // Filtro Único: Enviado mas ainda não lido/confirmado (Baseado apenas na DB_PROTOCOLOS)
+      if (statusEnvio === "ENVIADO" && (confRecto === "" || confRecto === "---" || confRecto === "AGUARDANDO")) {
         
         var dataEnvioRaw = dataP[j][0];
         var dataEnvioFmt = (dataEnvioRaw instanceof Date) ? Utilities.formatDate(dataEnvioRaw, "GMT-3", "dd/MM/yyyy HH:mm") : String(dataEnvioRaw);
@@ -156,7 +145,7 @@ function getProtocolosPendentes() {
           cliente: String(dataP[j][1]),
           protocolo: String(dataP[j][2]),
           obrigacao: String(dataP[j][4]),
-          vencimentoLegal: vctoLegalFmt, 
+          vencimentoLegal: vctoLegalFmt,
           link: primeiroLink
         });
       }
@@ -171,6 +160,22 @@ function getProtocolosPendentes() {
   } catch (e) {
     registrarLogSistema("GET_PROTO_DASH_ERR", e.message);
     return [];
+  }
+}
+
+/**
+ * ⚡ PROTOCOLOS FETCH DEDICADO (Portal Web - Lazy Load)
+ * Endpoint independente para carregamento sob demanda dos protocolos não lidos.
+ */
+function getDadosProtocolosWeb(token) {
+  try {
+    var emailFinal = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!emailFinal) return { success: false, error: "AUTENTICACAO_REQUERIDA" };
+
+    var data = getProtocolosPendentes();
+    return { success: true, data: data };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 }
 

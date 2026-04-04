@@ -114,6 +114,16 @@ function validarSchemaColunas(ss, relatorio) {
     relatorio.falhas.push("Schema DB_TAREFAS violado: Coluna F esperava 'STATUS', encontrou '" + cabecalho[5] + "'");
   }
   
+  // Verificação de REVISAO? na DB_REGRAS (Coluna M - Índice 12)
+  var sheetRegras = ss.getSheetByName(CONFIG_SISTEMA.ABA_REGRAS);
+  if (sheetRegras) {
+    var rawReg = sheetRegras.getRange(1, 13).getValue();
+    if (norm(rawReg) !== "REVISAO") {
+       sheetRegras.getRange(1, 13).setValue("REVISAO?").setFontWeight("bold").setBackground("#f3f3f3");
+       relatorio.avisos.push("Coluna M da DB_REGRAS corrigida para 'REVISAO?'");
+    }
+  }
+  
   // Verificação da Coluna J (Índice 9) - ID_CONTROLE
   if (norm(cabecalho[9]) !== "ID_CONTROLE") {
     relatorio.integro = false;
