@@ -27,7 +27,7 @@ function executarCheckUpSistema() {
     }
 
     // 2. VALIDAÇÃO DINÂMICA DE EXISTÊNCIA DE ABAS CRÍTICAS
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var keysConfig = Object.keys(CONFIG_SISTEMA);
     var qtdAbasValidadas = 0;
     
@@ -129,6 +129,28 @@ function validarSchemaColunas(ss, relatorio) {
     relatorio.integro = false;
     relatorio.falhas.push("Schema DB_TAREFAS violado: Coluna J esperava 'ID_CONTROLE', encontrou '" + cabecalho[9] + "'");
   }
+
+  // Verificação de ACAO na DB_REGRAS (Coluna F ou H dependendo da versão, MaintenanceService usa F/índice 5)
+  if (sheetRegras) {
+    var capReg = sheetRegras.getRange(1, 1, 1, 12).getValues()[0];
+    if (norm(capReg[5]) !== "ACAO") {
+       relatorio.avisos.push("Aviso: Coluna F da DB_REGRAS não é 'ACAO'. Verifique o Schema do MaintenanceService.");
+    }
+  }
+
+  // Verificação de ABA_WORKFLOWS
+  var sheetWf = ss.getSheetByName(CONFIG_SISTEMA.ABA_WORKFLOWS);
+  if (sheetWf) {
+    var capWf = sheetWf.getRange(1, 1, 1, 4).getValues()[0]; 
+    if (norm(capWf[0]) !== "FASE_ATUAL" || norm(capWf[1]) !== "PROXIMA_FASE") {
+       relatorio.falhas.push("Schema DB_WORKFLOWS violado: Colunas A ou B inconsistentes.");
+    }
+    
+    // Verificação de DEPARTAMENTO na DB_WORKFLOWS (Coluna D - Índice 3)
+    if (norm(capWf[3]) !== "DEPARTAMENTO") {
+      relatorio.falhas.push("Schema DB_WORKFLOWS violado: Coluna D esperava 'DEPARTAMENTO', encontrou '" + capWf[3] + "'");
+    }
+  }
 }
 
 /**
@@ -159,7 +181,8 @@ function getSafeStatus(tipo) {
   var padrao = {
     'PENDENTE': 'PENDENTE',
     'ENTREGUE': 'ENTREGUE',
-    'ABERTA': 'ABERTA'
+    'REVISAO': 'REVISAO',
+    'REPROVADO': 'REPROVADO'
   };
   
   try {
@@ -169,4 +192,56 @@ function getSafeStatus(tipo) {
   } catch(e) {}
   
   return padrao[tipo] || tipo;
+}
+
+/**
+ * Função Segura para obter Ação (Getter de Segurança)
+ */
+function getSafeAction(tipo) {
+  var padrao = {
+    'ENVIAR': 'ENVIAR',
+    'ARQUIVAR': 'ARQUIVAR',
+    'AUDITAR': 'AUDITAR',
+    'COMUNICAR': 'COMUNICAR'
+  };
+  
+  try {
+    if (CONFIG_SISTEMA && CONFIG_SISTEMA.ACOES && CONFIG_SISTEMA.ACOES[tipo]) {
+      return CONFIG_SISTEMA.ACOES[tipo];
+    }
+  } catch(e) {}
+  
+  var tUpper = String(tipo || "").toUpperCase().trim();
+  if (tUpper.indexOf("ENVIAR") > -1) return padrao.ENVIAR;
+  if (tUpper.indexOf("ARQUIVAR") > -1 || tUpper.indexOf("PROCESSAR") > -1) return padrao.ARQUIVAR;
+  if (tUpper.indexOf("AUDITAR") > -1) return padrao.AUDITAR;
+  if (tUpper.indexOf("COMUNICAR") > -1) return padrao.COMUNICAR;
+
+  return padrao[tUpper] || padrao.ARQUIVAR;
+}
+
+/**
+ * Função Segura para obter Departamento (Getter de Segurança)
+ */
+function getSafeDepto(tipo) {
+  var padrao = {
+    'CONTABIL': 'CONTABIL',
+    'FISCAL': 'FISCAL',
+    'PESSOAL': 'PESSOAL',
+    'SOCIETARIO': 'SOCIETARIO'
+  };
+  
+  try {
+    if (CONFIG_SISTEMA && CONFIG_SISTEMA.DEPARTAMENTOS && CONFIG_SISTEMA.DEPARTAMENTOS[tipo]) {
+      return CONFIG_SISTEMA.DEPARTAMENTOS[tipo];
+    }
+  } catch(e) {}
+  
+  var tUpper = String(tipo || "").toUpperCase().trim();
+  if (tUpper.indexOf("CONTABIL") > -1) return padrao.CONTABIL;
+  if (tUpper.indexOf("FISCAL") > -1) return padrao.FISCAL;
+  if (tUpper.indexOf("PESSOAL") > -1 || tUpper.indexOf("RH") > -1) return padrao.PESSOAL;
+  if (tUpper.indexOf("SOCIETARIO") > -1 || tUpper.indexOf("LEGAL") > -1) return padrao.SOCIETARIO;
+
+  return padrao[tUpper] || padrao.CONTABIL; // Fallback para CONTABIL se for indefinido
 }

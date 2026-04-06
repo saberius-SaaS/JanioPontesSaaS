@@ -202,7 +202,7 @@ function enviarLembreteCobranca(cliente, emailCli, solicitacao, idSolicitacao, q
 }
 
 function registrarInteracaoEmail(protocolo, acao, rowIdx) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
   var agora = new Date();
   if (!protocolo) return;

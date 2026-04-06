@@ -181,7 +181,7 @@ function testarGerenciadorContexto() {
  * Garante a existência da aba de configuração da IA
  */
 function garantirConfigIA() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsConfig = ss.getSheetByName(CONFIG_SISTEMA.ABA_CONFIG_IA);
   var criada = false;
   
@@ -230,7 +230,7 @@ function obterConfigIACompl() {
   }
   
   // Obter a lista completa de clientes cadastrados para o checkbox
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
   if (wsCli) {
     var dataCli = wsCli.getDataRange().getValues();

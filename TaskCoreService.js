@@ -24,7 +24,7 @@ function gerarTarefasDoMes() {
   }
 
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
     
@@ -263,7 +263,7 @@ function gerarTarefasDoMes() {
  * Ordenação conforme Seção 4.1: Status -> Vencimento -> Nível
  */
 function reordenarTarefasElite() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var ws = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
   if (!ws) return;
   var lr = ws.getLastRow();
@@ -276,7 +276,7 @@ function reordenarTarefasElite() {
     // 1. Status (PENDENTE antes de ENTREGUE)
     var sA = String(a[5]).toUpperCase();
     var sB = String(b[5]).toUpperCase();
-    if (sA !== sB) return (sA === "PENDENTE") ? -1 : 1;
+    if (sA !== sB) return (sA === CONFIG_SISTEMA.STATUS.PENDENTE) ? -1 : 1;
     
     // 2. Vencimento (Crescente)
     var tA = (a[3] instanceof Date) ? a[3].getTime() : 0;

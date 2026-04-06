@@ -8,7 +8,7 @@ function sincronizarProvasDeEntregaAPI() {
   var MAX_API_CALLS = 45; // Limite rígido por execução para não estourar a cota (45 arquivos/hora = 1.080/dia)
   var apiCallsCount = 0;
 
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
   if (!wsProt) return 0;
 

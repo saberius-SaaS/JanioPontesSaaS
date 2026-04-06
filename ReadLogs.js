@@ -4,7 +4,7 @@
  */
 
 function readRecentLogs() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsLogs = ss.getSheetByName(CONFIG_SISTEMA.ABA_LOGS);
   if (!wsLogs) {
     console.log("Aba DB_LOGS não encontrada.");
@@ -26,7 +26,7 @@ function readRecentLogs() {
 function getDadosLogsWeb(token) {
   try {
     // Validação de segurança: apenas ADMIN pode acessar
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsUsers = ss.getSheetByName(CONFIG_SISTEMA.ABA_USUARIOS);
     var userEmail = "";
     var userLevel = "";

@@ -5,7 +5,7 @@
  */
 function renovarTodosEscopos() {
   // Escopo: spreadsheets
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   
   // Escopo: drive
   var root = DriveApp.getRootFolder();

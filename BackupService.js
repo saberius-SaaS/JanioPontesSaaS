@@ -7,7 +7,7 @@ function executarBackupTotal() {
   try { lock.waitLock(30000); } catch (e) { return; }
 
   try {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
     var idPastaBackup = CONFIG_SISTEMA.PASTAS.BACKUPS;
     var envNome = CONFIG_SISTEMA.PASTAS.NOME;
     

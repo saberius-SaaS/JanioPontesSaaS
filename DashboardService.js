@@ -5,7 +5,7 @@
 
 function getDashboardData(filtroPeriodo) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
     var wsUsuarios = ss.getSheetByName(CONFIG_SISTEMA.ABA_USUARIOS);
@@ -99,7 +99,7 @@ function getProtocolosPendentes() {
     var cached = getViewCached(CACHE_CONFIG.KEYS.PROTOCOLOS_RESULT);
     if (cached) return cached;
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
@@ -180,7 +180,7 @@ function getDadosProtocolosWeb(token) {
 }
 
 function getRelatorioAuditoria(clienteIdx) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
   var wsRegras = ss.getSheetByName(CONFIG_SISTEMA.ABA_REGRAS);
   var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);

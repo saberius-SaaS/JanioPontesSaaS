@@ -55,7 +55,7 @@ function getSheetDataCached(abaNome, cacheKey) {
   }
 
   // 2. SE NÃO ACHOU OU CACHE CORROMPIDO, BUSCA NA PLANILHA
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var sheet = ss.getSheetByName(abaNome);
   if (!sheet) return [];
   

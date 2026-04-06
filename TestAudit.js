@@ -69,7 +69,7 @@ function testFuncoesIsoladas() {
 }
 
 function testGetPendencias() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var ws = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
   var data = ws.getDataRange().getValues();
   

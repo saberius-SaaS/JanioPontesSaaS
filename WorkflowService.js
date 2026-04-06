@@ -6,7 +6,7 @@
 
 function acionarWorkflowFaseSeguinte(idTarefaAnterior, rowIdxTarefaAnterior) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsWf = ss.getSheetByName(CONFIG_SISTEMA.ABA_WORKFLOWS);
     var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
@@ -32,7 +32,7 @@ function acionarWorkflowFaseSeguinte(idTarefaAnterior, rowIdxTarefaAnterior) {
             proximaFase: String(dataWf[w][1]).trim(),
             diasPrazo: parseInt(dataWf[w][2]) || 1,
             departamento: String(dataWf[w][3]).trim(),
-            acao: String(dataWf[w][4]).trim(),
+            acao: getSafeAction(String(dataWf[w][4]).trim()),
             respOriginal: String(dataWf[w][5]).trim(),
             respUpper: String(dataWf[w][5]).trim().toUpperCase()
          });

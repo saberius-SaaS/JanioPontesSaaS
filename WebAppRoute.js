@@ -42,7 +42,7 @@ function getDadosPortalWeb(token) {
     var dashMes = getDashboardData("ESTE_MES");
     
     // 2. Calcula Risco Legal (Atrasados Pendentes globais)
-    var wsTarefas = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_TAREFAS");
+    var wsTarefas = getSs().getSheetByName("DB_TAREFAS");
     var totalRisco = 0;
     if (wsTarefas) {
        var dados = wsTarefas.getDataRange().getValues();
@@ -144,7 +144,7 @@ function getPrioridadesPortal(activeEmail, userLevelOverride) {
       }
     }
     
-    var wsTasks = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_TAREFAS");
+    var wsTasks = getSs().getSheetByName("DB_TAREFAS");
     if (!wsTasks) return [];
     
     // Mapa de email → nome para exibição do responsável
@@ -236,7 +236,7 @@ function getDadosRiscoWeb(token) {
        }
     }
 
-    var wsTasks = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_TAREFAS");
+    var wsTasks = getSs().getSheetByName("DB_TAREFAS");
     if (!wsTasks) return { success: false, error: "Tabela não encontrada" };
     
     var lastRow = wsTasks.getLastRow();
@@ -307,7 +307,7 @@ function getDadosHistoricoWeb() {
     var cached = getViewCached(CACHE_CONFIG.KEYS.HISTORICO_RESULT);
     if (cached) return cached;
 
-    var wsHist = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("DB_HISTORICO");
+    var wsHist = getSs().getSheetByName("DB_HISTORICO");
     if (!wsHist) return { success: false, error: "Aba Historico não encontrada." };
     
     var lastRow = wsHist.getLastRow();

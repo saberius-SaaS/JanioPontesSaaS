@@ -8,7 +8,7 @@
  * Padroniza o layout das abas principais conforme o Schema v131.
  */
 function padronizarLayout() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var abas = [
     {
       nome: CONFIG_SISTEMA.ABA_REGRAS, 
@@ -24,6 +24,11 @@ function padronizarLayout() {
       nome: CONFIG_SISTEMA.ABA_TAREFAS, 
       cols: 12, 
       cabecalho: ["MES_ANO", "CLIENTE", "OBRIGACAO", "VENCIMENTO", "DEPARTAMENTO", "STATUS", "PROTOCOLO", "ACAO", "RESPONSAVEL", "ID_CONTROLE", "NIVEL", "VENCIMENTO_LEGAL"]
+    },
+    {
+      nome: CONFIG_SISTEMA.ABA_WORKFLOWS,
+      cols: 6,
+      cabecalho: ["FASE_ATUAL", "PROXIMA_FASE", "DIAS", "DEPARTAMENTO", "ACAO", "RESPONSAVEL_PADRAO"]
     }
   ];
   abas.forEach(function(item) {
@@ -41,7 +46,7 @@ function padronizarLayout() {
  * Varre o Drive e mapeia as URLs das pastas dos clientes para a planilha.
  */
 function mapearPastasClientesAutomatico() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
   if (!wsCli) return;
   var dataCli = wsCli.getDataRange().getValues();
@@ -82,7 +87,7 @@ function mapearPastasClientesAutomatico() {
  * Envia lembretes de cobrança para solicitações pendentes no portal.
  */
 function executarRotinaCobrancas() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
   if (!wsSol) return 0;
   var dataSol = wsSol.getDataRange().getValues();
@@ -129,7 +134,7 @@ function arquivarTarefasConcluidas() {
   }
   
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
     var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
@@ -190,7 +195,7 @@ function arquivarTarefasConcluidas() {
  * Identifica tarefas pendentes e atrasadas para alimentar o relatório de compliance.
  */
 function atualizarRelatorioRisco() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
   var wsRisco = ss.getSheetByName(CONFIG_SISTEMA.ABA_RISCO);
   
@@ -244,7 +249,7 @@ function atualizarRelatorioRisco() {
  * Sincroniza informações de visualização do protocolo com o Histórico.
  */
 function sincronizarHistoricoComProtocolos() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
   var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
   if (!wsHist || !wsProt) return 0;
@@ -364,11 +369,99 @@ function instalarGatilhoLimpezaDiaria() {
   }
   
   // Cria o novo
-  ScriptApp.newTrigger(nomeFuncao)
+  SpreadsheetApp.newTrigger(nomeFuncao)
     .timeBased()
     .everyDays(1)
     .atHour(7)
     .create();
     
   SpreadsheetApp.getUi().alert("✅ Lixeiro Robótico Ativado!\nA rotina rodará silenciosamente todo dia perto das 07:00h da manhã.");
+}
+
+/**
+ * 🧹 SANEAMENTO GLOBAL DE AÇÕES LEGADAS
+ */
+function sanearAcoesGlobais() {
+  var ss = getSs();
+  var abasParaSanear = [
+    { nome: CONFIG_SISTEMA.ABA_TAREFAS, col: 8 },
+    { nome: CONFIG_SISTEMA.ABA_REGRAS, col: 6 },
+    { nome: CONFIG_SISTEMA.ABA_WORKFLOWS, col: 5 }
+  ];
+  
+  var totalCorrecoes = 0;
+  
+  abasParaSanear.forEach(function(item) {
+    var ws = ss.getSheetByName(item.nome);
+    if (!ws) return;
+    
+    var lr = ws.getLastRow();
+    if (lr <= 1) return;
+    
+    var range = ws.getRange(2, item.col, lr - 1, 1);
+    var valores = range.getValues();
+    var alterou = false;
+    
+    for (var i = 0; i < valores.length; i++) {
+      var acaoOriginal = valores[i][0];
+      var acaoSaneada = getSafeAction(acaoOriginal);
+      
+      if (acaoOriginal !== acaoSaneada) {
+        valores[i][0] = acaoSaneada;
+        alterou = true;
+        totalCorrecoes++;
+      }
+    }
+    
+    if (alterou) {
+      range.setValues(valores);
+    }
+  });
+  
+  registrarLogSistema("MAINTENANCE_ACTION_SANITY", "Total de correções de ações: " + totalCorrecoes);
+  return totalCorrecoes;
+}
+
+/**
+ * 🧹 SANEAMENTO GLOBAL DE DEPARTAMENTOS
+ */
+function sanearDeptosGlobais() {
+  var ss = getSs();
+  var abasParaSanear = [
+    { nome: CONFIG_SISTEMA.ABA_TAREFAS, col: 5 },
+    { nome: CONFIG_SISTEMA.ABA_REGRAS, col: 4 },
+    { nome: CONFIG_SISTEMA.ABA_WORKFLOWS, col: 4 }
+  ];
+  
+  var totalCorrecoes = 0;
+  
+  abasParaSanear.forEach(function(item) {
+    var ws = ss.getSheetByName(item.nome);
+    if (!ws) return;
+    
+    var lr = ws.getLastRow();
+    if (lr <= 1) return;
+    
+    var range = ws.getRange(2, item.col, lr - 1, 1);
+    var valores = range.getValues();
+    var alterou = false;
+    
+    for (var i = 0; i < valores.length; i++) {
+      var deptoOriginal = valores[i][0];
+      var deptoSaneado = getSafeDepto(deptoOriginal);
+      
+      if (deptoOriginal !== deptoSaneado) {
+        valores[i][0] = deptoSaneado;
+        alterou = true;
+        totalCorrecoes++;
+      }
+    }
+    
+    if (alterou) {
+      range.setValues(valores);
+    }
+  });
+  
+  registrarLogSistema("MAINTENANCE_DEPTO_SANITY", "Total de correções de departamentos: " + totalCorrecoes);
+  return totalCorrecoes;
 }

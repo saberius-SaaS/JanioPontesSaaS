@@ -69,7 +69,7 @@ function processarAuditoriaRelatorioBackground(payload) {
  */
 function buscarHistoricoBalancetes(clienteNome, cnpj, obrigacao) {
   var pastaId = "";
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
   var dataCli = wsCli.getDataRange().getValues();
   

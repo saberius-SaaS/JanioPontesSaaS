@@ -12,6 +12,19 @@ function norm(str) {
 }
 
 /**
+ * Ponto de acesso resiliente à planilha (Redundância para gatilhos).
+ */
+function getSs() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) return ss;
+  } catch (e) {
+    console.warn("Acesso ativo indisponível. Usando openById.");
+  }
+  return SpreadsheetApp.openById(CONFIG_SISTEMA.ID_PLANILHA);
+}
+
+/**
  * Verifica se uma regra deve ser aplicada ao cliente baseado em Tags (Whitelist)
  * @param {String} tagsClienteStr Tags do cliente (Coluna O da DB_CLIENTES)
  * @param {String} gruposRegraStr Grupos da regra (Coluna L da DB_REGRAS)
@@ -125,7 +138,7 @@ function isDiaUtil(data) {
 
 function registrarLogSistema(acao, detalhe) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsLog = ss.getSheetByName(CONFIG_SISTEMA.ABA_LOGS);
     if (wsLog) wsLog.appendRow([new Date(), Session.getActiveUser().getEmail() || "SISTEMA", acao, detalhe]);
   } catch (e) {}
@@ -140,7 +153,7 @@ function gerarProtocoloEntrega() {
  */
 function registrarProtocoloDB(clienteNome, protocolo, idTarefa, obrigacao, emailCli, linksDrive, vctoLegal, acaoTarefa) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
     if (!wsProt) return;
 
@@ -204,7 +217,7 @@ function extrairTextoOCR(blob) {
  */
 function obterCnpjCliente(clienteNome) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var ws = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
     if (!ws) return "";
     

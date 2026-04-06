@@ -61,7 +61,7 @@ A estrutura abaixo é rígida. Scripts dependem da posição exata dessas coluna
 * A = ID | B = CLIENTE | C = CNPJ | D = RESPONSAVEL | ... | L = EXCECOES | M = PASTA_DRIVE | N = NIVEL
 
 ### Aba DB_PROTOCOLOS
-* A = DATA | B = CLIENTE | C = PROTOCOLO | D = ID_TAREFA | ... | I = STATUS_ENVIO | J = CONF_RECTO
+* A = DATA | B = CLIENTE | C = PROTOCOLO | D = ID_TAREFA | ... | I = STATUS_ENVIO | J = CONF_RECTO | K = VENC_LEGAL | L = ACAO
 
 ### Aba DB_SOLICITACOES
 * A = ID | B = DATA | C = CLIENTE | ... | G = STATUS | H = LINK_ARQUIVO | ... | K = RESPONSAVEL
@@ -146,6 +146,14 @@ Esta aba é recriada automaticamente e contém estritamente 6 colunas visíveis:
 * **Condição:** Se a regra (`DB_REGRAS`) tiver "S" na coluna M e o executor for nível "USER", a tarefa entra em `REVISÃO`.
 * **Fluxo Final:** Somente o administrador pode converter `REVISÃO` em `ENTREGUE`, o que efetivamente dispara os e-mails ao cliente e gera protocolos.
 
+## 4.10 STATUS DAS TAREFAS
+* Os status devem ser sempre PENDENTE, REVISAO, ENTREGUE ou REPROVADO
+
+## 4.11 TIPOS DE ACAO
+* O tipos de ação vinculados as tarefas (DB_REGRAS) devem ser somente ENVIAR, ARQUIVAR, AUDITAR e COMUNICAR.
+
+## 4.12 DEPARTAMENTOS
+* O sistema opera com tarefas de quatro departamentos: CONTABIL, FISCAL, PESSOAL E SOCIETARIO.
 ---
 
 # 5. PROTOCOLO DE SEGURANÇA E MANUTENÇÃO

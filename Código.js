@@ -12,7 +12,7 @@ function onEdit(e) {
   // Trava de Segurança: impede edição por usuários não cadastrados
   var userEmail = Session.getActiveUser().getEmail().toLowerCase().trim();
   var isAuthorized = false;
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsUsr = ss.getSheetByName("DB_USUARIOS");
   if (wsUsr) {
     var dataU = wsUsr.getDataRange().getValues();

@@ -3,7 +3,7 @@
 FOCO: Rastreio Seguro e Roteamento de Permissões Elevadas.
 */
 function onOpen() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var userEmail = Session.getActiveUser().getEmail().toLowerCase().trim();
   var isAuthorized = false;
   
@@ -108,7 +108,7 @@ function restaurarAbasTrabalho(ss) {
 }
 
 function abrirSeletorPerfis() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var sheet = ss.getActiveSheet();
   if (sheet.getName() !== CONFIG_SISTEMA.ABA_CLIENTES) {
     SpreadsheetApp.getUi().alert("⚠️ Selecione a aba " + CONFIG_SISTEMA.ABA_CLIENTES);
@@ -144,7 +144,7 @@ function getDadosPerfis(rowIdx) {
 }
 
 function salvarPerfisCliente(rowIdx, perfisStr) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
   wsCli.getRange(rowIdx, 15).setValue(perfisStr);
   invalidarCacheSistema();
@@ -215,7 +215,7 @@ function doGet(e) {
       var folderId = params.folder;
       if (!folderId && p) {
          // Tentar extrair ID da pasta via protocolo se não vier no link
-         var ss = SpreadsheetApp.getActiveSpreadsheet();
+         var ss = getSs();
          var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
          var dataP = wsProt.getDataRange().getValues();
          var clienteNome = "";
@@ -317,7 +317,7 @@ function getPrioridades() {
     for (var i = 1; i < dataU.length; i++) {
       if (String(dataU[i][0]).toLowerCase().trim() === userEmail) { userLevel = String(dataU[i][2]).toUpperCase().trim(); break; }
     }
-    var wsTasks = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
+    var wsTasks = getSs().getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     if (!wsTasks) return [];
     
     var dataProt = getSheetDataCached(CONFIG_SISTEMA.ABA_PROTOCOLOS, "DATA_PROTOCOLOS") || [];
@@ -410,7 +410,7 @@ function comandoBackupManual() {
 function instalarGatilhoBackup() { removerGatilhoBackup(); ScriptApp.newTrigger('executarBackupTotal').timeBased().everyDays(1).atHour(23).create(); SpreadsheetApp.getUi().alert("✅ Backup Diário Agendado."); }
 function removerGatilhoBackup() { var triggers = ScriptApp.getProjectTriggers(); for (var i = 0; i < triggers.length; i++) { if (triggers[i].getHandlerFunction() === 'executarBackupTotal') ScriptApp.deleteTrigger(triggers[i]); } }
 function abrirAuditorRegras() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var sheet = ss.getActiveSheet();
   if (sheet.getName() !== CONFIG_SISTEMA.ABA_CLIENTES) return;
   var row = sheet.getActiveRange().getRow();
@@ -449,7 +449,7 @@ function listarArquivosRepositorioInterno(folderId) {
 }
 
 function buscarIdPastaCliente(nome) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
   var data = wsCli.getDataRange().getValues();
   for(var i=1; i<data.length; i++) {
@@ -518,15 +518,15 @@ function aprovarTarefaRevisao(taskId, userLevel) {
     return { success: false, message: "Acesso Negado: Nível insuficiente para aprovação." };
   }
   
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
   var dataT = wsTarefas.getDataRange().getValues();
   
   for (var i = 1; i < dataT.length; i++) {
     if (String(dataT[i][9]) === String(taskId)) { // Coluna J: ID_CONTROLE
        var statusAtual = String(dataT[i][5]).toUpperCase().trim();
-       if (statusAtual !== "REVISAO") {
-         return { success: false, message: "Esta tarefa não está em status de REVISAO." };
+       if (statusAtual !== CONFIG_SISTEMA.STATUS.REVISAO) {
+         return { success: false, message: "Esta tarefa não está em status de " + CONFIG_SISTEMA.STATUS.REVISAO + "." };
        }
               // 1. Coleta dados para notificação final (vindos da tarefa e do protocolo gerado anteriormente)
         var clienteNome = dataT[i][1];
@@ -566,7 +566,7 @@ function aprovarTarefaRevisao(taskId, userLevel) {
         }
 
         // 4. Move para ENTREGUE na planilha
-        wsTarefas.getRange(i + 1, 6).setValue("ENTREGUE");
+        wsTarefas.getRange(i + 1, 6).setValue(CONFIG_SISTEMA.STATUS.ENTREGUE);
         
         // 5. Aciona o workflow de fase seguinte
         acionarWorkflowFaseSeguinte(taskId, i + 1);

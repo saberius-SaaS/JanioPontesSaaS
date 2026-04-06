@@ -12,7 +12,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
   }
 
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
     
@@ -280,7 +280,7 @@ function salvarTarefaDemanda(dados, token) {
     var userEmail = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
     if (!userEmail) throw new Error("Não foi possível autenticar sua identidade via GIS.");
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     if (!wsTarefas) throw new Error("Aba DB_TAREFAS não localizada.");
 
@@ -296,7 +296,7 @@ function salvarTarefaDemanda(dados, token) {
       dados.depto || "GERAL",
       getSafeStatus("PENDENTE"),
       "",
-      dados.acao || "ARQUIVAR",
+      getSafeAction(dados.acao || "ARQUIVAR"),
       dados.responsavel || userEmail,
       idControle,
       "3", // Nível padrão
@@ -327,7 +327,7 @@ function enviarSolicitacaoDocumento(dados, token) {
     var userEmail = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
     if (!userEmail) throw new Error("Não foi possível autenticar sua identidade via GIS.");
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getSs();
     var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
     var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
     
@@ -407,7 +407,7 @@ function enviarSolicitacaoDocumento(dados, token) {
  * Busca dados da solicitação para exibir no portal
  */
 function getDadosSolicitacao(solId) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
   var data = wsSol.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
@@ -429,7 +429,7 @@ function prepararPastaUploadCliente(solId) {
   var dados = getDadosSolicitacao(solId);
   if (!dados) throw new Error("Solicitação inválida.");
   
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
   var dataCli = wsCli.getDataRange().getValues();
   var pastaId = "";
@@ -501,7 +501,7 @@ function juntarFragmentos(partsIds, fileName, fileType) {
  * Finaliza o processo de solicitação, baixa a tarefa e notifica
  */
 function finalizarLoteUploadsCliente(solId, linksGerados) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs();
   var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
   var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
   
