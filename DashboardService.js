@@ -38,19 +38,22 @@ function getDashboardData(filtroPeriodo) {
     }
 
     var stats = { total: 0, pendentes: 0, entregues: 0, departamentos: {}, usuarios: {} };
-    
+    var countProcessados = 0;
     function processarLinhas(values) {
       if (values.length <= 1) return;
       for (var i = 1; i < values.length; i++) {
         var status = String(values[i][5] || "").toUpperCase().trim();
         if (!status) continue;
 
+        // NORMALIZAÇÃO DE DEPARTAMENTO: Mapeia aliases (ex: LEGAL -> SOCIETARIO) via getSafeDepto
+        var deptoRaw = String(values[i][4] || "").toUpperCase().trim();
+        var depto = getSafeDepto(deptoRaw);
+
         if (dataInicio && dataFim) {
           var dataRow = values[i][3];
           var dataRef = (dataRow instanceof Date) ? dataRow : new Date(dataRow);
           if (isNaN(dataRef.getTime())) continue; 
           
-          // REGRA: Pendências ignoram data de início para exibir o backlog cumulativo
           if (status === CONFIG_SISTEMA.STATUS.ENTREGUE) {
             if (dataRef < dataInicio || dataRef > dataFim) continue;
           } else {
@@ -58,7 +61,6 @@ function getDashboardData(filtroPeriodo) {
           }
         }
 
-        var depto = String(values[i][4] || "SEM DEPARTAMENTO").toUpperCase().trim();
         var respEmail = String(values[i][8] || "SEM RESPONSAVEL").toUpperCase().trim();
         var respNome = mapUsuarios[respEmail] || respEmail;
 

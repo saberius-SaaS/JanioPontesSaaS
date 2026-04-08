@@ -34,7 +34,9 @@ function padronizarLayout() {
   abas.forEach(function(item) {
     var sheet = ss.getSheetByName(item.nome);
     if (!sheet) return;
-    sheet.getRange(1, 1, 1, item.cabecalho.length).setValues([item.cabecalho]).setBackground("#1C3051").setFontColor("white").setFontWeight("bold").setHorizontalAlignment("center");
+    var headerRange = sheet.getRange(1, 1, 1, item.cabecalho.length);
+    headerRange.setDataValidation(null);
+    headerRange.setValues([item.cabecalho]).setBackground("#1C3051").setFontColor("white").setFontWeight("bold").setHorizontalAlignment("center");
     sheet.setFrozenRows(1);
     sheet.getRange(1, 1, sheet.getMaxRows(), item.cols).setFontFamily("Inter").setFontSize(10);
     sheet.autoResizeColumns(1, item.cols);
@@ -464,4 +466,28 @@ function sanearDeptosGlobais() {
   
   registrarLogSistema("MAINTENANCE_DEPTO_SANITY", "Total de correções de departamentos: " + totalCorrecoes);
   return totalCorrecoes;
+}
+
+/**
+ * ⏰ Instala o gatilho para a rotina de cobranças automáticas.
+ * Roda diariamente conforme CONFIG_SISTEMA.DIAS_INTERVALO_COBRANCA.
+ */
+function instalarGatilhoCobrancaDiaria() {
+  var nomeFuncao = 'executarRotinaCobrancas';
+  var triggers = ScriptApp.getProjectTriggers();
+  
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === nomeFuncao) {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  
+  ScriptApp.newTrigger(nomeFuncao)
+    .timeBased()
+    .everyDays(1)
+    .atHour(8) // Rodar às 08:00 AM
+    .create();
+    
+  registrarLogSistema("TRIGGER_INSTALLED", "Gatilho de cobrança automática ativado.");
+  return "✅ Automação de solicitações ativada (Diário às 08h).";
 }

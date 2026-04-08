@@ -208,8 +208,8 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
     if (statusFinal !== getSafeStatus("REVISAO")) {
        // Se não for auditoria (ex: envio comum), manda a notificação genérica "Processado com sucesso"
        if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.AUDITAR) {
-         // Caso seja ARQUIVAR sem arquivos, não envia e-mail ao cliente (Finalização Simples Interna)
-         var deveNotificar = (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) || (arquivos && arquivos.length > 0);
+         // Caso seja ARQUIVAR, não envia e-mail ao cliente (Finalização Simples Interna)
+         var deveNotificar = (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR);
          if (deveNotificar) {
            // Passamos o protRowIdx em vez do rowIdx da tarefa para rastreio direto no DB_PROTOCOLOS
            // NOVO: Sem try-catch silencioso. Se estourar erro de OAuth ou Permissão, vai abortar tudo e subir pro Frontend.
@@ -383,7 +383,7 @@ function enviarSolicitacaoDocumento(dados, token) {
       getSafeStatus("PENDENTE"),// G: STATUS
       "",                      // H: DATA_ENVIO (Será preenchido pela rotina de cobrança se necessário)
       new Date(),              // I: ULTIMA_COBRANCA
-      0,                       // J: QTD_AVISOS
+      1,                       // J: QTD_AVISOS
       userEmail,               // K: RESPONSAVEL
       infoTarefa               // L: META_TAREFA (Obrigado por info da tarefa vinculada)
     ]);
@@ -500,7 +500,7 @@ function juntarFragmentos(partsIds, fileName, fileType) {
 /**
  * Finaliza o processo de solicitação, baixa a tarefa e notifica
  */
-function finalizarLoteUploadsCliente(solId, linksGerados) {
+function finalizarLoteUploadsCliente(solId, linksGerados, textoResposta) {
   var ss = getSs();
   var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
   var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
@@ -519,7 +519,17 @@ function finalizarLoteUploadsCliente(solId, linksGerados) {
 
   // 1. Atualiza Solicitação
   var linksStr = linksGerados.join(" | ");
-  wsSol.getRange(solRow, 7, 1, 2).setValues([[getSafeStatus("ENTREGUE"), linksStr]]);
+  var valorColunaLink = linksStr;
+  
+  if (textoResposta && textoResposta.trim() !== "") {
+    if (linksGerados.length > 0) {
+      valorColunaLink = "RESPOSTA: " + textoResposta.trim() + " | ARQUIVOS: " + linksStr;
+    } else {
+      valorColunaLink = "RESPOSTA: " + textoResposta.trim();
+    }
+  }
+
+  wsSol.getRange(solRow, 7, 1, 2).setValues([[getSafeStatus("ENTREGUE"), valorColunaLink]]);
 
   // 2. Se houver tarefa associada, dá baixa nela
   if (idTarefa && idTarefa !== "AVULSA") {
@@ -535,7 +545,7 @@ function finalizarLoteUploadsCliente(solId, linksGerados) {
 
   // 3. Notifica Responsável
   try {
-    notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, linksGerados);
+    notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, linksGerados, textoResposta);
   } catch(e) {}
 
   reordenarTarefasElite();

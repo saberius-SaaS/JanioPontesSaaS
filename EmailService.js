@@ -232,24 +232,43 @@ function registrarInteracaoEmail(protocolo, acao, rowIdx) {
   } catch (e) { registrarLogSistema("TRACKING_ERR", e.message); }
 }
 
-function notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, links) {
+function notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, links, textoResposta) {
   try {
-    var listItems = links.map(function(l) {
-       return '<li style="margin-bottom:8px;"><a href="' + l + '" target="_blank" style="color:#1C3051; font-weight:700; text-decoration:none;">[Visualizar Arquivo]</a></li>';
-    }).join('');
+    var listItems = "";
+    if (links && links.length > 0) {
+      listItems = links.map(function(l) {
+         return '<li style="margin-bottom:8px;"><a href="' + l + '" target="_blank" style="color:#1C3051; font-weight:700; text-decoration:none;">[Visualizar Arquivo]</a></li>';
+      }).join('');
+    } else {
+      listItems = '<li style="margin-bottom:8px; color:#64748b;">Nenhum arquivo anexado.</li>';
+    }
+
+    var textoHtml = "";
+    if (textoResposta && textoResposta.trim() !== "") {
+      textoHtml = `
+        <div style="margin-bottom:10px; font-size:12px; font-weight:800; color:#1C3051; text-transform:uppercase;">Resposta do Cliente:</div>
+        <div style="background-color:#fff5f5; border-left:4px solid #ef4444; padding:15px; margin-bottom:25px; border-radius:4px;">
+          <div style="font-size:14px; font-weight:600; color:#7f1d1d; line-height:1.6; white-space: pre-wrap;">${textoResposta.trim()}</div>
+        </div>
+      `;
+    }
+
     var html = `
       <div style="margin:0; padding:0; background-color:#f8fafc; font-family:sans-serif; padding:40px 20px;">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:550px; margin:0 auto; background-color:#ffffff; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 10px 15px -3px rgba(0,0,0,0.05);">
           <tr><td style="padding:25px; background-color:#1C3051; color:#ffffff; text-align:center;">
             <div style="font-size:16px; font-weight:900; letter-spacing:1px; line-height:1.2;">JANIO PONTES CONTABILIDADE</div>
-            <div style="font-size:10px; font-weight:700; opacity:0.8; text-transform:uppercase; letter-spacing:2px; margin-top:4px;">RECEBIMENTO DE ARQUIVOS</div>
+            <div style="font-size:10px; font-weight:700; opacity:0.8; text-transform:uppercase; letter-spacing:2px; margin-top:4px;">RECEBIMENTO DE INFORMAÇÕES</div>
           </td></tr>
           <tr><td style="padding:45px 35px;">
               <h2 style="color:#1e293b; margin:0 0 15px 0; font-size:18px; font-weight:700;">Nova entrega realizada</h2>
-              <p style="color:#64748b; font-size:14px; margin-bottom:25px; line-height:1.5;">O cliente <strong>${cliente}</strong> acabou de enviar documentos via Portal, referentes à solicitação:</p>
+              <p style="color:#64748b; font-size:14px; margin-bottom:25px; line-height:1.5;">O cliente <strong>${cliente}</strong> acabou de responder via Portal, referente à solicitação:</p>
               <div style="background-color:#f1f5f9; border-left:4px solid #1C3051; padding:15px; margin-bottom:25px; border-radius:4px;">
                 <div style="font-size:13px; font-weight:600; color:#334155;">"${pedido}"</div>
               </div>
+
+              ${textoHtml}
+
               <div style="margin-bottom:10px; font-size:12px; font-weight:800; color:#1C3051; text-transform:uppercase;">Arquivos Disponíveis:</div>
               <ul style="padding-left:20px; font-size:13px; color:#1C3051;">
                 ${listItems}
@@ -262,7 +281,7 @@ function notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, links) 
         </table>
       </div>
     `;
-    GmailApp.sendEmail(responsavel, "[ARQUIVOS RECEBIDOS] " + cliente, "", { htmlBody: html });
+    GmailApp.sendEmail(responsavel, "[SOLICITAÇÃO RESPONDIDA] " + cliente, "", { htmlBody: html });
   } catch (e) { registrarLogSistema("NOTIF_RESP_FAIL", e.message); }
 }
 

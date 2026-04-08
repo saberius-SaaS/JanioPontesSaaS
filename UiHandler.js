@@ -59,6 +59,7 @@ function onOpen() {
       .addItem('⚙️ CONFIG IA (Chave API)', 'comandoInicializarIA')
       .addItem('⚙️ CONFIG IA (Módulo Avançado)', 'abrirPainelConfigIA')
       .addSeparator()
+      .addItem('⏰ ATIVAR COBRANÇA AUTO', 'instalarGatilhoCobrancaDiaria')
       .addItem('⏰ Instalar Backup Automático', 'instalarGatilhoBackup')
       .addItem('❌ Remover Gatilho de Backup', 'removerGatilhoBackup'))
     .addToUi();
@@ -584,7 +585,7 @@ function aprovarTarefaRevisao(taskId, userLevel) {
                     msgComunicado = String(dataP[protRowIdx-1][7]).replace("COMUNICADO: ", ""); // Coluna H: Index 7
                  }
                  enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, msgComunicado);
-              } else {
+              } else if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) {
                  notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, folderUrl, protRowIdx, false);
               }
            }

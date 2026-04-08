@@ -15,6 +15,9 @@
   <!-- FontAwesome (Ícones) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+  <!-- Intro.js (Tour Guiado) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/introjs.min.css">
+
   <!-- Fontes do Google (Inter e Roboto conforme Prompt.md) -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   
@@ -84,6 +87,11 @@
         <span id="badgeProtocolosCount" class="hidden bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">0</span>
       </button>
 
+      <button onclick="navigate('solicitacoes')" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800">
+        <i class="fa-solid fa-clipboard-list w-6 text-center"></i>
+        <span>Solicitações</span>
+      </button>
+
       <button onclick="navigate('comunicacao')" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 mt-4 border-t border-indigo-900 pt-4">
         <i class="fa-solid fa-comments w-6 text-center text-indigo-400"></i>
         <span>Comunicação (CRM)</span>
@@ -137,6 +145,12 @@
         <h2 id="pageTitle" class="text-lg font-bold text-slate-800 tracking-tight">Dashboard</h2>
       </div>
       <div class="flex items-center space-x-4">
+        <!-- Gatilho de Tutorial (Destaque) -->
+        <button id="btnTourTutorial" onclick="iniciarTourGuiado()" class="flex items-center space-x-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full hover:bg-indigo-100 transition-all shadow-sm group" title="Tutorial do Portal">
+          <i class="fa-solid fa-wand-magic-sparkles text-sm group-hover:rotate-12 transition-transform"></i>
+          <span class="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">Tour Virtual</span>
+        </button>
+
         <button class="text-slate-400 hover:text-indigo-500 transition-colors relative">
           <i class="fa-regular fa-bell text-lg"></i>
           <span class="absolute -top-1 -right-1 flex h-3 w-3">
@@ -281,6 +295,25 @@
             </div>
             <div id="containerProtocolos" class="flex-1 overflow-y-auto p-0 relative">
                <div class="p-6 space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div></div>
+            </div>
+         </div>
+      </section>
+
+      <!-- Section: SOLICITAÇÕES -->
+      <section id="view-solicitacoes" class="view-section hidden h-full">
+         <div class="card-premium h-full flex flex-col overflow-hidden border-teal-100">
+            <div class="p-4 border-b border-teal-100 flex flex-col md:flex-row justify-between items-center bg-teal-50/80 gap-4">
+               <h3 class="font-bold text-teal-700 uppercase tracking-widest text-[11px]"><i class="fa-solid fa-clipboard-list mr-2 text-teal-500"></i> Painel de Solicitações</h3>
+               <div class="flex items-center w-full md:w-80 gap-2">
+                  <div class="relative w-full">
+                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2 text-slate-400 text-sm"></i>
+                     <input type="text" id="inputBuscaSolicitacoes" onkeyup="debounceSolicitacoes()" placeholder="Pesquisar solicitação..." class="w-full pl-9 pr-3 py-1.5 glass-input text-sm">
+                  </div>
+                  <button onclick="carregarSolicitacoesServer(true)" title="Recarregar Solicitações" class="bg-teal-700 hover:bg-teal-600 text-white h-[34px] px-3 rounded-lg shadow transition flex-shrink-0"><i class="fa-solid fa-rotate"></i></button>
+               </div>
+            </div>
+            <div id="containerSolicitacoes" class="flex-1 overflow-y-auto p-0 relative">
+               <div class="p-6 space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-4/5"></div></div>
             </div>
          </div>
       </section>
@@ -497,6 +530,31 @@
     </div>
   </main>
 
+  <!-- ==================== MODAL VISUALIZAR RESPOSTA ==================== -->
+  <div id="modalVisualizarResposta" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300 pointer-events-auto" id="modalVisualizarRespostaContent">
+      <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-teal-50">
+        <h3 class="font-bold text-teal-800 uppercase tracking-widest text-[11px]"><i class="fa-solid fa-comment-dots mr-2 text-teal-500"></i>Retorno do Cliente</h3>
+        <button onclick="fecharModalVisualizarResposta()" class="text-slate-400 hover:text-slate-600 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="p-6">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
+           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Comentário/Texto Enviado</p>
+           <div id="textoVisualizarResposta" class="text-sm text-slate-700 whitespace-pre-wrap font-medium max-h-48 overflow-y-auto w-full break-words custom-scrollbar"></div>
+        </div>
+        <div id="boxArquivosResposta" class="hidden text-center mt-6">
+           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Anexos Vinculados</p>
+           <a id="linkArquivosResposta" href="#" target="_blank" class="inline-flex items-center px-4 py-2 bg-jp-navy hover:bg-indigo-700 text-white text-[11px] font-bold uppercase tracking-widest rounded shadow transition">
+              <i class="fa-solid fa-folder-open mr-2"></i>Acessar Documentos
+           </a>
+        </div>
+      </div>
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+         <button onclick="fecharModalVisualizarResposta()" class="px-6 py-2 text-[11px] font-bold bg-slate-200 hover:bg-slate-300 text-slate-600 rounded uppercase tracking-widest transition">Fechar Janela</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== MODAL DE AÇÃO (TAREFA) ==================== -->
   <div id="modalTarefa" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-300 pointer-events-auto" id="modalTarefaContent">
@@ -556,7 +614,7 @@
   <!-- Injetando Variáveis de Ambiente no Escopo Global do Navegador -->
   <script>
     window.GOOGLE_CLIENT_ID = "<?!= GOOGLE_CLIENT_ID ?>";
-    window.INITIAL_TOKEN = "<?!= typeof INITIAL_TOKEN !== 'undefined' ? INITIAL_TOKEN : '' ?>";
+    window.INITIAL_TOKEN = "<?!= (typeof INITIAL_TOKEN !== 'undefined' && INITIAL_TOKEN) ? INITIAL_TOKEN : '' ?>";
     window.SCRIPT_URL = "<?!= SCRIPT_URL ?>";
   </script>
 
@@ -617,5 +675,7 @@
     </div>
   </div>
 
+  <!-- Intro.js JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/intro.min.js"></script>
 </body>
 </html>

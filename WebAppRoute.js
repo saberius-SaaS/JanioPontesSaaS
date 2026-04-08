@@ -301,6 +301,134 @@ function getDadosRiscoWeb(token) {
  * ⚡ HISTORIC FETCH (Portal Web)
  * Busca os ultimos 70 registros.
  */
+/**
+ * ⚡ SOLICITAÇÕES TAB FETCH (Portal Web)
+ * Busca as solicitações com filtro RBAC: ADMIN vê tudo, USER vê só as próprias.
+ */
+function getDadosSolicitacoesTabWeb(token) {
+  try {
+    var emailFinal = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!emailFinal) return { success: false, error: "AUTENTICACAO_REQUERIDA" };
+
+    // Resolve nível do usuário
+    var userLevel = "USER";
+    var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+    for (var u = 1; u < dataU.length; u++) {
+       if (String(dataU[u][0]).toLowerCase().trim() === emailFinal) { 
+           userLevel = String(dataU[u][2]).toUpperCase().trim(); 
+           break; 
+       }
+    }
+
+    var wsSol = getSs().getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
+    if (!wsSol) return { success: false, error: "Aba DB_SOLICITACOES não encontrada." };
+
+    var lastRow = wsSol.getLastRow();
+    if (lastRow <= 1) return { success: true, data: [] };
+
+    var dataSol = wsSol.getDataRange().getValues();
+    var solList = [];
+
+    // Mapa de email → nome para exibição do responsável
+    var mapNomes = {};
+    for (var n = 1; n < dataU.length; n++) {
+       var emailKey = String(dataU[n][0]).toLowerCase().trim();
+       var nomeVal = String(dataU[n][1]).trim();
+       if (emailKey) mapNomes[emailKey] = nomeVal;
+    }
+
+    for (var i = 1; i < dataSol.length; i++) {
+       var respEmail = String(dataSol[i][10] || "").toLowerCase().trim(); // K = RESPONSAVEL
+       
+       // FILTRO RBAC: USER vê apenas suas solicitações
+       if (userLevel !== "ADMIN" && respEmail !== emailFinal) continue;
+
+       var dataRaw = dataSol[i][1]; // B = DATA
+       var dataStr = (dataRaw instanceof Date) ? Utilities.formatDate(dataRaw, "GMT-3", "dd/MM/yyyy HH:mm") : String(dataRaw || "---");
+
+       var statusSol = String(dataSol[i][6] || "").toUpperCase().trim(); // G = STATUS
+       var qtdAvisos = dataSol[i][9] || 0; // J = QTD_AVISOS
+
+       solList.push({
+          id: String(dataSol[i][0]),           // A = ID
+          data: dataStr,                        // B = DATA
+          cliente: String(dataSol[i][2]),       // C = CLIENTE
+          email: String(dataSol[i][3]),         // D = EMAIL
+          pedido: String(dataSol[i][4]),        // E = PEDIDO
+          idTarefa: String(dataSol[i][5] || "AVULSA"), // F = ID_TAREFA
+          status: statusSol,                    // G = STATUS
+          linkArquivo: String(dataSol[i][7] || ""),    // H = LINK_ARQUIVO
+          qtdAvisos: qtdAvisos,                 // J = QTD_AVISOS
+          responsavel: mapNomes[respEmail] || respEmail || "Não Atribuído", // K = RESPONSAVEL (nome)
+          metaTarefa: String(dataSol[i][11] || "")     // L = META_TAREFA
+       });
+    }
+
+    // Ordena: PENDENTES primeiro, depois por data decrescente
+    solList.sort(function(a, b) {
+       if (a.status === "PENDENTE" && b.status !== "PENDENTE") return -1;
+       if (a.status !== "PENDENTE" && b.status === "PENDENTE") return 1;
+       return 0; // Mantém ordem original (cronológica da planilha)
+    });
+
+    return { success: true, data: solList };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * ⚡ COBRAR SOLICITAÇÃO (Manual via Portal)
+ * Dispara um lembrete imediato para uma solicitação específica.
+ */
+function cobrarSolicitacaoUnica(token, solId) {
+  try {
+    var emailFinal = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!emailFinal) return { success: false, error: "AUTENTICACAO_REQUERIDA" };
+
+    var ss = getSs();
+    var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
+    var dataSol = wsSol.getDataRange().getValues();
+    var rowIdx = -1;
+
+    for (var i = 1; i < dataSol.length; i++) {
+       if (String(dataSol[i][0]) === String(solId)) {
+          rowIdx = i + 1;
+          break;
+       }
+    }
+
+    if (rowIdx === -1) return { success: false, error: "Solicitação não encontrada." };
+
+    var cliente = dataSol[rowIdx-1][2];
+    var email = dataSol[rowIdx-1][3];
+    var pedido = dataSol[rowIdx-1][4];
+    var status = String(dataSol[rowIdx-1][6]).toUpperCase().trim();
+    var qtdAvisos = parseInt(dataSol[rowIdx-1][9]) || 0;
+    var infoTarefa = dataSol[rowIdx-1][11];
+
+    if (status !== "PENDENTE") return { success: false, error: "Apenas solicitações PENDENTES podem ser cobradas." };
+
+    // Dispara via EmailService
+    enviarLembreteCobranca(cliente, email, pedido, solId, qtdAvisos, infoTarefa);
+
+    // Atualiza Planilha
+    wsSol.getRange(rowIdx, 9).setValue(new Date()); // Column I: DATA_COBRANCA
+    wsSol.getRange(rowIdx, 10).setValue(qtdAvisos + 1); // Column J: QTD_AVISOS
+
+    invalidarCacheSistema();
+    registrarLogSistema("MANUAL_COBRANCA", "Manual resend for ID: " + solId + " (Aviso #" + (qtdAvisos+1) + ")");
+
+    return { success: true, message: "Lembrete enviado com sucesso!" };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * ⚡ HISTORIC FETCH (Portal Web)
+ * Busca os ultimos 70 registros.
+ */
 function getDadosHistoricoWeb() {
   try {
     // ⚡ CACHE: Tenta retornar resultado cacheado

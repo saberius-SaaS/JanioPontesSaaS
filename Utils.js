@@ -101,13 +101,17 @@ function validarTokenGIS(token) {
   if (!token) return null;
   token = String(token).trim();
   
+  // Validação Básica de Formato JWT (3 partes com pontos e início 'ey')
+  // Evita chamadas desnecessárias à API com valores como "null", "undefined" ou lixo.
+  var parts = token.split('.');
+  if (parts.length !== 3 || !token.startsWith("ey")) {
+     return null;
+  }
+  
   try {
     // Debug: Logar o header do JWT para conferência de emissor
-    var parts = token.split('.');
-    if (parts.length === 3) {
-      var header = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString());
-      registrarLogSistema("GIS_DEBUG_HEADER", JSON.stringify(header));
-    }
+    var header = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString());
+    // registrarLogSistema("GIS_DEBUG_HEADER", JSON.stringify(header)); // Desativado para economizar log
 
     var response = UrlFetchApp.fetch("https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" + encodeURIComponent(token), {
        muteHttpExceptions: true
@@ -121,6 +125,8 @@ function validarTokenGIS(token) {
        }
        registrarLogSistema("GIS_VERIFY_FAIL", "Email não verificado ou ausente no payload.");
     } else {
+       // Apenas logar se não for um erro 400 genérico de valor inválido (já filtrado pelo check acima)
+       // Isso captura erros 401 (expirado) ou 5xx (servidor Google fora)
        registrarLogSistema("GIS_API_ERROR", "Código " + respCode + ": " + response.getContentText().substring(0, 100));
     }
   } catch (e) {

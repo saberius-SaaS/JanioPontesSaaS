@@ -245,8 +245,14 @@ function gerarTarefasDoMes() {
     }
 
     // 5. SALVAMENTO E ORDENAÇÃO
-    wsTarefas.getDataRange().clearContent();
-    wsTarefas.getRange(1, 1, novasLinhasDB.length, 12).setValues(novasLinhasDB);
+    var lrAtual = wsTarefas.getLastRow();
+    if (lrAtual > 1) {
+      wsTarefas.getRange(2, 1, lrAtual - 1, 12).clearContent();
+    }
+    
+    if (novasLinhasDB.length > 1) {
+      wsTarefas.getRange(2, 1, novasLinhasDB.length - 1, 12).setValues(novasLinhasDB.slice(1));
+    }
     
     SpreadsheetApp.flush();
     reordenarTarefasElite();

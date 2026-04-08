@@ -94,6 +94,9 @@ function debounceTarefas() { _debouncedTarefas(); }
 const _debouncedHistorico = debounce(() => filtrarHistoricoWeb(), 300);
 function debounceHistorico() { _debouncedHistorico(); }
 
+const _debouncedSolicitacoes = debounce(() => filtrarSolicitacoesWeb(), 300);
+function debounceSolicitacoes() { _debouncedSolicitacoes(); }
+
 function animateCounter(el, target) {
   const num = parseInt(target, 10);
   if (isNaN(num)) { el.textContent = target; return; }
@@ -239,6 +242,11 @@ function carregarDadosBase(isAutoSync) {
           if (typeof carregarProtocolosServer === "function") {
              carregarProtocolosServer(true, true);
           }
+           
+           // 5.1. SOLICITAÇÕES: Forçar refresh se já carregou antes
+           if (carregouSolicitacoes) {
+              if (window.currentView === 'solicitacoes') carregarSolicitacoesServer(true, true);
+           }
           
           // 6. Exposição de Super Privilégios (RBAC)
           if (res.userLevel === "ADMIN") {
@@ -256,6 +264,16 @@ function carregarDadosBase(isAutoSync) {
              setTimeout(() => loginOverlay.classList.add('hidden'), 500);
              const fb = document.getElementById('gisFeedback');
              if(fb) fb.classList.add('hidden');
+          }
+          
+          // 🚀 AUTO-START TOUR GUIADO (Apenas na primeira vez)
+          if (!localStorage.getItem('jp_tour_done')) {
+             const btnTour = document.getElementById('btnTourTutorial');
+             if(btnTour) btnTour.classList.add('btn-pulse');
+
+             setTimeout(() => {
+                iniciarTourGuiado(true);
+             }, 2000);
           }
           
       }).getDadosPortalWeb(window.GIS_TOKEN);
@@ -812,6 +830,7 @@ function navigate(pageId) {
         'risco': 'Painel de Risco (Compliance)',
         'historico': 'Arquivo Morto e Auditoria',
         'protocolos': 'Protocolos Pendentes de Leitura',
+        'solicitacoes': 'Painel de Solicitações',
         'revisoes': 'Validação Sênior (Fila de Revisão)',
         'comunicacao': 'Comunicação Oficial e Relacionamento Interno',
         'admin': 'Robótica e Administração Geral'
@@ -822,6 +841,7 @@ function navigate(pageId) {
     if (pageId === 'risco' && !carregouRisco) { carregarRiscoServer(); }
     if (pageId === 'historico' && !carregouHistorico) { carregarHistoricoServer(); }
     if (pageId === 'protocolos' && !carregouProtocolos) { carregarProtocolosServer(); }
+    if (pageId === 'solicitacoes' && !carregouSolicitacoes) { carregarSolicitacoesServer(); }
     if (pageId === 'admin' && !carregouLogs) { carregarLogsServer(); }
 }
 
@@ -829,10 +849,16 @@ function navigate(pageId) {
 let carregouRisco = false;
 let carregouHistorico = false;
 let carregouProtocolos = false;
+let carregouSolicitacoes = false;
+let solicitacoesGlobalBase = [];
 
-function carregarRiscoServer() {
+function carregarRiscoServer(forcarRefresh, isQuiet) {
+   if (forcarRefresh) carregouRisco = false;
+
    const container = document.getElementById('containerRisco');
-   container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-user-shield text-4xl mb-4 text-red-300 fa-bounce"></i><p class="text-[10px] uppercase tracking-widest font-bold">Consolidando Auditoria Remota...</p></div>';
+   if (!isQuiet || container.innerHTML.trim() === '') {
+      container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-user-shield text-4xl mb-4 text-red-300 fa-bounce"></i><p class="text-[10px] uppercase tracking-widest font-bold">Consolidando Auditoria Remota...</p></div>';
+   }
    
    google.script.run
      .withFailureHandler(err => { container.innerHTML = `<div class="p-6 text-red-500 text-[11px] font-bold text-center border-t border-red-100">Erro: ${err.message}</div>`; })
@@ -850,42 +876,42 @@ function renderizarRisco(lista) {
       return;
    }
    
-   let table = `
-     <table class="w-full text-left border-collapse">
-       <thead class="bg-slate-100 text-[9px] uppercase text-slate-500 tracking-wider sticky top-0 shadow-sm z-10">
-         <tr>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Cliente</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Obrigação</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Departamento</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Vencimento Original</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200 text-center">Dias de Atraso</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200 text-right">Owner Assigned</th>
-         </tr>
-       </thead>
-       <tbody class="divide-y divide-slate-100">
-   `;
+   container.className = "flex-1 p-6 overflow-y-auto bg-slate-50";
+   let html = '<div class="space-y-3">';
    
    lista.forEach(item => {
       let badgeCor = item.atraso > 5 ? "bg-red-100 text-red-700 border-red-200" : "bg-orange-100 text-orange-700 border-orange-200";
       
-      table += `
-         <tr class="hover:bg-red-50/30 transition bg-white">
-           <td class="px-5 py-3.5 font-bold text-jp-navy text-[11px] uppercase tracking-wider">${item.cliente}</td>
-           <td class="px-5 py-3.5 text-slate-600 text-[13px] font-medium">${item.obrigacao}</td>
-           <td class="px-5 py-3.5 text-[9px] font-bold text-indigo-500 uppercase">${item.depto || 'GENÉRICO'}</td>
-           <td class="px-5 py-3.5 text-slate-500 text-[11px] font-bold">${item.vencimento}</td>
-           <td class="px-5 py-3.5 text-center"><span class="px-2.5 py-1 text-[10px] uppercase font-bold rounded border ${badgeCor}">${item.atraso} Dias</span></td>
-           <td class="px-5 py-3.5 text-[9px] uppercase font-bold text-slate-400 text-right bg-slate-50 border-l border-slate-100">${item.responsavel}</td>
-         </tr>
+      html += `
+         <div class="task-card flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group border-l-4 ${item.atraso > 5 ? 'border-l-red-500' : 'border-l-orange-400'}">
+            <div class="flex-1">
+               <div class="flex items-center gap-2 mb-1">
+                  <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-indigo-100 uppercase">${item.depto || 'GENÉRICO'}</span>
+                  <span class="bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-clock mr-1"></i>Venceu em: ${item.vencimento}</span>
+               </div>
+               <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5">${item.cliente}</div>
+               <div class="text-xs text-slate-600 font-medium">${item.obrigacao}</div>
+               <div class="mt-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                  <i class="fa-solid fa-user-shield mr-1.5 text-slate-300"></i>${item.responsavel}
+               </div>
+            </div>
+            <div class="flex flex-col items-end gap-1 ml-4">
+               <span class="px-3 py-1 text-[11px] uppercase font-black rounded-lg border shadow-sm ${badgeCor}">${item.atraso} Dias de Atraso</span>
+            </div>
+         </div>
       `;
    });
-   table += `</tbody></table>`;
-   container.innerHTML = table;
+   html += '</div>';
+   container.innerHTML = html;
 }
 
-function carregarHistoricoServer() {
+function carregarHistoricoServer(forcarRefresh, isQuiet) {
+   if (forcarRefresh) carregouHistorico = false;
+
    const container = document.getElementById('containerHistorico');
-   container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-server text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Requisitando Arquivo Morto...</p></div>';
+   if (!isQuiet || container.innerHTML.trim() === '') {
+      container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-server text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Requisitando Arquivo Morto...</p></div>';
+   }
    
    google.script.run
      .withFailureHandler(err => { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-sm text-center">Falha de Servidor: ${err.message}</div>`; })
@@ -904,37 +930,33 @@ function renderizarHistorico(lista) {
       return;
    }
    
-   let table = `
-     <table class="w-full text-left border-collapse">
-       <thead class="bg-slate-100 text-[9px] uppercase text-slate-500 tracking-wider sticky top-0 shadow-sm z-10">
-         <tr>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Ref. (Mês/Ano)</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Cliente & Relatório</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200 text-center">Feedback Protocolo</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200 text-center">Recibo de Leitura</th>
-         </tr>
-       </thead>
-       <tbody class="divide-y divide-slate-100">
-   `;
+   container.className = "flex-1 p-6 overflow-y-auto bg-slate-50";
+   let html = '<div class="space-y-3">';
    
    lista.forEach(item => {
-      let bEnvio = item.statusEnvio.indexOf("ENVIADO") > -1 ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500";
-      let bLeitura = item.leitura.indexOf("NÃO") > -1 || item.leitura === "---" || item.leitura.indexOf("AGUARDANDO") > -1 ? "bg-slate-100 text-slate-400" : "bg-blue-100 text-blue-700 border border-blue-200 font-bold";
+      let bEnvio = item.statusEnvio.indexOf("ENVIADO") > -1 ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200";
+      let bLeitura = item.leitura.indexOf("NÃO") > -1 || item.leitura === "---" || item.leitura.indexOf("AGUARDANDO") > -1 ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-blue-100 text-blue-700 border border-blue-200 font-bold";
       
-      table += `
-         <tr class="hover:bg-slate-50 transition bg-white cursor-default">
-           <td class="px-5 py-3 whitespace-nowrap"><span class="bg-indigo-900 text-indigo-50 px-2.5 py-1 rounded text-[10px] font-bold tracking-widest shadow-sm">${item.mesAno}</span></td>
-           <td class="px-5 py-3">
-              <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5">${item.cliente}</div>
-              <div class="text-xs text-slate-600 font-medium">${item.obrigacao}</div>
-           </td>
-           <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 text-[9px] rounded uppercase font-bold tracking-wider ${bEnvio}">${item.statusEnvio}</span></td>
-           <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 text-[9px] rounded uppercase font-bold tracking-wider ${bLeitura}">${item.leitura}</span></td>
-         </tr>
+      html += `
+         <div class="task-card flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group border-l-4 border-l-slate-400 hover:border-l-jp-navy">
+            <div class="flex-1">
+               <div class="flex items-center gap-2 mb-1">
+                  <span class="bg-jp-navy text-white px-2 py-0.5 rounded text-[9px] font-black tracking-widest shadow-sm uppercase">${item.mesAno}</span>
+               </div>
+               <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5">${item.cliente}</div>
+               <div class="text-xs text-slate-600 font-medium">${item.obrigacao}</div>
+            </div>
+            <div class="flex flex-col items-end gap-2 ml-4">
+               <div class="flex gap-2">
+                  <span class="px-2 py-1 text-[8px] rounded-lg uppercase font-bold tracking-wider border shadow-sm ${bEnvio}"><i class="fa-solid fa-paper-plane mr-1"></i> ${item.statusEnvio}</span>
+                  <span class="px-2 py-1 text-[8px] rounded-lg uppercase font-bold tracking-wider border shadow-sm ${bLeitura}"><i class="fa-solid fa-envelope-open mr-1"></i> ${item.leitura}</span>
+               </div>
+            </div>
+         </div>
       `;
    });
-   table += `</tbody></table>`;
-   container.innerHTML = table;
+   html += '</div>';
+   container.innerHTML = html;
 }
 
 function filtrarHistoricoWeb() {
@@ -956,7 +978,7 @@ function carregarProtocolosServer(forcarRefresh, isQuiet) {
    if (forcarRefresh) carregouProtocolos = false;
    
    const container = document.getElementById('containerProtocolos');
-   if (!isQuiet && container) {
+   if (!isQuiet || container.innerHTML.trim() === '') {
       container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-file-signature text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Consolidando protocolos pendentes...</p></div>';
    }
 
@@ -988,42 +1010,33 @@ function renderizarProtocolosInfo(lista) {
       return;
    }
    
-   let table = `
-     <table class="w-full text-left border-collapse">
-       <thead class="bg-slate-100 text-[9px] uppercase text-slate-500 tracking-wider sticky top-0 shadow-sm z-10">
-         <tr>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Data Envio</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Cliente & Obrigação</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200 text-red-600">Vcto Legal</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Protocolo</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200 text-center">Ação</th>
-         </tr>
-       </thead>
-       <tbody class="divide-y divide-slate-100">
-   `;
+   container.className = "flex-1 p-6 overflow-y-auto bg-slate-50";
+   let html = '<div class="space-y-3">';
    
    lista.forEach(p => {
-      table += `
-         <tr class="hover:bg-slate-50 transition bg-white">
-           <td class="px-5 py-4 text-slate-500 text-[11px] font-bold whitespace-nowrap"><i class="fa-regular fa-calendar mr-1"></i> ${p.data}</td>
-           <td class="px-5 py-4">
-              <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5">${p.cliente}</div>
-              <div class="text-xs text-slate-600 font-medium">${p.obrigacao}</div>
-           </td>
-           <td class="px-5 py-4 text-red-600 text-[11px] font-bold whitespace-nowrap">${p.vencimentoLegal}</td>
-           <td class="px-5 py-4">
-              <span class="bg-slate-100 px-2.5 py-1 rounded text-[10px] font-mono text-slate-500 tracking-widest border border-slate-200 shadow-sm whitespace-nowrap">${p.protocolo}</span>
-           </td>
-           <td class="px-5 py-4 text-center">
-              <a href="${p.link}" target="_blank" class="inline-flex items-center justify-center px-4 py-2 bg-jp-navy text-white text-[9px] uppercase font-bold rounded hover:bg-indigo-700 transition shadow">
-                 <i class="fa-solid fa-file-pdf mr-1.5"></i> Arquivo
-              </a>
-           </td>
-         </tr>
+      html += `
+         <div class="task-card flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group border-l-4 border-l-indigo-400">
+            <div class="flex-1">
+               <div class="flex items-center gap-2 mb-1">
+                  <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-indigo-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i> ${p.data}</span>
+                  <span class="bg-slate-100 px-2 py-0.5 rounded text-[8px] font-mono text-slate-500 tracking-widest border border-slate-200"># ${p.protocolo}</span>
+               </div>
+               <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5">${p.cliente}</div>
+               <div class="text-xs text-slate-600 font-medium">${p.obrigacao}</div>
+               <div class="mt-2 flex items-center gap-2">
+                  <span class="text-[9px] font-bold text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded">VCTO LEGAL: ${p.vencimentoLegal}</span>
+               </div>
+            </div>
+            <div class="flex flex-col items-end gap-2 ml-4">
+               <a href="${p.link}" target="_blank" class="inline-flex items-center justify-center px-4 py-2 bg-jp-navy text-white text-[9px] uppercase font-bold rounded-lg hover:bg-indigo-700 transition shadow-sm">
+                  <i class="fa-solid fa-file-pdf mr-1.5"></i> Baixar Arquivo
+               </a>
+            </div>
+         </div>
       `;
    });
-   table += `</tbody></table>`;
-   container.innerHTML = table;
+   html += '</div>';
+   container.innerHTML = html;
 }
 
 // ================= CRM: CRIAÇÃO DE DEMANDAS E COBRANÇAS =================
@@ -1134,6 +1147,7 @@ function acionarRoboAdmin(nomeFuncao, idBotao) {
             carregouRisco = false; // Destroy Cache view
             carregouHistorico = false;
             carregouProtocolos = false;
+             carregouSolicitacoes = false;
         }
      })
      [nomeFuncao](); // Invoca qualquer função remota global dinamicamente via Prototype
@@ -1146,11 +1160,13 @@ let logsGlobalBase = [];
 const _debouncedLogs = debounce(() => filtrarLogsWeb(), 300);
 function debounceLogs() { _debouncedLogs(); }
 
-function carregarLogsServer(forcarRefresh) {
+function carregarLogsServer(forcarRefresh, isQuiet) {
    if (forcarRefresh) carregouLogs = false;
 
    const container = document.getElementById('containerLogs');
-   container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-scroll text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Carregando registros de atividade...</p></div>';
+   if (!isQuiet || container.innerHTML.trim() === '') {
+      container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-scroll text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Carregando registros de atividade...</p></div>';
+   }
 
    google.script.run
      .withFailureHandler(err => { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">Erro: ${err.message}</div>`; })
@@ -1169,31 +1185,33 @@ function renderizarLogs(lista) {
       return;
    }
 
-   let table = `
-     <table class="w-full text-left border-collapse">
-       <thead class="bg-slate-100 text-[9px] uppercase text-slate-500 tracking-wider sticky top-0 shadow-sm z-10">
-         <tr>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Data/Hora</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Usuário</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Ação</th>
-           <th class="px-5 py-3 font-bold border-b border-slate-200">Detalhe</th>
-         </tr>
-       </thead>
-       <tbody class="divide-y divide-slate-100">
-   `;
+   container.className = "flex-1 p-6 overflow-y-auto bg-slate-50";
+   let html = '<div class="space-y-3">';
 
    lista.forEach(item => {
-      table += `
-         <tr class="hover:bg-slate-50 transition bg-white">
-           <td class="px-5 py-3 text-slate-500 text-[11px] font-bold whitespace-nowrap"><i class="fa-regular fa-clock mr-1 text-slate-300"></i> ${item.data}</td>
-           <td class="px-5 py-3 text-[10px] font-bold text-jp-navy uppercase tracking-wider">${item.usuario}</td>
-           <td class="px-5 py-3"><span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">${item.acao}</span></td>
-           <td class="px-5 py-3 text-slate-600 text-xs font-medium max-w-md truncate" title="${item.detalhe}">${item.detalhe}</td>
-         </tr>
+      html += `
+         <div class="flex gap-4 items-start relative pb-2 group">
+            <div class="flex flex-col items-center mt-1">
+               <div class="w-2.5 h-2.5 rounded-full bg-slate-300 border-2 border-white shadow-sm z-10 group-hover:bg-indigo-500 transition-colors"></div>
+               <div class="w-0.5 flex-1 bg-slate-200 mt-1 mb-1"></div>
+            </div>
+            <div class="task-card flex-1 p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition border-l-4 border-l-slate-300 hover:border-l-indigo-400">
+               <div class="flex justify-between items-start mb-2">
+                  <div class="flex items-center gap-2">
+                     <span class="text-slate-500 text-[10px] font-bold whitespace-nowrap"><i class="fa-regular fa-clock mr-1 text-slate-300"></i> ${item.data}</span>
+                     <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider">${item.acao}</span>
+                  </div>
+                  <div class="text-[9px] font-bold text-jp-navy uppercase tracking-widest">${item.usuario}</div>
+               </div>
+               <div class="text-xs text-slate-600 font-medium leading-relaxed bg-slate-50/50 p-2 rounded border border-dashed border-slate-200" title="${item.detalhe}">
+                  ${item.detalhe}
+               </div>
+            </div>
+         </div>
       `;
    });
-   table += `</tbody></table>`;
-   container.innerHTML = table;
+   html += '</div>';
+   container.innerHTML = html;
 }
 
 function filtrarLogsWeb() {
@@ -1208,5 +1226,342 @@ function filtrarLogsWeb() {
       i.data.toLowerCase().includes(q)
    );
    renderizarLogs(fList);
+}
+
+// ================= SOLICITAÇÕES (LAZY LOADING) =================
+
+function carregarSolicitacoesServer(forcarRefresh, isQuiet) {
+   if (forcarRefresh) carregouSolicitacoes = false;
+
+   const container = document.getElementById('containerSolicitacoes');
+   if (!isQuiet || container.innerHTML.trim() === '') {
+      container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-clipboard-list text-4xl mb-4 text-teal-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Consolidando solicitações...</p></div>';
+   }
+
+   google.script.run
+     .withFailureHandler(err => { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">Erro: ${err.message}</div>`; })
+     .withSuccessHandler(res => {
+        if (!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">${res.error}</div>`; return; }
+        carregouSolicitacoes = true;
+        solicitacoesGlobalBase = res.data;
+        renderizarSolicitacoes(solicitacoesGlobalBase);
+     }).getDadosSolicitacoesTabWeb(window.GIS_TOKEN);
+}
+
+function renderizarSolicitacoes(lista) {
+   const container = document.getElementById('containerSolicitacoes');
+   if (!lista || lista.length === 0) {
+      container.innerHTML = '<div class="p-10 h-full flex flex-col justify-center items-center text-slate-400"><i class="fa-solid fa-clipboard-check text-5xl mb-4 opacity-30 text-teal-500"></i><h2 class="text-lg font-bold text-teal-600 mb-1">Nenhuma Solicitação</h2><p class="text-xs uppercase font-bold tracking-widest">Tudo resolvido por aqui.</p></div>';
+      return;
+   }
+
+   container.className = "flex-1 p-6 overflow-y-auto bg-slate-50";
+   let html = '<div class="space-y-4">';
+
+   lista.forEach(item => {
+      const isPendente = item.status === "PENDENTE";
+      const statusBadge = isPendente 
+        ? 'bg-amber-100 text-amber-700 border border-amber-200'
+        : 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+      const statusIcon = isPendente ? 'fa-hourglass-half' : 'fa-check-circle';
+
+      const metaDisplay = item.metaTarefa || (item.idTarefa !== 'AVULSA' ? item.idTarefa : 'Avulsa');
+      
+      const isAdmin = window.userDataGlobal && (["ADMIN", "MASTER", "CONSULTOR"].indexOf(window.userDataGlobal.userLevel) > -1);
+      const rowId = String(item.id).replace(/'/g, "\'");
+      
+      let btnAcao = '';
+      if (isPendente && isAdmin) {
+        btnAcao = `<button onclick="cobrarSolicitacao('${rowId}', this)" title="Reenviar Cobrança" class="bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition"><i class="fa-solid fa-paper-plane mr-1.5"></i>Cobrar Agora</button>`;
+      } else if (!isPendente && item.linkArquivo) {
+        if (item.linkArquivo.startsWith("RESPOSTA:")) {
+           const safePayload = item.linkArquivo.replace(/'/g, "&apos;").replace(/"/g, "&quot;").replace(/\\n/g, "\\\\n").replace(/\\r/g, "");
+           btnAcao = `<button onclick="abrirConteudoResposta('${safePayload}')" class="bg-teal-600 hover:bg-teal-700 text-white text-[9px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition inline-flex items-center"><i class="fa-solid fa-eye mr-1.5"></i>Acessar Retorno</button>`;
+        } else {
+           btnAcao = `<a href="${item.linkArquivo}" target="_blank" class="bg-teal-600 hover:bg-teal-700 text-white text-[9px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition inline-flex items-center"><i class="fa-solid fa-folder-open mr-1.5"></i>Ver Docs</a>`;
+        }
+      } else {
+        btnAcao = `<span class="text-slate-400 text-[9px] font-bold italic"><i class="fa-solid ${isPendente ? 'fa-hourglass' : 'fa-check-double'} mr-1"></i>${isPendente ? 'Aguardando Cliente' : 'Finalizado'}</span>`;
+      }
+
+      html += `
+         <div class="task-card p-5 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition border-l-4 ${isPendente ? 'border-l-amber-400' : 'border-l-teal-500'}">
+            <div class="flex justify-between items-start mb-3">
+               <div class="flex items-center gap-2">
+                  <span class="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[8px] font-bold tracking-widest uppercase border border-slate-200"><i class="fa-regular fa-calendar mr-1"></i>${item.data}</span>
+                  <span class="${statusBadge} px-2 py-0.5 rounded text-[8px] font-bold tracking-widest uppercase"><i class="fa-solid ${statusIcon} mr-1"></i>${item.status}</span>
+               </div>
+               <div class="text-right">
+                  <span class="text-[8px] font-black text-slate-300 tracking-tighter uppercase mr-1">Avisos:</span>
+                  <span class="bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded text-[9px] font-bold border border-slate-100">${item.qtdAvisos}</span>
+               </div>
+            </div>
+            
+            <div class="mb-4">
+               <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-1">${item.cliente}</div>
+               <div class="text-xs text-slate-600 font-medium leading-relaxed bg-slate-50/50 p-3 rounded-lg border border-dashed border-slate-200">${item.pedido}</div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+               <div class="flex items-center gap-3">
+                  <div class="flex flex-col">
+                     <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Responsável</span>
+                     <span class="text-[10px] font-bold text-slate-600 uppercase">${item.responsavel}</span>
+                  </div>
+                  <div class="h-6 border-l border-slate-200 mx-1"></div>
+                  <div class="flex flex-col">
+                     <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Vinculada à</span>
+                     <span class="text-[10px] font-bold text-teal-600 uppercase truncate max-w-[150px]">${metaDisplay}</span>
+                  </div>
+               </div>
+               <div class="flex gap-2">
+                  ${btnAcao}
+               </div>
+            </div>
+         </div>
+      `;
+   });
+   html += '</div>';
+   container.innerHTML = html;
+}
+
+function filtrarSolicitacoesWeb() {
+   if (!carregouSolicitacoes) return;
+   const q = document.getElementById('inputBuscaSolicitacoes').value.toLowerCase().trim();
+   if (!q) { renderizarSolicitacoes(solicitacoesGlobalBase); return; }
+
+   const fList = solicitacoesGlobalBase.filter(i =>
+      i.cliente.toLowerCase().includes(q) ||
+      i.pedido.toLowerCase().includes(q) ||
+      i.id.toLowerCase().includes(q) ||
+      i.responsavel.toLowerCase().includes(q)
+   );
+   renderizarSolicitacoes(fList);
+}
+
+function cobrarSolicitacao(solId, btnEl) {
+   if (!solId || !btnEl) return;
+   
+   const oldHtml = btnEl.innerHTML;
+   btnEl.disabled = true;
+   btnEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+   btnEl.classList.add('opacity-50');
+
+   google.script.run
+     .withFailureHandler(err => {
+        btnEl.disabled = false;
+        btnEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        btnEl.classList.remove('opacity-50', 'bg-amber-500');
+        btnEl.classList.add('bg-red-500');
+        console.error(err);
+        setTimeout(() => { 
+           btnEl.innerHTML = oldHtml;
+           btnEl.classList.remove('bg-red-500');
+           btnEl.classList.add('bg-amber-500');
+        }, 3000);
+     })
+     .withSuccessHandler(res => {
+        if (!res.success) {
+           btnEl.disabled = false;
+           btnEl.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+           btnEl.classList.remove('opacity-50', 'bg-amber-500');
+           btnEl.classList.add('bg-orange-500');
+           setTimeout(() => { 
+              btnEl.innerHTML = oldHtml;
+              btnEl.classList.remove('bg-orange-500');
+              btnEl.classList.add('bg-amber-500');
+           }, 3000);
+           return;
+        }
+        
+        btnEl.innerHTML = '<i class="fa-solid fa-check"></i>';
+        btnEl.classList.remove('opacity-50', 'bg-amber-500');
+        btnEl.classList.add('bg-emerald-500');
+        
+        // Recarrega silenciosamente em 2 segundos
+        setTimeout(() => { carregarSolicitacoesServer(); }, 2000);
+     }).cobrarSolicitacaoUnica(window.GIS_TOKEN, solId);
+}
+function abrirConteudoResposta(payload) {
+    let texto = payload;
+    let arquivos = "";
+    
+    if (payload.indexOf(" | ARQUIVOS: ") > -1) {
+        const parts = payload.split(" | ARQUIVOS: ");
+        texto = parts[0];
+        arquivos = parts[1];
+    }
+    
+    if (texto.startsWith("RESPOSTA:")) {
+        texto = texto.substring(9).trim();
+    }
+    
+    document.getElementById('textoVisualizarResposta').textContent = texto;
+    
+    const boxArquivos = document.getElementById('boxArquivosResposta');
+    const linkArquivos = document.getElementById('linkArquivosResposta');
+    
+    if (arquivos && arquivos.trim().length > 0) {
+        linkArquivos.href = arquivos.trim();
+        boxArquivos.classList.remove('hidden');
+    } else {
+        boxArquivos.classList.add('hidden');
+    }
+    
+    const modal = document.getElementById('modalVisualizarResposta');
+    const content = document.getElementById('modalVisualizarRespostaContent');
+    modal.classList.remove('hidden');
+    
+    setTimeout(() => { 
+        modal.classList.remove('opacity-0'); 
+        content.classList.remove('scale-95');
+    }, 10);
+}
+
+function fecharModalVisualizarResposta() {
+    const modal = document.getElementById('modalVisualizarResposta');
+    const content = document.getElementById('modalVisualizarRespostaContent');
+    
+    modal.classList.add('opacity-0');
+    content.classList.add('scale-95');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+/**
+ * Motor do Tour de Onboarding Robusto (Intro.js)
+ * @param {boolean} isAuto - Se o tour foi disparado automaticamente
+ */
+function iniciarTourGuiado(isAuto) {
+    if (typeof introJs !== 'function') return;
+
+    const tour = introJs();
+
+    tour.setOptions({
+        steps: [
+            {
+                title: 'Bem-vindo! 🚀',
+                intro: 'Este é o <b>Portal Janio Pontes SaaS</b>. Vamos te mostrar como dominar todas as ferramentas essenciais na ordem correta.',
+                position: 'center'
+            },
+            {
+                element: document.querySelector('#sidebarEl'),
+                title: 'Menu Estrutural',
+                intro: 'Aqui você navega por todas as dimensões do portal. Cada ícone abre uma nova visão estratégica.',
+                position: 'right'
+            },
+            {
+                element: document.querySelector('#view-dashboard'),
+                title: '1. Dashboard',
+                intro: 'O coração do portal. Acompanhe KPIs de produtividade e o status das entregas legais em tempo real.',
+                view: 'dashboard'
+            },
+            {
+                element: document.querySelector('#containerTarefas'),
+                title: '2. Tarefas e Prioridades',
+                intro: 'Este é o seu quadro operacional. Aqui você valida documentos e acompanha a esteira de produção.',
+                view: 'tarefas'
+            },
+            {
+                element: document.querySelector('#containerRisco'),
+                title: '3. Compliance (Risco)',
+                intro: 'Monitore riscos críticos e prazos fatais. A IA ajuda a evitar multas e inconsistências fiscais.',
+                view: 'risco'
+            },
+            {
+                element: document.querySelector('#containerHistorico'),
+                title: '4. Histórico',
+                intro: 'Tudo o que já foi entregue e resolvido fica guardado aqui para consultas rápidas e auditorias.',
+                view: 'historico'
+            },
+            {
+                element: document.querySelector('#containerProtocolos'),
+                title: '5. Protocolos Não Lidos',
+                intro: 'Confira documentos que acabaram de chegar via OCR ou integração. Leia e valide protocolos pendentes.',
+                view: 'protocolos'
+            },
+            {
+                element: document.querySelector('#containerSolicitacoes'),
+                title: '6. Solicitações',
+                intro: 'Gerencie pedidos feitos aos clientes. Veja respostas por texto ou anexo e cobre pendências.',
+                view: 'solicitacoes'
+            },
+            {
+                element: document.querySelector('#formDemandaWeb').closest('.bg-white'),
+                title: '7. CRM - Demandas Internas',
+                intro: 'Use este formulário para criar novas tarefas na esteira NCE. Defina o depto, a ação e o vencimento estratégico.',
+                view: 'comunicacao'
+            },
+            {
+                element: document.querySelector('#formSolicitarWeb').closest('.bg-white'),
+                title: '8. CRM - Solicitação / Pendências',
+                intro: 'O canal seguro para pedir documentos ao cliente. A mensagem é rastreada e gera protocolos automáticos.',
+                view: 'comunicacao'
+            },
+            {
+                element: document.querySelector('#txtLastSync').parentElement,
+                title: '9. Sincronização em Tempo Real',
+                intro: 'O portal se mantém "vivo" conectando-se ao banco de dados a cada 30s. Aqui você vê a última atualização.',
+                position: 'top'
+            },
+            {
+                element: document.querySelector('#avatarUser').parentElement,
+                title: '10. Perfil e Privilégios',
+                intro: 'Identifique seu e-mail e nível de acesso. A segurança é nossa prioridade máxima.',
+                position: 'top'
+            }
+        ],
+        nextLabel: 'Próximo →',
+        prevLabel: '← Voltar',
+        doneLabel: 'Concluir Tour',
+        showProgress: true,
+        showBullets: false,
+        exitOnOverlayClick: false,
+        tooltipClass: 'tour-premium-tooltip'
+    });
+
+    // Lógica de Sincronização e Navegação Automática
+    tour.onbeforechange(function(targetElement) {
+        const step = this._options.steps[this._currentStep];
+        if (step && step.view && window.currentView !== step.view) {
+            navigate(step.view);
+            
+            // Retornamos uma Promise para o IntroJS esperar o carregamento
+            return new Promise((resolve) => {
+                let checkCount = 0;
+                const checkInterval = setInterval(() => {
+                    checkCount++;
+                    // Se o container não tiver mais apenas o loader/skeleton, ou se passarem 5 segundos (timeout)
+                    const container = document.getElementById('container' + step.view.charAt(0).toUpperCase() + step.view.slice(1));
+                    const isLoaded = container && container.innerHTML.indexOf('fa-fade') === -1 && container.innerHTML.indexOf('skeleton') === -1;
+                    
+                    // Caso específico para CRM que é estático
+                    const isCrm = step.view === 'comunicacao';
+
+                    if (isLoaded || isCrm || checkCount > 20) {
+                        clearInterval(checkInterval);
+                        setTimeout(resolve, 300); // 300ms extra para estabilidade visual
+                    }
+                }, 250);
+            });
+        }
+    });
+
+    tour.oncomplete(function() {
+        localStorage.setItem('jp_tour_done', 'true');
+        const btnTour = document.getElementById('btnTourTutorial');
+        if(btnTour) btnTour.classList.remove('btn-pulse');
+    });
+
+    tour.onexit(function() {
+        if (isAuto) {
+            localStorage.setItem('jp_tour_done', 'true');
+            const btnTour = document.getElementById('btnTourTutorial');
+            if(btnTour) btnTour.classList.remove('btn-pulse');
+        }
+    });
+
+    tour.start();
 }
 </script>
