@@ -97,6 +97,9 @@ function debounceHistorico() { _debouncedHistorico(); }
 const _debouncedSolicitacoes = debounce(() => filtrarSolicitacoesWeb(), 300);
 function debounceSolicitacoes() { _debouncedSolicitacoes(); }
 
+const _debouncedProtocolos = debounce(() => filtrarProtocolosHistorico(), 300);
+function debounceProtocolos() { _debouncedProtocolos(); }
+
 function animateCounter(el, target) {
   const num = parseInt(target, 10);
   if (isNaN(num)) { el.textContent = target; return; }
@@ -829,7 +832,8 @@ function navigate(pageId) {
         'tarefas': 'Tarefas e Prioridades',
         'risco': 'Painel de Risco (Compliance)',
         'historico': 'Arquivo Morto e Auditoria',
-        'protocolos': 'Protocolos Pendentes de Leitura',
+        'protocolos': 'Gestão de Protocolos',
+        'acessos': 'Gestão de Equipe e Atividade',
         'solicitacoes': 'Painel de Solicitações',
         'revisoes': 'Validação Sênior (Fila de Revisão)',
         'comunicacao': 'Comunicação Oficial e Relacionamento Interno',
@@ -842,15 +846,17 @@ function navigate(pageId) {
     if (pageId === 'historico' && !carregouHistorico) { carregarHistoricoServer(); }
     if (pageId === 'protocolos' && !carregouProtocolos) { carregarProtocolosServer(); }
     if (pageId === 'solicitacoes' && !carregouSolicitacoes) { carregarSolicitacoesServer(); }
+    if (pageId === 'acessos' && !carregouAcessos) { carregarAcessosServer(); }
     if (pageId === 'admin' && !carregouLogs) { carregarLogsServer(); }
 }
 
 // ================= LÓGICA DE DADOS SECUNDÁRIOS (LAZY LOADING) =================
 let carregouRisco = false;
 let carregouHistorico = false;
-let carregouProtocolos = false;
+let carregouAcessos = false;
 let carregouSolicitacoes = false;
 let solicitacoesGlobalBase = [];
+let protocolosGlobalBase = []; // Cache de protocolos (todos)
 
 function carregarRiscoServer(forcarRefresh, isQuiet) {
    if (forcarRefresh) carregouRisco = false;
@@ -972,74 +978,380 @@ function filtrarHistoricoWeb() {
    renderizarHistorico(fList);
 }
 
-// ================= PROTOCOLOS NÃO LIDOS (LAZY LOADING) =================
+// ================= PROTOCOLOS (LAZY LOADING) =================
 
 function carregarProtocolosServer(forcarRefresh, isQuiet) {
    if (forcarRefresh) carregouProtocolos = false;
    
-   const container = document.getElementById('containerProtocolos');
-   if (!isQuiet || container.innerHTML.trim() === '') {
-      container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-file-signature text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Consolidando protocolos pendentes...</p></div>';
+   const containerP = document.getElementById('containerProtocolosPendentes');
+   const containerT = document.getElementById('containerProtocolosTodos');
+
+   if (!isQuiet || (containerP && containerP.innerHTML.trim() === '')) {
+      if(containerP) containerP.innerHTML = '<div class="p-4 flex items-center text-slate-400 text-[10px] uppercase font-bold tracking-widest"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Atualizando pendências...</div>';
+      if(containerT) containerT.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-file-signature text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Consolidando histórico completo...</p></div>';
    }
 
    google.script.run
-     .withFailureHandler(err => { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">Erro: ${err.message}</div>`; })
+     .withFailureHandler(err => { 
+        if(containerP) containerP.innerHTML = `<div class="p-4 text-red-500 font-bold text-[10px]">Erro: ${err.message}</div>`; 
+     })
      .withSuccessHandler(res => {
-        if (!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">${res.error}</div>`; return; }
+        if (!res.success) { 
+           if(containerP) containerP.innerHTML = `<div class="p-4 text-red-500 font-bold text-[10px]">${res.error}</div>`; 
+           return; 
+        }
         carregouProtocolos = true;
         
         // Atualiza o badge na sidebar
         const badge = document.getElementById('badgeProtocolosCount');
         if (badge) {
-           if (res.data && res.data.length > 0) {
-              badge.textContent = res.data.length;
+           if (res.pendentes && res.pendentes.length > 0) {
+              badge.textContent = res.pendentes.length;
               badge.classList.remove('hidden');
            } else {
               badge.classList.add('hidden');
            }
         }
+
+        const bPend = document.getElementById('badgeProtocolosPendentes');
+        if(bPend) bPend.textContent = res.pendentes ? res.pendentes.length : 0;
         
-        renderizarProtocolosInfo(res.data);
+        protocolosGlobalBase = res.todos || [];
+        renderizarProtocolosInfo(res.pendentes || [], protocolosGlobalBase);
      }).getDadosProtocolosWeb(window.GIS_TOKEN);
 }
 
-function renderizarProtocolosInfo(lista) {
-   const container = document.getElementById('containerProtocolos');
-   if(!lista || lista.length === 0) {
-      container.innerHTML = '<div class="p-10 h-full flex flex-col justify-center items-center text-slate-400"><i class="fa-solid fa-check-double text-5xl mb-4 opacity-30 text-emerald-500"></i><h2 class="text-lg font-bold text-emerald-600 mb-1">Todos Lidos!</h2><p class="text-xs uppercase font-bold tracking-widest">Nenhum protocolo pendente.</p></div>';
-      return;
+function renderizarProtocolosInfo(pendentes, todos) {
+   const containerP = document.getElementById('containerProtocolosPendentes');
+   const containerT = document.getElementById('containerProtocolosTodos');
+   
+   // 1. Renderizar Não Lidos
+   if(!pendentes || pendentes.length === 0) {
+      containerP.innerHTML = '<div class="p-4 text-center text-emerald-600 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-center gap-3"><i class="fa-solid fa-check-double text-lg"></i><span class="text-[10px] font-bold uppercase tracking-widest">Parabéns! Todos os protocolos deste lote foram lidos.</span></div>';
+   } else {
+      let htmlP = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+      pendentes.forEach(p => { htmlP += gerarCardProtocolo(p, true); });
+      htmlP += '</div>';
+      containerP.innerHTML = htmlP;
    }
+
+   // 2. Renderizar Histórico (Todos)
+   if(!todos || todos.length === 0) {
+      containerT.innerHTML = '<div class="p-10 h-full flex flex-col justify-center items-center text-slate-400"><i class="fa-solid fa-wind text-5xl mb-4 opacity-30"></i><p class="text-xs uppercase font-bold tracking-widest">Nenhum protocolo no histórico.</p></div>';
+   } else {
+      renderizarGradeProtocolosTodos(todos);
+   }
+}
+
+function renderizarGradeProtocolosTodos(lista) {
+   const containerT = document.getElementById('containerProtocolosTodos');
    
-   container.className = "flex-1 p-6 overflow-y-auto bg-slate-50";
-   let html = '<div class="space-y-3">';
-   
+   let htmlT = `
+      <div class="overflow-x-auto">
+         <table class="table-enterprise w-full text-left">
+            <thead>
+               <tr class="text-[9px] uppercase tracking-widest text-slate-500">
+                  <th class="p-3 border-b border-slate-100">Envio</th>
+                  <th class="p-3 border-b border-slate-100">Cliente / Obrigação</th>
+                  <th class="p-3 border-b border-slate-100">Protocolo</th>
+                  <th class="p-3 border-b border-slate-100">Vcto Legal</th>
+                  <th class="p-3 border-b border-slate-100 text-center">Status Confirmação</th>
+                  <th class="p-3 border-b border-slate-100 text-right">Arquivo</th>
+               </tr>
+            </thead>
+            <tbody class="text-[11px]">
+   `;
+
    lista.forEach(p => {
-      html += `
-         <div class="task-card flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group border-l-4 border-l-indigo-400">
-            <div class="flex-1">
-               <div class="flex items-center gap-2 mb-1">
-                  <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-indigo-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i> ${p.data}</span>
-                  <span class="bg-slate-100 px-2 py-0.5 rounded text-[8px] font-mono text-slate-500 tracking-widest border border-slate-200"># ${p.protocolo}</span>
-               </div>
-               <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5">${p.cliente}</div>
-               <div class="text-xs text-slate-600 font-medium">${p.obrigacao}</div>
-               <div class="mt-2 flex items-center gap-2">
-                  <span class="text-[9px] font-bold text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded">VCTO LEGAL: ${p.vencimentoLegal}</span>
-               </div>
-            </div>
-            <div class="flex flex-col items-end gap-2 ml-4">
-               <a href="${p.link}" target="_blank" class="inline-flex items-center justify-center px-4 py-2 bg-jp-navy text-white text-[9px] uppercase font-bold rounded-lg hover:bg-indigo-700 transition shadow-sm">
-                  <i class="fa-solid fa-file-pdf mr-1.5"></i> Baixar Arquivo
+      const isConfirmado = p.recebidoEm && p.recebidoEm !== '---' && p.recebidoEm !== 'AGUARDANDO' && p.recebidoEm !== '';
+      const statusBadge = isConfirmado 
+         ? `<div class="flex flex-col items-center"><span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-bold border border-emerald-200 uppercase tracking-tighter"><i class="fa-solid fa-check-circle mr-1"></i>Recebido</span><span class="text-[8px] text-slate-400 mt-0.5 font-mono">${p.recebidoEm}</span></div>`
+         : `<div class="flex flex-col items-center"><span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full text-[9px] font-bold border border-amber-100 uppercase tracking-tighter"><i class="fa-solid fa-clock mr-1"></i>Pendente</span></div>`;
+
+      htmlT += `
+         <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50 group">
+            <td class="p-3 whitespace-nowrap">
+               <span class="font-mono text-slate-400 text-[10px]">${p.data}</span>
+            </td>
+            <td class="p-3 max-w-[300px]">
+               <div class="font-bold text-jp-navy uppercase truncate" title="${p.cliente}">${p.cliente}</div>
+               <div class="text-slate-500 text-[10px] truncate" title="${p.obrigacao}">${p.obrigacao}</div>
+            </td>
+            <td class="p-3">
+               <span class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-500 text-[10px]">#${p.protocolo}</span>
+            </td>
+            <td class="p-3 whitespace-nowrap">
+               <span class="text-rose-600 font-bold">${p.vencimentoLegal}</span>
+            </td>
+            <td class="p-3">
+               ${statusBadge}
+            </td>
+            <td class="p-3 text-right">
+               <a href="${p.link}" target="_blank" class="text-slate-400 hover:text-indigo-600 p-2 transition-colors rounded-lg hover:bg-slate-100" title="Ver Arquivo">
+                  <i class="fa-solid fa-file-arrow-down text-base"></i>
                </a>
-            </div>
-         </div>
+            </td>
+         </tr>
       `;
    });
-   html += '</div>';
+
+   htmlT += `
+            </tbody>
+         </table>
+      </div>
+   `;
+   containerT.innerHTML = htmlT;
+}
+
+function gerarCardProtocolo(p, isPendente) {
+   const borderClass = isPendente ? 'border-l-orange-400' : 'border-l-slate-300 hover:border-l-indigo-400';
+   const badgeStatus = isPendente 
+      ? '<span class="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest border border-orange-200 uppercase animate-pulse">Novo</span>'
+      : '<span class="bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-slate-200 uppercase">Lido</span>';
+
+   return `
+      <div class="task-card flex flex-col p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition group border-l-4 ${borderClass}">
+         <div class="flex justify-between items-start mb-2">
+            <div class="flex flex-col">
+               <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1"><i class="fa-regular fa-calendar mr-1"></i> ${p.data}</span>
+               ${badgeStatus}
+            </div>
+            <span class="bg-slate-50 px-2 py-0.5 rounded text-[8px] font-mono text-slate-500 tracking-widest border border-slate-200">#${p.protocolo}</span>
+         </div>
+         <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5 truncate" title="${p.cliente}">${p.cliente}</div>
+         <div class="text-xs text-slate-600 font-medium mb-3 line-clamp-1" title="${p.obrigacao}">${p.obrigacao}</div>
+         <div class="mt-auto pt-3 border-t border-slate-50 flex items-center justify-between">
+            <span class="text-[8px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded uppercase">Vcto: ${p.vencimentoLegal}</span>
+            <a href="${p.link}" target="_blank" class="text-indigo-600 hover:text-white hover:bg-indigo-600 p-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-700" title="Ver Arquivo">
+               <i class="fa-solid fa-file-pdf text-sm"></i>
+            </a>
+         </div>
+      </div>
+   `;
+}
+
+function filtrarProtocolosHistorico() {
+   if (!carregouProtocolos) return;
+   const q = document.getElementById('inputBuscaProtocolos').value.toLowerCase().trim();
+   if (!q) { renderizarGradeProtocolosTodos(protocolosGlobalBase); return; }
+
+   const fList = protocolosGlobalBase.filter(p =>
+      p.cliente.toLowerCase().includes(q) ||
+      p.obrigacao.toLowerCase().includes(q) ||
+      p.protocolo.toLowerCase().includes(q) ||
+      p.data.toLowerCase().includes(q)
+   );
+   renderizarGradeProtocolosTodos(fList);
+}
+
+// ================= GESTÃO DE EQUIPE E TELEMETRIA =================
+
+function initTelemetria() {
+   console.log("📡 Iniciando Telemetria de Acesso...");
+   
+   // Função de envio resiliente
+   const enviarSinal = (tipo) => {
+      google.script.run
+         .withFailureHandler(err => console.error(`❌ Erro Telemetria (${tipo}):`, err))
+         .withSuccessHandler(() => console.log(`✅ Sinal de atividade enviado: ${tipo}`))
+         .registrarAtividadePortal(window.GIS_TOKEN, tipo);
+   };
+
+   // Registro inicial de entrada
+   enviarSinal("ENTRADA");
+   
+   // Loop de Heartbeat a cada 5 minutos
+   setInterval(() => {
+      enviarSinal("HEARTBEAT");
+      
+      // Atualização automática do Painel de Equipe se estiver aberto
+      const viewAcessos = document.getElementById('view-acessos');
+      if (viewAcessos && viewAcessos.classList.contains('active')) {
+         carregarAcessosServer(false, true);
+      }
+   }, 300000);
+}
+
+let filtroAcessosAtivo = 'hoje';
+
+function toggleFiltroAcesso(periodo) {
+   filtroAcessosAtivo = periodo;
+   
+   // UI Toggle
+   const btnHoje = document.getElementById('tabAcessoHoje');
+   const btnMensal = document.getElementById('tabAcessoMensal');
+   
+   if (periodo === 'hoje') {
+      btnHoje.className = "px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all bg-white shadow-sm text-jp-navy";
+      btnMensal.className = "px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all text-slate-500 hover:bg-white/50";
+      document.getElementById('kpiAtivosLabel').textContent = "Ativos (Hoje)";
+      document.getElementById('kpiAtivosDesc').textContent = "Total de usuários no dia";
+      carregarAcessosServer(false);
+   } else {
+      btnMensal.className = "px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all bg-white shadow-sm text-jp-navy";
+      btnHoje.className = "px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all text-slate-500 hover:bg-white/50";
+      document.getElementById('kpiAtivosLabel').textContent = "Ativos (Mês)";
+      document.getElementById('kpiAtivosDesc').textContent = "Colaboradores ativos no mês";
+      carregarAcessosMensais();
+   }
+}
+
+function carregarAcessosServer(forcarRefresh, isQuiet) {
+   if (filtroAcessosAtivo === 'mensal') { carregarAcessosMensais(forcarRefresh); return; }
+   if (forcarRefresh) carregouAcessos = false;
+   
+   const container = document.getElementById('containerAcessos');
+   if (!isQuiet || container.innerHTML.trim() === '') {
+      container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-satellite-dish text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Processando telemetria da equipe...</p></div>';
+   }
+
+   google.script.run
+     .withFailureHandler(err => { 
+        if(container) container.innerHTML = `<div class="p-4 text-red-500 font-bold text-[10px]">Erro: ${err.message}</div>`; 
+     })
+     .withSuccessHandler(res => {
+        if (!res.success) { return; }
+        carregouAcessos = true;
+        
+        // Atualiza KPIs
+        document.getElementById('kpiOnlineAgora').textContent = res.stats.online;
+        document.getElementById('kpiTotalAtivos').textContent = res.stats.totalAtivos;
+        
+        // Atualiza Badge Online na Sidebar
+        const bOnline = document.getElementById('badgeOnlineCount');
+        if (bOnline) {
+           bOnline.textContent = res.stats.online;
+           bOnline.classList.toggle('hidden', res.stats.online === 0);
+        }
+
+        renderizarTabelaEquipe(res.usuarios || []);
+     }).getRelatorioEquipe();
+}
+
+function carregarAcessosMensais(forcarRefresh) {
+   const container = document.getElementById('containerAcessos');
+   container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-slate-400 h-full"><i class="fa-solid fa-calendar-check text-4xl mb-4 text-indigo-300 fa-fade"></i><p class="text-[10px] uppercase tracking-widest font-bold">Consolidando métricas mensais...</p></div>';
+
+   google.script.run
+     .withFailureHandler(err => { 
+        container.innerHTML = `<div class="p-4 text-red-500 font-bold text-[10px]">Erro: ${err.message}</div>`; 
+     })
+     .withSuccessHandler(res => {
+        if (!res.success) return;
+        
+        // Atualiza KPI consolidado para o mês
+        document.getElementById('kpiTotalAtivos').textContent = res.usuarios.length;
+        renderizarTabelaMensal(res.usuarios || [], res.mesFmt);
+     }).getRelatorioEquipeMensal();
+}
+
+function renderizarTabelaMensal(lista, mesFmt) {
+   const container = document.getElementById('containerAcessos');
+   
+   let html = `
+      <div class="overflow-x-auto">
+         <table class="table-enterprise w-full text-left">
+            <thead>
+               <tr class="text-[9px] uppercase tracking-widest text-slate-500">
+                  <th class="p-4 border-b border-slate-100">Colaborador</th>
+                  <th class="p-4 border-b border-slate-100 text-center">Dias Ativos</th>
+                  <th class="p-4 border-b border-slate-100 text-center">Média/Dia</th>
+                  <th class="p-4 border-b border-slate-100 text-right">Acumulado (${mesFmt})</th>
+               </tr>
+            </thead>
+            <tbody class="text-[11px]">
+   `;
+
+   lista.forEach(u => {
+      const tempoTotalFmt = u.tempoTotal > 60 
+         ? `${Math.floor(u.tempoTotal / 60)}h ${u.tempoTotal % 60}m` 
+         : `${u.tempoTotal} min`;
+         
+      const mediaFmt = u.mediaDiaria > 60 
+         ? `${Math.floor(u.mediaDiaria / 60)}h ${u.mediaDiaria % 60}m` 
+         : `${u.mediaDiaria} min`;
+
+      html += `
+         <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50">
+            <td class="p-4">
+               <div class="font-bold text-jp-navy uppercase tracking-tight">${u.nome}</div>
+               <div class="text-[9px] text-slate-400 font-mono">${u.email}</div>
+            </td>
+            <td class="p-4 text-center">
+               <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold text-[9px]">${u.dias} dias</span>
+            </td>
+            <td class="p-4 text-center text-slate-500 font-medium">
+               ${mediaFmt}
+            </td>
+            <td class="p-4 text-right">
+               <span class="bg-indigo-600 text-white px-3 py-1 rounded-lg font-black text-[10px] shadow-sm">${tempoTotalFmt}</span>
+            </td>
+         </tr>
+      `;
+   });
+
+   html += '</tbody></table></div>';
    container.innerHTML = html;
 }
 
-// ================= CRM: CRIAÇÃO DE DEMANDAS E COBRANÇAS =================
+function renderizarTabelaEquipe(lista) {
+   const container = document.getElementById('containerAcessos');
+   
+   let html = `
+      <div class="overflow-x-auto">
+         <table class="table-enterprise w-full text-left">
+            <thead>
+               <tr class="text-[9px] uppercase tracking-widest text-slate-500">
+                  <th class="p-4 border-b border-slate-100">Colaborador</th>
+                  <th class="p-4 border-b border-slate-100 text-center">Status</th>
+                  <th class="p-4 border-b border-slate-100">Entrada</th>
+                  <th class="p-4 border-b border-slate-100">Atividade</th>
+                  <th class="p-4 border-b border-slate-100 text-right">Tempo Total</th>
+               </tr>
+            </thead>
+            <tbody class="text-[11px]">
+   `;
+
+   lista.forEach(u => {
+      const statusIcon = u.online 
+         ? '<span class="flex items-center justify-center text-emerald-500" title="Online Agora"><i class="fa-solid fa-circle text-[8px] animate-pulse mr-1"></i> Ativo</span>' 
+         : '<span class="flex items-center justify-center text-slate-300" title="Ausente"><i class="fa-solid fa-circle text-[8px] mr-1"></i> Offline</span>';
+      
+      const tempoFmt = u.tempo > 60 
+         ? `${Math.floor(u.tempo / 60)}h ${u.tempo % 60}m` 
+         : `${u.tempo} min`;
+
+      html += `
+         <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50">
+            <td class="p-4">
+               <div class="font-bold text-jp-navy uppercase tracking-tight">${u.nome}</div>
+               <div class="text-[9px] text-slate-400 font-mono">${u.email}</div>
+            </td>
+            <td class="p-4 text-center">
+               ${statusIcon}
+            </td>
+            <td class="p-4">
+               <span class="text-slate-500 font-medium">${u.primeiro}</span>
+            </td>
+            <td class="p-4">
+               <span class="text-slate-500 font-medium">${u.ultimo}</span>
+            </td>
+            <td class="p-4 text-right">
+               <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg font-bold text-[10px] border border-indigo-100">${tempoFmt}</span>
+            </td>
+         </tr>
+      `;
+   });
+
+   html += '</tbody></table></div>';
+   container.innerHTML = html;
+}
+
+// Inicializa a telemetria ao carregar
+window.addEventListener('load', () => {
+   // Pequeno delay para garantir que o token GIS esteja pronto
+   setTimeout(() => initTelemetria(), 2000);
+});
 function criarDemandaWeb() {
    const formObj = {
        cliente: document.getElementById('demandaClienteWeb').value,

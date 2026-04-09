@@ -82,7 +82,7 @@
       <button onclick="navigate('protocolos')" class="nav-btn flex items-center justify-between w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800">
         <div class="flex items-center">
            <i class="fa-solid fa-file-signature w-6 text-center"></i>
-           <span class="ml-1">Protocolos Não Lidos</span>
+           <span class="ml-1">Protocolos</span>
         </div>
         <span id="badgeProtocolosCount" class="hidden bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">0</span>
       </button>
@@ -90,6 +90,16 @@
       <button onclick="navigate('solicitacoes')" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800">
         <i class="fa-solid fa-clipboard-list w-6 text-center"></i>
         <span>Solicitações</span>
+      </button>
+
+      <div class="px-4 py-2 mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-t border-white/5 pt-4">Administração</div>
+      
+      <button onclick="navigate('acessos')" class="nav-btn flex items-center justify-between w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800">
+        <div class="flex items-center">
+           <i class="fa-solid fa-users-gear w-6 text-center"></i>
+           <span class="ml-1">Gestão de Equipe</span>
+        </div>
+        <span id="badgeOnlineCount" class="bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm hidden">0</span>
       </button>
 
       <button onclick="navigate('comunicacao')" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 mt-4 border-t border-indigo-900 pt-4">
@@ -287,15 +297,35 @@
          </div>
       </section>
 
-      <!-- Section: PROTOCOLOS NÃO LIDOS -->
+      <!-- Section: PROTOCOLOS -->
       <section id="view-protocolos" class="view-section hidden h-full">
-         <div class="card-premium h-full flex flex-col overflow-hidden">
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
-               <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-file-signature mr-2 text-indigo-400"></i> Protocolos Pendentes de Leitura</h3>
+         <div class="flex flex-col gap-6 h-full overflow-y-auto pr-2 custom-scrollbar">
+            
+            <!-- Bloco 1: Não Lidos -->
+            <div class="card-premium flex flex-col overflow-hidden border-orange-100 shrink-0">
+               <div class="p-4 border-b border-orange-100 flex justify-between items-center bg-orange-50/80">
+                  <h3 class="font-bold text-orange-700 uppercase tracking-widest text-[11px]"><i class="fa-solid fa-bell mr-2 animate-bounce"></i> Protocolos Pendentes de Leitura</h3>
+                  <span id="badgeProtocolosPendentes" class="bg-orange-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm">0</span>
+               </div>
+               <div id="containerProtocolosPendentes" class="p-6 bg-slate-50/30">
+                  <div class="space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div></div>
+               </div>
             </div>
-            <div id="containerProtocolos" class="flex-1 overflow-y-auto p-0 relative">
-               <div class="p-6 space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div></div>
+
+            <!-- Bloco 2: Histórico Completo com Busca -->
+            <div class="card-premium flex-1 flex flex-col overflow-hidden">
+               <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50/80 gap-4">
+                  <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px] whitespace-nowrap"><i class="fa-solid fa-clock-rotate-left mr-2 text-indigo-400"></i> Histórico Geral de Protocolos</h3>
+                  <div class="relative w-full md:w-80">
+                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2 text-slate-400 text-sm"></i>
+                     <input type="text" id="inputBuscaProtocolos" onkeyup="debounceProtocolos()" placeholder="Pesquisar cliente ou protocolo..." class="w-full pl-9 pr-3 py-1.5 glass-input text-sm">
+                  </div>
+               </div>
+               <div id="containerProtocolosTodos" class="flex-1 overflow-y-auto p-0 bg-slate-50/50 relative">
+                  <div class="p-6 space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div></div>
+               </div>
             </div>
+
          </div>
       </section>
 
@@ -315,6 +345,64 @@
             <div id="containerSolicitacoes" class="flex-1 overflow-y-auto p-0 relative">
                <div class="p-6 space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-4/5"></div></div>
             </div>
+         </div>
+      </section>
+
+      <!-- Section: GESTAO DE ACESSOS -->
+      <section id="view-acessos" class="view-section hidden h-full text-jp-navy">
+         <div class="flex flex-col gap-6 h-full overflow-y-auto pr-2 custom-scrollbar">
+            
+            <!-- KPIs Acessos -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <div class="card-premium p-6 bg-gradient-to-br from-indigo-50 to-white">
+                  <div class="flex items-center justify-between mb-2">
+                     <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Presença</span>
+                     <i class="fa-solid fa-signal text-emerald-500 animate-pulse"></i>
+                  </div>
+                  <div id="kpiOnlineAgora" class="text-3xl font-black counter">0</div>
+                  <p class="text-[10px] text-slate-400 mt-1 uppercase text-jp-navy/60">Colaboradores Online Agora</p>
+               </div>
+               
+               <div class="card-premium p-6 bg-gradient-to-br from-emerald-50 to-white">
+                  <div class="flex items-center justify-between mb-2">
+                     <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" id="kpiAtivosLabel">Ativos (Hoje)</span>
+                     <i class="fa-solid fa-user-check text-emerald-400"></i>
+                  </div>
+                  <div id="kpiTotalAtivos" class="text-3xl font-black counter">0</div>
+                  <p class="text-[10px] text-slate-400 mt-1 uppercase text-jp-navy/60" id="kpiAtivosDesc">Total de usuários no dia</p>
+               </div>
+
+               <div class="card-premium p-6 bg-gradient-to-br from-amber-50 to-white">
+                  <div class="flex items-center justify-between mb-2">
+                     <span class="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Saúde da Conexão</span>
+                     <i class="fa-solid fa-heart-pulse text-rose-400 animate-bounce"></i>
+                  </div>
+                  <div class="text-xl font-black uppercase">Monitorando</div>
+                  <p class="text-[10px] text-slate-400 mt-1 uppercase text-jp-navy/60">Telemetria em tempo real ativada</p>
+               </div>
+            </div>
+
+            <!-- Tabela de Acessos com Tabs -->
+            <div class="card-premium flex-1 flex flex-col overflow-hidden">
+               <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50/80 gap-4">
+                  <div class="flex items-center gap-4">
+                     <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-stopwatch mr-2 text-indigo-400"></i> Gestão de Equipe</h3>
+                     
+                     <div class="flex bg-slate-200/50 p-1 rounded-lg gap-1">
+                        <button onclick="toggleFiltroAcesso('hoje')" id="tabAcessoHoje" class="px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all bg-white shadow-sm text-jp-navy">Hoje</button>
+                        <button onclick="toggleFiltroAcesso('mensal')" id="tabAcessoMensal" class="px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all text-slate-500 hover:bg-white/50">Este Mês</button>
+                     </div>
+                  </div>
+                  
+                  <button onclick="carregarAcessosServer(true)" class="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400" title="Atualizar">
+                     <i class="fa-solid fa-rotate"></i>
+                  </button>
+               </div>
+               <div id="containerAcessos" class="flex-1 overflow-y-auto p-0 relative">
+                  <div class="p-6 space-y-3"><div class="skeleton rounded-lg h-10 w-full"></div><div class="skeleton rounded-lg h-10 w-full"></div></div>
+               </div>
+            </div>
+
          </div>
       </section>
 

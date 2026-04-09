@@ -93,30 +93,25 @@ function getDashboardData(filtroPeriodo) {
 }
 
 /**
- * Busca protocolos pendentes de leitura e cruza com as tarefas para obter o Vencimento Legal.
+ * Busca protocolos. Pode filtrar por apenas não lidos ou trazer o histórico.
+ * @param {boolean} apenasPendentes Se true, traz apenas os Não Lidos (Limit 200). Se false, traz histórico (Limit 500).
  */
-function getProtocolosPendentes() {
+function getListaProtocolos(apenasPendentes) {
   try {
-    // ⚡ CACHE: Tenta retornar resultado cacheado
-    var cached = getViewCached(CACHE_CONFIG.KEYS.PROTOCOLOS_RESULT);
-    if (cached) return cached;
-
     var ss = getSs();
     var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
-    var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
-    var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
-    
     if (!wsProt) return [];
     
-    // 1. Processar Protocolos (Apenas os últimos 200 para performance extrema sem DB_TAREFAS)
     var lastRowP = wsProt.getLastRow();
     if (lastRowP <= 1) return [];
     
-    var numRowsP = Math.min(lastRowP - 1, 200);
+    // Limites de performance
+    var limit = apenasPendentes ? 200 : 500;
+    var numRowsP = Math.min(lastRowP - 1, limit);
     var startRowP = lastRowP - numRowsP + 1;
     var dataP = wsProt.getRange(startRowP, 1, numRowsP, 12).getValues(); // A até L
     
-    var pendentes = [];
+    var lista = [];
     for (var j = 0; j < dataP.length; j++) {
       var statusEnvio = String(dataP[j][8]).toUpperCase().trim(); // Coluna I (9)
       var confRecto = String(dataP[j][9]).toUpperCase().trim();   // Coluna J (10)
@@ -130,52 +125,62 @@ function getProtocolosPendentes() {
 
       // Restaura o filtro: Ignora protocolos gerados para tarefas que NÃO são de ENVIAR (ex: REVISAO, ARQUIVAMENTO)
       if (acaoProt && acaoProt.indexOf("ENVIAR") === -1 && acaoProt.indexOf("COMUNICAR") === -1) {
-         continue; // Apenas tarefas cujas ações enviam algo ao cliente geram notificação de "Não Lido"
+         continue; 
       }
+
+      var isLido = !(statusEnvio === "ENVIADO" && (confRecto === "" || confRecto === "---" || confRecto === "AGUARDANDO"));
       
-      // Filtro Único: Enviado mas ainda não lido/confirmado (Baseado apenas na DB_PROTOCOLOS)
-      if (statusEnvio === "ENVIADO" && (confRecto === "" || confRecto === "---" || confRecto === "AGUARDANDO")) {
-        
-        var dataEnvioRaw = dataP[j][0];
-        var dataEnvioFmt = (dataEnvioRaw instanceof Date) ? Utilities.formatDate(dataEnvioRaw, "GMT-3", "dd/MM/yyyy HH:mm") : String(dataEnvioRaw);
-        
-        var linkBruto = String(dataP[j][7]);
-        var primeiroLink = linkBruto.split("|")[0].trim();
-        
-        pendentes.push({
-          data: dataEnvioFmt,
-          cliente: String(dataP[j][1]),
-          protocolo: String(dataP[j][2]),
-          obrigacao: String(dataP[j][4]),
-          vencimentoLegal: vctoLegalFmt,
-          link: primeiroLink
-        });
-      }
+      // Se pedimos apenas pendentes e já estiver lido, ignoramos
+      if (apenasPendentes && isLido) continue;
+
+      var dataEnvioRaw = dataP[j][0];
+      var dataEnvioFmt = (dataEnvioRaw instanceof Date) ? Utilities.formatDate(dataEnvioRaw, "GMT-3", "dd/MM/yyyy HH:mm") : String(dataEnvioRaw);
+      var linkBruto = String(dataP[j][7]);
+      var primeiroLink = linkBruto.split("|")[0].trim();
+      
+      lista.push({
+        data: dataEnvioFmt,
+        cliente: String(dataP[j][1]),
+        protocolo: String(dataP[j][2]),
+        obrigacao: String(dataP[j][4]),
+        vencimentoLegal: vctoLegalFmt,
+        link: primeiroLink,
+        lido: isLido,
+        recebidoEm: confRecto
+      });
     }
     
-    var resultado = pendentes.reverse();
-    
-    // ⚡ CACHE: Grava resultado processado
-    setViewCache(CACHE_CONFIG.KEYS.PROTOCOLOS_RESULT, resultado);
-    
-    return resultado; 
+    return lista.reverse();
   } catch (e) {
-    registrarLogSistema("GET_PROTO_DASH_ERR", e.message);
+    registrarLogSistema("GET_PROTO_LIST_ERR", e.message);
     return [];
   }
 }
 
 /**
+ * Legado para o Dashboard (Mantém a compatibilidade)
+ */
+function getProtocolosPendentes() {
+  return getListaProtocolos(true);
+}
+
+/**
  * ⚡ PROTOCOLOS FETCH DEDICADO (Portal Web - Lazy Load)
- * Endpoint independente para carregamento sob demanda dos protocolos não lidos.
  */
 function getDadosProtocolosWeb(token) {
   try {
     var emailFinal = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
     if (!emailFinal) return { success: false, error: "AUTENTICACAO_REQUERIDA" };
 
-    var data = getProtocolosPendentes();
-    return { success: true, data: data };
+    // Retorna os dois conjuntos de dados
+    var pendentes = getListaProtocolos(true);
+    var todos = getListaProtocolos(false);
+
+    return { 
+      success: true, 
+      pendentes: pendentes,
+      todos: todos
+    };
   } catch (err) {
     return { success: false, error: err.message };
   }
