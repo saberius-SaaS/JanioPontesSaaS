@@ -62,7 +62,7 @@ function getRelatorioEquipe() {
        for(var u=1; u<du.length; u++) {
           var emailU = String(du[u][0]).trim().toLowerCase();
           if (emailU) {
-             mapaUsuarios[emailU] = { email: emailU, nome: String(du[u][1]), primeiroAcesso: null, ultimoAcesso: null, pings: 0, tempoTotalMin: 0, isOnline: false };
+             mapaUsuarios[emailU] = { email: emailU, nome: String(du[u][1]), primeiroAcesso: null, ultimoAcesso: null, pings: 0, tempoTotalMin: 0, isOnline: false, logs: [] };
           }
        }
     }
@@ -77,10 +77,13 @@ function getRelatorioEquipe() {
       
       if (acao.indexOf("ACESSO_") === 0) {
         if (!mapaUsuarios[email]) {
-           mapaUsuarios[email] = { email: email, nome: email.split("@")[0].toUpperCase(), primeiroAcesso: null, ultimoAcesso: null, pings: 0, tempoTotalMin: 0, isOnline: false };
+           mapaUsuarios[email] = { email: email, nome: email.split("@")[0].toUpperCase(), primeiroAcesso: null, ultimoAcesso: null, pings: 0, tempoTotalMin: 0, isOnline: false, logs: [] };
         }
         var user = mapaUsuarios[email];
         user.pings++;
+        var timeVal = data.getTime();
+        user.logs.push(timeVal);
+
         if (!user.ultimoAcesso || data > user.ultimoAcesso) user.ultimoAcesso = data;
         if (!user.primeiroAcesso || data < user.primeiroAcesso) user.primeiroAcesso = data;
       }
@@ -89,10 +92,23 @@ function getRelatorioEquipe() {
     var resultado = [];
     for (var key in mapaUsuarios) {
       var u = mapaUsuarios[key];
-      if (u.primeiroAcesso && u.ultimoAcesso) {
-        var duracaoMs = u.ultimoAcesso.getTime() - u.primeiroAcesso.getTime();
-        u.tempoTotalMin = Math.round(duracaoMs / 60000);
+      if (u.logs && u.logs.length > 0) {
+        // Ordena logs cronologicamente para calcular intervalos
+        u.logs.sort(function(a, b) { return a - b; });
+        
+        var totalMs = 0;
+        var thresholdMs = 720000; // 12 minutos (2.4x o intervalo de 5min do heartbeat)
+        
+        for (var l = 1; l < u.logs.length; l++) {
+          var gap = u.logs[l] - u.logs[l-1];
+          if (gap <= thresholdMs) {
+            totalMs += gap;
+          }
+        }
+        
+        u.tempoTotalMin = Math.round(totalMs / 60000);
         if (u.tempoTotalMin === 0 && u.pings > 0) u.tempoTotalMin = 1;
+
         var diffAgora = agora.getTime() - u.ultimoAcesso.getTime();
         if (diffAgora < 720000) { 
            u.isOnline = true;
@@ -167,22 +183,32 @@ function getRelatorioEquipeMensal() {
         var diaKey = Utilities.formatDate(data, "GMT-3", "yyyy-MM-dd");
         
         if (!mapaMensal[email]) mapaMensal[email] = { totalMin: 0, diasAtivos: {}, nome: email.split("@")[0].toUpperCase() };
-        if (!mapaMensal[email].diasAtivos[diaKey]) mapaMensal[email].diasAtivos[diaKey] = { min: data, max: data };
+        if (!mapaMensal[email].diasAtivos[diaKey]) {
+            mapaMensal[email].diasAtivos[diaKey] = { logs: [] };
+        }
         
-        var dia = mapaMensal[email].diasAtivos[diaKey];
-        if (data < dia.min) dia.min = data;
-        if (data > dia.max) dia.max = data;
+        mapaMensal[email].diasAtivos[diaKey].logs.push(data.getTime());
     }
 
     var resultado = [];
+    var thresholdMs = 720000; // 12 minutos
     for (var email in mapaMensal) {
         var user = mapaMensal[email];
         var totalMin = 0;
         var qtdDias = 0;
 
         for (var d in user.diasAtivos) {
-            var diff = user.diasAtivos[d].max.getTime() - user.diasAtivos[d].min.getTime();
-            var minDia = Math.round(diff / 60000);
+            var logs = user.diasAtivos[d].logs.sort(function(a, b) { return a - b; });
+            var totalMsDia = 0;
+            
+            for (var l = 1; l < logs.length; l++) {
+                var gap = logs[l] - logs[l-1];
+                if (gap <= thresholdMs) {
+                    totalMsDia += gap;
+                }
+            }
+            
+            var minDia = Math.round(totalMsDia / 60000);
             totalMin += (minDia === 0 ? 1 : minDia); 
             qtdDias++;
         }
