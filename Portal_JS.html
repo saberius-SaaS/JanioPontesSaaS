@@ -183,7 +183,7 @@ function carregarDadosBase(isAutoSync) {
           
           const userEmailStr = String(res.userEmail).toLowerCase();
           document.getElementById('currentUserEmail').textContent = userEmailStr;
-          document.getElementById('currentUserLevel').textContent = res.userLevel;
+          document.getElementById('currentUserLevel').textContent = (res.userName || "Usuário") + " - " + res.userLevel;
           setAvatarInitials(userEmailStr);
           
           // 1. Injetar numéricos de Dashboard
@@ -322,7 +322,7 @@ function renderizarBarrasPerformance(elementId, dataObj, colorBase) {
  * Transforma Objeto JSON (Tarefas) em Cards Visuais e injeta no DOM
  */
 function renderizarTarefas(tarefas) {
-    const box = document.getElementById('listaTarefasDinamica');
+    const box = document.getElementById('containerTarefas');
     if (!box) return;
     
     if (!tarefas || tarefas.length === 0) {
@@ -1160,15 +1160,15 @@ function initTelemetria() {
    // Registro inicial de entrada
    enviarSinal("ENTRADA");
    
+   // Sincronização inicial da badge de usuários online
+   carregarAcessosServer(false, true);
+   
    // Loop de Heartbeat a cada 5 minutos
    setInterval(() => {
       enviarSinal("HEARTBEAT");
       
-      // Atualização automática do Painel de Equipe se estiver aberto
-      const viewAcessos = document.getElementById('view-acessos');
-      if (viewAcessos && viewAcessos.classList.contains('active')) {
-         carregarAcessosServer(false, true);
-      }
+      // Atualização automática do Painel e da Badge na Sidebar (Background)
+      carregarAcessosServer(false, true);
    }, 300000);
 }
 
@@ -1758,67 +1758,67 @@ function iniciarTourGuiado(isAuto) {
                 position: 'center'
             },
             {
-                element: document.querySelector('#sidebarEl'),
+                element: '#sidebarEl',
                 title: 'Menu Estrutural',
                 intro: 'Aqui você navega por todas as dimensões do portal. Cada ícone abre uma nova visão estratégica.',
                 position: 'right'
             },
             {
-                element: document.querySelector('#view-dashboard'),
+                element: '#containerDashboard',
                 title: '1. Dashboard',
                 intro: 'O coração do portal. Acompanhe KPIs de produtividade e o status das entregas legais em tempo real.',
                 view: 'dashboard'
             },
             {
-                element: document.querySelector('#containerTarefas'),
+                element: '#containerTarefas',
                 title: '2. Tarefas e Prioridades',
                 intro: 'Este é o seu quadro operacional. Aqui você valida documentos e acompanha a esteira de produção.',
                 view: 'tarefas'
             },
             {
-                element: document.querySelector('#containerRisco'),
+                element: '#containerRisco',
                 title: '3. Compliance (Risco)',
                 intro: 'Monitore riscos críticos e prazos fatais. A IA ajuda a evitar multas e inconsistências fiscais.',
                 view: 'risco'
             },
             {
-                element: document.querySelector('#containerHistorico'),
+                element: '#containerHistorico',
                 title: '4. Histórico',
                 intro: 'Tudo o que já foi entregue e resolvido fica guardado aqui para consultas rápidas e auditorias.',
                 view: 'historico'
             },
             {
-                element: document.querySelector('#containerProtocolos'),
-                title: '5. Protocolos Não Lidos',
+                element: '#containerProtocolos',
+                title: '5. Protocolos',
                 intro: 'Confira documentos que acabaram de chegar via OCR ou integração. Leia e valide protocolos pendentes.',
                 view: 'protocolos'
             },
             {
-                element: document.querySelector('#containerSolicitacoes'),
+                element: '#containerSolicitacoes',
                 title: '6. Solicitações',
                 intro: 'Gerencie pedidos feitos aos clientes. Veja respostas por texto ou anexo e cobre pendências.',
                 view: 'solicitacoes'
             },
             {
-                element: document.querySelector('#formDemandaWeb').closest('.bg-white'),
+                element: '#formDemandaWeb',
                 title: '7. CRM - Demandas Internas',
                 intro: 'Use este formulário para criar novas tarefas na esteira NCE. Defina o depto, a ação e o vencimento estratégico.',
                 view: 'comunicacao'
             },
             {
-                element: document.querySelector('#formSolicitarWeb').closest('.bg-white'),
+                element: '#formSolicitarWeb',
                 title: '8. CRM - Solicitação / Pendências',
                 intro: 'O canal seguro para pedir documentos ao cliente. A mensagem é rastreada e gera protocolos automáticos.',
                 view: 'comunicacao'
             },
             {
-                element: document.querySelector('#txtLastSync').parentElement,
+                element: '#txtLastSync',
                 title: '9. Sincronização em Tempo Real',
                 intro: 'O portal se mantém "vivo" conectando-se ao banco de dados a cada 30s. Aqui você vê a última atualização.',
                 position: 'top'
             },
             {
-                element: document.querySelector('#avatarUser').parentElement,
+                element: '#avatarUser',
                 title: '10. Perfil e Privilégios',
                 intro: 'Identifique seu e-mail e nível de acesso. A segurança é nossa prioridade máxima.',
                 position: 'top'
@@ -1835,6 +1835,10 @@ function iniciarTourGuiado(isAuto) {
 
     // Lógica de Sincronização e Navegação Automática
     tour.onbeforechange(function(targetElement) {
+        // Esconde o tooltip temporariamente para evitar "ghosting" da mensagem antiga
+        const tooltip = document.querySelector('.introjs-tooltip');
+        if (tooltip) tooltip.style.opacity = '0';
+
         const step = this._options.steps[this._currentStep];
         if (step && step.view && window.currentView !== step.view) {
             navigate(step.view);
@@ -1845,7 +1849,8 @@ function iniciarTourGuiado(isAuto) {
                 const checkInterval = setInterval(() => {
                     checkCount++;
                     // Se o container não tiver mais apenas o loader/skeleton, ou se passarem 5 segundos (timeout)
-                    const container = document.getElementById('container' + step.view.charAt(0).toUpperCase() + step.view.slice(1));
+                    const containerId = 'container' + step.view.charAt(0).toUpperCase() + step.view.slice(1);
+                    const container = document.getElementById(containerId);
                     const isLoaded = container && container.innerHTML.indexOf('fa-fade') === -1 && container.innerHTML.indexOf('skeleton') === -1;
                     
                     // Caso específico para CRM que é estático
@@ -1853,10 +1858,16 @@ function iniciarTourGuiado(isAuto) {
 
                     if (isLoaded || isCrm || checkCount > 20) {
                         clearInterval(checkInterval);
-                        setTimeout(resolve, 300); // 300ms extra para estabilidade visual
+                        setTimeout(() => {
+                            if (tooltip) tooltip.style.opacity = '1';
+                            tour.refresh(); // Garante posição correta após mudança de DOM
+                            resolve();
+                        }, 400); // Buffer para estabilidade visual
                     }
-                }, 250);
+                }, 200);
             });
+        } else {
+            if (tooltip) tooltip.style.opacity = '1';
         }
     });
 

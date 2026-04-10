@@ -77,10 +77,12 @@ function getDadosPortalWeb(token) {
 
     // 2. Calcula o UserLevel Real baseado na Aba Usuários
     var userLevel = null; // Inicia nulo para forçar validação
+    var userName = "";
     var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
     for (var u = 1; u < dataU.length; u++) {
        if (String(dataU[u][0]).toLowerCase().trim() === emailFinal.toLowerCase().trim()) { 
            userLevel = String(dataU[u][2]).toUpperCase().trim(); 
+           userName = String(dataU[u][1]).trim();
            break; 
        }
     }
@@ -107,6 +109,7 @@ function getDadosPortalWeb(token) {
     return {
       success: true,
       userEmail: emailFinal,
+      userName: userName,
       userLevel: userLevel,
       dash: {
         pendentes: (dashMes && !dashMes.error) ? dashMes.pendentes : 0,

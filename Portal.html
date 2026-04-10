@@ -136,7 +136,7 @@
          </div>
          <div class="ml-3">
            <p class="text-xs font-semibold" id="currentUserEmail">Conectando...</p>
-           <p id="currentUserLevel" class="text-[9px] font-bold text-rose-400/80 uppercase tracking-tighter mt-0.5"></p>
+           <p id="currentUserLevel" class="text-[10px] font-bold text-rose-400/80 uppercase tracking-tighter mt-0.5"></p>
            <p class="text-[10px] text-indigo-300/70">NCE - Núcleo Estratégico</p>
          </div>
       </div>
@@ -176,7 +176,8 @@
       
       <!-- Section: DASHBOARD -->
       <section id="view-dashboard" class="view-section active h-full">
-        <!-- Bem Vindo Hero -->
+        <div id="containerDashboard" class="h-full overflow-y-auto pr-2 custom-scrollbar">
+          <!-- Bem Vindo Hero -->
         <div class="hero-gradient rounded-2xl p-8 text-white shadow-lg mb-6 flex justify-between items-center relative z-10">
             <div class="flex flex-col gap-1">
               <h1 class="text-2xl md:text-3xl font-extrabold mb-2 tracking-tight">Portal Janio Pontes SaaS</h1>
@@ -234,6 +235,7 @@
             </div>
         </div>
 
+         </div>
       </section>
 
       <!-- Section: TAREFAS -->
@@ -249,7 +251,7 @@
                   <button onclick="carregarDadosBase()" title="Recarregar Fila" class="bg-jp-navy hover:bg-indigo-700 text-white h-[34px] px-3 rounded-lg shadow transition flex-shrink-0"><i class="fa-solid fa-rotate"></i></button>
                </div>
             </div>
-            <div id="listaTarefasDinamica" class="flex-1 p-6 overflow-y-auto bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 relative">
+            <div id="containerTarefas" class="flex-1 p-6 overflow-y-auto bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 relative">
                 <div class="w-full space-y-3"><div class="skeleton rounded-xl h-20 w-full"></div><div class="skeleton rounded-xl h-20 w-full"></div><div class="skeleton rounded-xl h-20 w-full"></div></div>
             </div>
          </div>
@@ -299,7 +301,7 @@
 
       <!-- Section: PROTOCOLOS -->
       <section id="view-protocolos" class="view-section hidden h-full">
-         <div class="flex flex-col gap-6 h-full overflow-y-auto pr-2 custom-scrollbar">
+         <div id="containerProtocolos" class="flex flex-col gap-6 h-full overflow-y-auto pr-2 custom-scrollbar">
             
             <!-- Bloco 1: Não Lidos -->
             <div class="card-premium flex flex-col overflow-hidden border-orange-100 shrink-0">
