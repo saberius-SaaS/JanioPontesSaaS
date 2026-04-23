@@ -213,7 +213,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
          if (deveNotificar) {
            // Passamos o protRowIdx em vez do rowIdx da tarefa para rastreio direto no DB_PROTOCOLOS
            // NOVO: Sem try-catch silencioso. Se estourar erro de OAuth ou Permissão, vai abortar tudo e subir pro Frontend.
-           notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), protRowIdx || "", false);
+           notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), protRowIdx || "", false, mesRef, vctoLegal);
          }
        }
     }

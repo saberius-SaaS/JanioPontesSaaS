@@ -533,6 +533,8 @@ function aprovarTarefaRevisao(taskId, userLevel) {
         var clienteNome = dataT[i][1];
         var obrig = dataT[i][2];
         var protocolo = dataT[i][6];
+        var mesAno = dataT[i][0] instanceof Date ? Utilities.formatDate(dataT[i][0], "GMT-3", "MM/yyyy") : String(dataT[i][0]);
+        var vctoLegal = dataT[i][11] instanceof Date ? Utilities.formatDate(dataT[i][11], "GMT-3", "dd/MM/yyyy") : (dataT[i][11] || "---");
         
         // 2. Busca e-mail do cliente e URL da pasta
         var emailCli = "";
@@ -586,7 +588,7 @@ function aprovarTarefaRevisao(taskId, userLevel) {
                  }
                  enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, msgComunicado);
               } else if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) {
-                 notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, folderUrl, protRowIdx, false);
+                 notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, folderUrl, protRowIdx, false, mesAno, vctoLegal);
               }
            }
         } catch(eNotif) {

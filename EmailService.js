@@ -16,7 +16,7 @@ function getPublicWebAppUrl() {
 /**
  * Notificação de Entrega ao Cliente (Ajustado p/ NÃO enviar links diretos se o user preferir)
  */
-function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailCli, linksArquivo, pastaLink, rowIdx, incluirLinks) {
+function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailCli, linksArquivo, pastaLink, rowIdx, incluirLinks, mesAno, vencimento) {
   if(!emailCli || emailCli.indexOf("@") === -1) return;
   try {
     var webAppUrl = getPublicWebAppUrl();
@@ -66,7 +66,7 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
           </td></tr>
           <tr><td style="padding:45px 35px; text-align:center;">
               <h2 style="color:#1e293b; margin:0 0 10px 0; font-size:20px; font-weight:700;">Olá, ${cliente}</h2>
-              <p style="color:#64748b; font-size:14px; margin-bottom:35px; line-height:1.5;">O documento <b>${obrigacao}</b> foi processado com sucesso.</p>
+              <p style="color:#64748b; font-size:14px; margin-bottom:35px; line-height:1.5;">O documento <b>${obrigacao}</b> (Referência: ${mesAno || '---'} | Vencimento: ${vencimento || '---'}) foi processado com sucesso.</p>
               
               ${htmlLinks}
               
