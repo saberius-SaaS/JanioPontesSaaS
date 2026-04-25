@@ -5,6 +5,9 @@
 
 function getDashboardData(filtroPeriodo) {
   try {
+    // TEMPORARIO: Força invalidação de cache para garantir sincronismo de nomes
+    invalidarCacheSistema(); 
+    
     var ss = getSs();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
@@ -31,8 +34,8 @@ function getDashboardData(filtroPeriodo) {
     if (wsUsuarios) {
       var dataU = wsUsuarios.getDataRange().getValues();
       for (var u = 1; u < dataU.length; u++) {
-        var emailU = String(dataU[u][0]).trim().toUpperCase();
-        var nomeU = String(dataU[u][1]).trim().toUpperCase();  
+        var emailU = String(dataU[u][0]).trim().toLowerCase(); // Padroniza para minusculo
+        var nomeU = String(dataU[u][1]).trim();  
         if (emailU) mapUsuarios[emailU] = nomeU; 
       }
     }
@@ -61,8 +64,8 @@ function getDashboardData(filtroPeriodo) {
           }
         }
 
-        var respEmail = String(values[i][8] || "SEM RESPONSAVEL").toUpperCase().trim();
-        var respNome = mapUsuarios[respEmail] || respEmail;
+        var respEmail = String(values[i][8] || "SEM RESPONSAVEL").toLowerCase().trim(); // Padroniza para minusculo
+        var respNome = mapUsuarios[respEmail] || respEmail.split("@")[0].toUpperCase();
 
         stats.total++;
         if (!stats.departamentos[depto]) stats.departamentos[depto] = { total: 0, pendentes: 0, entregues: 0 };

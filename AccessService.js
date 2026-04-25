@@ -31,8 +31,8 @@ function registrarAtividadePortal(token, tipoAtividade) {
  */
 function getRelatorioEquipe() {
   try {
-    // Check Cache first
-    var cacheKey = "TEAM_REPORT_JSON";
+    // Check Cache first - Updated prefix to v3 to force refresh
+    var cacheKey = "TEAM_REPORT_JSON_V3";
     var cached = CacheService.getScriptCache().get(cacheKey);
     if (cached) return JSON.parse(cached);
 
@@ -57,12 +57,16 @@ function getRelatorioEquipe() {
     var mapaUsuarios = {};
     var onlineAgora = 0;
     
+    // Mapeia todos os usuários cadastrados para garantir o Nome correto
+    var masterNomes = {};
     if (wsUsuarios) {
        var du = wsUsuarios.getDataRange().getValues();
        for(var u=1; u<du.length; u++) {
           var emailU = String(du[u][0]).trim().toLowerCase();
+          var nomeU = String(du[u][1]).trim();
           if (emailU) {
-             mapaUsuarios[emailU] = { email: emailU, nome: String(du[u][1]), primeiroAcesso: null, ultimoAcesso: null, pings: 0, tempoTotalMin: 0, isOnline: false, logs: [] };
+             masterNomes[emailU] = nomeU;
+             mapaUsuarios[emailU] = { email: emailU, nome: nomeU, primeiroAcesso: null, ultimoAcesso: null, pings: 0, tempoTotalMin: 0, isOnline: false, logs: [] };
           }
        }
     }
@@ -77,7 +81,8 @@ function getRelatorioEquipe() {
       
       if (acao.indexOf("ACESSO_") === 0) {
         if (!mapaUsuarios[email]) {
-           mapaUsuarios[email] = { email: email, nome: email.split("@")[0].toUpperCase(), primeiroAcesso: null, ultimoAcesso: null, pings: 0, tempoTotalMin: 0, isOnline: false, logs: [] };
+           var nomeFallback = masterNomes[email] || email.split("@")[0].toUpperCase();
+           mapaUsuarios[email] = { email: email, nome: nomeFallback, primeiroAcesso: null, ultimoAcesso: null, pings: 0, tempoTotalMin: 0, isOnline: false, logs: [] };
         }
         var user = mapaUsuarios[email];
         user.pings++;
@@ -148,12 +153,14 @@ function getRelatorioEquipe() {
 function getRelatorioEquipeMensal() {
   try {
     var agora = new Date();
-    var cacheKey = "TEAM_MONTHLY_REPORT_" + agora.getMonth() + "_" + agora.getFullYear();
+    // Updated prefix to v3 to force refresh
+    var cacheKey = "TEAM_MONTHLY_REPORT_V3_" + agora.getMonth() + "_" + agora.getFullYear();
     var cached = CacheService.getScriptCache().get(cacheKey);
     if (cached) return JSON.parse(cached);
 
     var ss = getSs();
     var wsLog = ss.getSheetByName(CONFIG_SISTEMA.ABA_LOGS);
+    var wsUsuarios = ss.getSheetByName(CONFIG_SISTEMA.ABA_USUARIOS);
     if (!wsLog) return { success: false, error: "Aba de logs não encontrada." };
 
     var lastRow = wsLog.getLastRow();
@@ -163,6 +170,17 @@ function getRelatorioEquipeMensal() {
     var dataLimite = new Date();
     dataLimite.setDate(1);
     dataLimite.setHours(0, 0, 0, 0);
+
+    // Mapeia nomes para o relatório mensal (evita prefixos de email como departamento)
+    var masterNomes = {};
+    if (wsUsuarios) {
+       var du = wsUsuarios.getDataRange().getValues();
+       for(var u=1; u<du.length; u++) {
+          var emailU = String(du[u][0]).trim().toLowerCase();
+          var nomeU = String(du[u][1]).trim();
+          if (emailU) masterNomes[emailU] = nomeU;
+       }
+    }
 
     // Busca ampliada para 5000 linhas para o Mês
     var numRows = Math.min(lastRow - 1, 5000);
@@ -182,7 +200,10 @@ function getRelatorioEquipeMensal() {
 
         var diaKey = Utilities.formatDate(data, "GMT-3", "yyyy-MM-dd");
         
-        if (!mapaMensal[email]) mapaMensal[email] = { totalMin: 0, diasAtivos: {}, nome: email.split("@")[0].toUpperCase() };
+        if (!mapaMensal[email]) {
+           var nomeFinal = masterNomes[email] || email.split("@")[0].toUpperCase();
+           mapaMensal[email] = { totalMin: 0, diasAtivos: {}, nome: nomeFinal };
+        }
         if (!mapaMensal[email].diasAtivos[diaKey]) {
             mapaMensal[email].diasAtivos[diaKey] = { logs: [] };
         }
