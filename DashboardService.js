@@ -64,25 +64,36 @@ function getDashboardData(filtroPeriodo) {
           }
         }
 
-        var respEmail = String(values[i][8] || "SEM RESPONSAVEL").toLowerCase().trim(); // Padroniza para minusculo
-        var respNome = mapUsuarios[respEmail] || respEmail.split("@")[0].toUpperCase();
+        var respEmailRaw = String(values[i][8] || "SEM RESPONSAVEL").toLowerCase();
+        var emails = respEmailRaw.split(',');
 
         stats.total++;
         if (!stats.departamentos[depto]) stats.departamentos[depto] = { total: 0, pendentes: 0, entregues: 0 };
         stats.departamentos[depto].total++;
-
-        if (!stats.usuarios[respNome]) stats.usuarios[respNome] = { total: 0, pendentes: 0, entregues: 0 };
-        stats.usuarios[respNome].total++;
         
         if (status === CONFIG_SISTEMA.STATUS.ENTREGUE) {
           stats.entregues++;
           stats.departamentos[depto].entregues++;
-          stats.usuarios[respNome].entregues++;
         } else {
           stats.pendentes++;
           stats.departamentos[depto].pendentes++;
-          stats.usuarios[respNome].pendentes++;
         }
+
+        // Distribui a carga de trabalho para todos os responsáveis listados
+        emails.forEach(function(e) {
+          var respEmail = e.trim();
+          if (!respEmail) return;
+          var respNome = mapUsuarios[respEmail] || respEmail.split("@")[0].toUpperCase();
+
+          if (!stats.usuarios[respNome]) stats.usuarios[respNome] = { total: 0, pendentes: 0, entregues: 0 };
+          stats.usuarios[respNome].total++;
+          
+          if (status === CONFIG_SISTEMA.STATUS.ENTREGUE) {
+            stats.usuarios[respNome].entregues++;
+          } else {
+            stats.usuarios[respNome].pendentes++;
+          }
+        });
       }
     }
 

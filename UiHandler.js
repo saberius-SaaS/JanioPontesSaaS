@@ -321,6 +321,14 @@ function getPrioridades() {
     var wsTasks = getSs().getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     if (!wsTasks) return [];
     
+    // Mapa de email → nome para exibição do responsável
+    var mapNomes = {};
+    for (var u = 1; u < dataU.length; u++) {
+       var emailKey = String(dataU[u][0]).toLowerCase().trim();
+       var nomeVal = String(dataU[u][1]).trim();
+       if (emailKey) mapNomes[emailKey] = nomeVal;
+    }
+    
     var dataProt = getSheetDataCached(CONFIG_SISTEMA.ABA_PROTOCOLOS, "DATA_PROTOCOLOS") || [];
     var mapDocLinks = {};
     for (var p = 1; p < dataProt.length; p++) {
@@ -334,13 +342,29 @@ function getPrioridades() {
     for (var j = 1; j < dataT.length; j++) {
       var statusObj = String(dataT[j][5] || "").toUpperCase().trim();
       if (statusObj !== getSafeStatus("PENDENTE") && statusObj !== getSafeStatus("REVISAO")) continue;
-      var resp = String(dataT[j][8]).toLowerCase().trim();
-      if (userLevel === "ADMIN" || resp === userEmail) {
+      var resp = String(dataT[j][8]);
+      if (userLevel === "ADMIN" || isUserResponsible(resp, userEmail)) {
         var rawVcto = dataT[j][3];
         var dateObj = (rawVcto instanceof Date) ? rawVcto : new Date(rawVcto);
         var mesAnoRaw = dataT[j][0];
         var mesAnoStr = (mesAnoRaw instanceof Date) ? Utilities.formatDate(mesAnoRaw, "GMT-3", "MM/yyyy") : String(mesAnoRaw);
-        tasks.push({ id: dataT[j][9], cliente: String(dataT[j][1]), obrigacao: String(dataT[j][2]), vencimentoSort: dateObj.getTime(), vencimentoStr: Utilities.formatDate(dateObj, "GMT-3", "dd/MM/yyyy"), mesAno: mesAnoStr, depto: dataT[j][4], status: String(dataT[j][5]).toUpperCase().trim(), docLinks: mapDocLinks[String(dataT[j][9])] || "", acao: String(dataT[j][7]).toUpperCase().trim(), nivel: dataT[j][10] || "1" });
+        tasks.push({ 
+          id: dataT[j][9], 
+          cliente: String(dataT[j][1]), 
+          obrigacao: String(dataT[j][2]), 
+          vencimentoSort: dateObj.getTime(), 
+          vencimentoStr: Utilities.formatDate(dateObj, "GMT-3", "dd/MM/yyyy"), 
+          mesAno: mesAnoStr, 
+          depto: dataT[j][4], 
+          status: String(dataT[j][5]).toUpperCase().trim(), 
+          docLinks: mapDocLinks[String(dataT[j][9])] || "", 
+          acao: String(dataT[j][7]).toUpperCase().trim(), 
+          nivel: dataT[j][10] || "1",
+          responsavel: resp.split(',').map(function(e) { 
+             var ek = e.trim().toLowerCase();
+             return mapNomes[ek] || ek;
+          }).join(', ')
+        });
       }
     }
     tasks.sort((a, b) => (a.nivel !== b.nivel) ? b.nivel - a.nivel : a.vencimentoSort - b.vencimentoSort);

@@ -181,8 +181,8 @@ function getPrioridadesPortal(activeEmail, userLevelOverride) {
        var statusObj = norm(dataT[j][5]);
        if (statusObj !== "PENDENTE" && statusObj !== "REVISAO") continue;
        
-       var resp = String(dataT[j][8]).toLowerCase().trim();
-       if (userLevel === "ADMIN" || resp === userEmail) {
+       var respRaw = String(dataT[j][8]);
+       if (userLevel === "ADMIN" || isUserResponsible(respRaw, userEmail)) {
          var rawVcto = dataT[j][3];
          var dateObj = (rawVcto instanceof Date) ? rawVcto : new Date(rawVcto);
          
@@ -203,7 +203,10 @@ function getPrioridadesPortal(activeEmail, userLevelOverride) {
             docLinks: mapDocLinks[String(dataT[j][9])] || "",
             acao: String(dataT[j][7]).toUpperCase().trim(), 
             nivel: dataT[j][10] || "1",
-            responsavel: mapNomes[resp] || resp || "Não Atribuído",
+            responsavel: respRaw.split(',').map(function(e) { 
+               var ek = e.trim().toLowerCase();
+               return mapNomes[ek] || ek;
+            }).join(', ') || "Não Atribuído",
             exigeRevisao: exigeRevisao
          });
        }
@@ -260,9 +263,9 @@ function getDadosRiscoWeb(token) {
     for (var i = 1; i < dataT.length; i++) {
        if (norm(dataT[i][5]) !== "PENDENTE") continue;
        
-       var respEmail = String(dataT[i][8]).toLowerCase().trim();
+       var respEmailRaw = String(dataT[i][8]);
        // FILTRO DE SEGURANÇA: Usuários comuns só vêem seu próprio risco
-       if (userLevel !== "ADMIN" && respEmail !== emailFinal) continue;
+       if (userLevel !== "ADMIN" && !isUserResponsible(respEmailRaw, emailFinal)) continue;
 
        var vctoRaw = dataT[i][3];
        if (!vctoRaw) continue;
@@ -275,7 +278,10 @@ function getDadosRiscoWeb(token) {
           var diffTime = Math.abs(hoje - dataVcto);
           var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           
-          var respDisplay = mapUsuarios[respEmail] || dataT[i][8] || "Não Atribuído";
+          var respDisplay = respEmailRaw.split(',').map(function(e) {
+             var ek = e.trim().toLowerCase();
+             return mapUsuarios[ek] || ek;
+          }).join(', ') || "Não Atribuído";
           
           riskList.push({
              cliente: String(dataT[i][1]),
@@ -341,10 +347,10 @@ function getDadosSolicitacoesTabWeb(token) {
     }
 
     for (var i = 1; i < dataSol.length; i++) {
-       var respEmail = String(dataSol[i][10] || "").toLowerCase().trim(); // K = RESPONSAVEL
+       var respEmailRaw = String(dataSol[i][10] || ""); // K = RESPONSAVEL
        
        // FILTRO RBAC: USER vê apenas suas solicitações
-       if (userLevel !== "ADMIN" && respEmail !== emailFinal) continue;
+       if (userLevel !== "ADMIN" && !isUserResponsible(respEmailRaw, emailFinal)) continue;
 
        var dataRaw = dataSol[i][1]; // B = DATA
        var dataStr = (dataRaw instanceof Date) ? Utilities.formatDate(dataRaw, "GMT-3", "dd/MM/yyyy HH:mm") : String(dataRaw || "---");
@@ -362,7 +368,10 @@ function getDadosSolicitacoesTabWeb(token) {
           status: statusSol,                    // G = STATUS
           linkArquivo: String(dataSol[i][7] || ""),    // H = LINK_ARQUIVO
           qtdAvisos: qtdAvisos,                 // J = QTD_AVISOS
-          responsavel: mapNomes[respEmail] || respEmail || "Não Atribuído", // K = RESPONSAVEL (nome)
+          responsavel: respEmailRaw.split(',').map(function(e) {
+             var ek = e.trim().toLowerCase();
+             return mapNomes[ek] || ek;
+          }).join(', ') || "Não Atribuído", // K = RESPONSAVEL (nome)
           metaTarefa: String(dataSol[i][11] || "")     // L = META_TAREFA
        });
     }

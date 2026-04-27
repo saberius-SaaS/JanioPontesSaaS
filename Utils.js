@@ -12,6 +12,22 @@ function norm(str) {
 }
 
 /**
+ * Verifica se um e-mail está contido em uma string de responsáveis (suporta lista separada por vírgula).
+ * @param {string} responsavelStr Conteúdo da coluna RESPONSAVEL
+ * @param {string} emailUsuario E-mail do usuário logado
+ * @returns {boolean}
+ */
+function isUserResponsible(responsavelStr, emailUsuario) {
+  if (!responsavelStr || !emailUsuario) return false;
+  var target = emailUsuario.toLowerCase().trim();
+  var parts = String(responsavelStr).toLowerCase().split(',');
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i].trim() === target) return true;
+  }
+  return false;
+}
+
+/**
  * Ponto de acesso resiliente à planilha (Redundância para gatilhos).
  */
 function getSs() {
