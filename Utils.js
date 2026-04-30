@@ -107,6 +107,26 @@ function obterEnesimoDiaUtil(ano, mes, n) {
   return data;
 }
 
+function adicionarDiasUteis(dataInicial, qtdDiasUteis) {
+  var data = new Date(dataInicial.getTime());
+  var diasAdicionados = 0;
+  
+  if (qtdDiasUteis === 0) {
+    while (!isDiaUtil(data)) {
+      data.setDate(data.getDate() + 1);
+    }
+    return data;
+  }
+  
+  while (diasAdicionados < qtdDiasUteis) {
+    data.setDate(data.getDate() + 1);
+    if (isDiaUtil(data)) {
+      diasAdicionados++;
+    }
+  }
+  return data;
+}
+
 /**
  * Validador JWT do Google Identity Services (GIS).
  * Comprova a assinatura via API e extrai o e-mail verificado.

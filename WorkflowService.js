@@ -31,6 +31,7 @@ function acionarWorkflowFaseSeguinte(idTarefaAnterior, rowIdxTarefaAnterior) {
             faseAtualNorm: norm(String(dataWf[w][0])),
             proximaFase: String(dataWf[w][1]).trim(),
             diasPrazo: parseInt(dataWf[w][2]) || 1,
+            prazoIsUtil: String(dataWf[w][2]).trim().toUpperCase().indexOf("U") > -1,
             departamento: String(dataWf[w][3]).trim(),
             acao: getSafeAction(String(dataWf[w][4]).trim()),
             respOriginal: String(dataWf[w][5]).trim(),
@@ -67,7 +68,13 @@ function acionarWorkflowFaseSeguinte(idTarefaAnterior, rowIdxTarefaAnterior) {
 
     // 3. Cálculo de Datas para a Próxima Fase
     var hoje = new Date();
-    var novoPrazoInterno = new Date(hoje.getTime() + (faseSeguinte.diasPrazo * 24 * 60 * 60 * 1000));
+    var novoPrazoInterno;
+    
+    if (faseSeguinte.prazoIsUtil) {
+      novoPrazoInterno = adicionarDiasUteis(hoje, faseSeguinte.diasPrazo);
+    } else {
+      novoPrazoInterno = new Date(hoje.getTime() + (faseSeguinte.diasPrazo * 24 * 60 * 60 * 1000));
+    }
     // Para workflows, o vencimento legal costuma ser o mesmo do prazo interno, 
     // a menos que a tarefa gerada seja uma obrigação fiscal principal.
     var novoVencimentoLegal = new Date(novoPrazoInterno); 
