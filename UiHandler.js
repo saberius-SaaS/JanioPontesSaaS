@@ -367,7 +367,11 @@ function getPrioridades() {
         });
       }
     }
-    tasks.sort((a, b) => (a.nivel !== b.nivel) ? b.nivel - a.nivel : a.vencimentoSort - b.vencimentoSort);
+    tasks.sort(function(a, b) {
+      if (a.status !== b.status) return (a.status === "PENDENTE") ? -1 : 1;
+      if (a.vencimentoSort !== b.vencimentoSort) return a.vencimentoSort - b.vencimentoSort;
+      return parseInt(b.nivel || 0) - parseInt(a.nivel || 0);
+    });
     var finalResult = tasks.slice(0, 7);
     setPrioridadesCache(userEmail, finalResult);
     return finalResult;
