@@ -3,6 +3,28 @@
  * FOCO: Estabilidade total no Bypass de Permissão e Identidade DriveApp.
  */
 
+/**
+ * Ponto de entrada exclusivo do Painel (Sidebar)
+ * Diferente do Portal, aqui usamos a identidade local do container nativo do G. Workspace
+ */
+function processarUploadViaPainel(payload) {
+  var userEmail = Session.getActiveUser().getEmail();
+  if (!userEmail) throw new Error("Acesso Negado: Sessão expirada.");
+  userEmail = userEmail.toLowerCase().trim();
+  
+  var userLevel = "USER";
+  var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+  if (dataU) {
+    for (var u = 1; u < dataU.length; u++) {
+        if (String(dataU[u][0]).toLowerCase().trim() === userEmail) { 
+            userLevel = String(dataU[u][2]).toUpperCase().trim(); 
+            break; 
+        }
+    }
+  }
+  return processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar, userLevel);
+}
+
 function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, forcar, userLevel) {
   var lock = LockService.getScriptLock();
   try { 

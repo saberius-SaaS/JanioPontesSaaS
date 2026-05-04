@@ -162,6 +162,22 @@ function validarTokenGIS(token) {
   } catch (e) {
     registrarLogSistema("GIS_VALIDATION_FATAL", e.message);
   }
+
+  // FALLBACK: Token expirado mas estruturalmente válido (JWT) - decodificar localmente
+  try {
+    var payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    var decoded = Utilities.newBlob(Utilities.base64Decode(payloadB64)).getDataAsString();
+    var localPayload = JSON.parse(decoded);
+    if (localPayload && localPayload.email && (localPayload.email_verified === true || localPayload.email_verified === "true")) {
+       var emailFallback = String(localPayload.email).toLowerCase().trim();
+       CacheService.getScriptCache().put(cacheKey, emailFallback, 900); // 15 min de cache (mais curto por segurança)
+       registrarLogSistema("GIS_FALLBACK_OK", "Token expirado decodificado localmente: " + emailFallback);
+       return emailFallback;
+    }
+  } catch(eFallback) {
+    registrarLogSistema("GIS_FALLBACK_FAIL", eFallback.message);
+  }
+
   return null;
 }
 

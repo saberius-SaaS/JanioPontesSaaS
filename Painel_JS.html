@@ -309,35 +309,27 @@
       return;
     }
     
-    showLoader("Processando via WebApp...");
+    showLoader("Processando upload de dados...");
+    const payload = {
+      action: "uploadBatch",
+      arquivos: arquivosStaged,
+      mensagem: acaoAtual.indexOf("COMUNICAR") > -1 ? textoComunicar : "",
+      taskId: id,
+      clienteNome: cli
+    };
+    
     google.script.run
       .withFailureHandler(err => {
         console.error(err);
-        showFeedback("Falha ao obter URL HTTP: " + err.message, true);
+        showFeedback("Falha no servidor: " + err.message, true);
         hideLoader();
       })
-      .withSuccessHandler(async urlWebApp => {
+      .withSuccessHandler(result => {
          try {
-           const payload = {
-             action: "uploadBatch",
-             arquivos: arquivosStaged,
-             mensagem: acaoAtual.indexOf("COMUNICAR") > -1 ? textoComunicar : "",
-             taskId: id,
-             clienteNome: cli
-           };
-           
-           const resposta = await fetch(urlWebApp, {
-             method: 'POST',
-             body: JSON.stringify(payload),
-             headers: { 'Content-Type': 'text/plain;charset=utf-8' } // text/plain para evitar preflight CORS no script.google.com
-           });
-           
-           const result = await resposta.json();
            if (result.success) {
              limparTudo(); 
              if (result.dispararEmailVIP) {
                showFeedback("Auditoria Aprovada! O Relatório VIP está sendo gerado em 2º plano e será enviado por e-mail em instantes.");
-               // Chama o server e esquece (fire and forget)
                google.script.run.processarAuditoriaRelatorioBackground(result.backgroundPayload);
              } else if (result.auditoriaRodou) {
                showFeedback("Auditoria Aprovada e Tarefa Concluída!");
@@ -347,13 +339,12 @@
            } else {
              showFeedback("Falha: " + (result.error || result.message), true);
            }
-         } catch (errFetch) {
-           console.error("Erro no Fetch: ", errFetch);
-           showFeedback("Erro de conexão com WebApp", true);
+         } catch(e) {
+           showFeedback("Falha na interface de resultado", true);
          } finally {
            hideLoader();
          }
-      }).getUrlParaFetch();
+      }).processarUploadViaPainel(payload);
   }
 
   function criarTarefaDemanda() {
