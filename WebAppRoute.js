@@ -35,6 +35,14 @@ function include(filename) {
  * ⚡ CORE DATA FETCH (Portal Web)
  * Busca consolidada para extrema performance no carregamento inicial da SPA.
  */
+/**
+ * ⚡ KEEP ALIVE (Heartbeat)
+ * Função leve para manter a sessão ativa sem processar dados pesados.
+ */
+function keepAlive() {
+  return { success: true, timestamp: new Date().getTime() };
+}
+
 function getDadosPortalWeb(token) {
   try {
     var hoje = new Date();
@@ -457,18 +465,22 @@ function getDadosHistoricoWeb() {
     var lastRow = wsHist.getLastRow();
     if (lastRow <= 1) return { success: true, data: [] };
     
-    var lastCol = wsHist.getLastColumn();
+    // Usa 14 colunas fixas (Schema: 12 da tarefa + statusEnvio + confRecto)
+    var numCols = 14;
     var rangeSize = 100;
-    var startRow = Math.max(1, lastRow - rangeSize + 1);
+    var startRow = Math.max(2, lastRow - rangeSize + 1);
     var numRows = lastRow - startRow + 1;
-    var dataH = wsHist.getRange(startRow, 1, numRows, lastCol).getValues();
+    var dataH = wsHist.getRange(startRow, 1, numRows, numCols).getValues();
     
     var histList = [];
     var limit = 70; 
     
-    // Varredura Inversa
-    var stopIndex = (startRow === 1) ? 1 : 0;
-    for (var i = dataH.length - 1; i >= stopIndex && limit > 0; i--) {
+    // Varredura Inversa (startRow >= 2, então todas as linhas são dados, sem header)
+    for (var i = dataH.length - 1; i >= 0 && limit > 0; i--) {
+        // Validação: pula linhas sem cliente (vazias)
+        var clienteRaw = String(dataH[i][1] || "").trim();
+        if (!clienteRaw) continue;
+
         var vctoRaw = dataH[i][3];
         var vctoStr = (vctoRaw instanceof Date) ? Utilities.formatDate(vctoRaw, "GMT-3", "dd/MM/yyyy") : String(vctoRaw);
         
@@ -482,7 +494,7 @@ function getDadosHistoricoWeb() {
 
         histList.push({
            mesAno: mesAnoStr,
-           cliente: String(dataH[i][1]),
+           cliente: clienteRaw,
            obrigacao: String(dataH[i][2]),
            vencimento: vctoStr,
            depto: String(dataH[i][4]),
@@ -498,6 +510,78 @@ function getDadosHistoricoWeb() {
     
     return resultado;
   } catch(err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * 📢 DISPARO DE COMUNICADO (Admin Web)
+ * Envia mensagem premium via EmailService para todos os clientes ativos ou para um específico.
+ */
+function enviarComunicadoGlobalWeb(token, assunto, texto, clienteAlvo) {
+  try {
+    var emailAdmin = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!emailAdmin) return { success: false, error: "AUTENTICACAO_REQUERIDA" };
+
+    // 1. Validação Restrita: Apenas ADMIN
+    var userLevel = null;
+    var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
+    if (!dataU) {
+       var wsU = getSs().getSheetByName("DB_USUARIOS");
+       if (wsU) dataU = wsU.getDataRange().getValues();
+    }
+    
+    if (dataU) {
+      for (var u = 1; u < dataU.length; u++) {
+         if (String(dataU[u][0]).toLowerCase().trim() === emailAdmin) { 
+             userLevel = String(dataU[u][2]).toUpperCase().trim(); 
+             break; 
+         }
+      }
+    }
+
+    if (userLevel !== "ADMIN") {
+        return { success: false, error: "Acesso Negado: Apenas administradores podem disparar comunicados." };
+    }
+
+    // 2. Coletar Base de Clientes Ativos
+    var ss = getSs();
+    var wsClientes = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
+    if (!wsClientes) return { success: false, error: "Base de clientes não encontrada." };
+    
+    var dataC = wsClientes.getDataRange().getValues();
+    var envios = 0;
+    var falhas = 0;
+    var isAll = (!clienteAlvo || clienteAlvo === "ALL");
+
+    for (var i = 1; i < dataC.length; i++) {
+        var cliente = String(dataC[i][1]).trim();
+        var emailCli = String(dataC[i][4]).toLowerCase().trim(); // Coluna E (Index 4)
+        var statusCli = String(dataC[i][15] || "ATIVO").toUpperCase().trim(); // Coluna P (Index 15)
+        
+        if (statusCli !== "INATIVO" && emailCli && emailCli.indexOf("@") > -1) {
+            // Filtra se não for "ALL"
+            if (!isAll && cliente !== clienteAlvo) continue;
+            
+            try {
+               enviarEmailGlobal(cliente, emailCli, assunto, texto);
+               envios++;
+            } catch(eMail) {
+               falhas++;
+            }
+        }
+    }
+    
+    var targetLog = isAll ? "Toda a Carteira" : clienteAlvo;
+    registrarLogSistema("MASS_EMAIL_SENT", "Disparo: " + targetLog + " | Assunto: " + assunto + " | Sucesso: " + envios + " | Falhas: " + falhas);
+
+    return { 
+       success: true, 
+       message: "Comunicado enviado para " + envios + " destinatário(s)." + (falhas > 0 ? (" (" + falhas + " falhas)") : "") 
+    };
+
+  } catch(err) {
+    registrarLogSistema("MASS_EMAIL_FATAL", err.message);
     return { success: false, error: err.message };
   }
 }

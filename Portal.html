@@ -574,14 +574,24 @@
                      <button id="btnAdmin_hist" onclick="acionarRoboAdmin('comandoSincronizarHistorico', 'btnAdmin_hist')" class="w-full bg-slate-100 border border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 font-bold py-2.5 rounded text-[10px] uppercase tracking-wider transition"><i class="fa-solid fa-play mr-2"></i> Executar Lote</button>
                   </div>
                   
-                  <!-- Robô 5 -->
+                  <!-- Robô 5: Comunicado Global -->
+                  <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow transition group flex flex-col justify-between">
+                     <div>
+                        <i class="fa-solid fa-bullhorn text-4xl text-fuchsia-500 mb-4 opacity-80 group-hover:scale-110 transition-transform"></i>
+                        <h4 class="font-bold text-slate-700 mb-2 truncate">5. Comunicado Oficial</h4>
+                        <p class="text-[11px] text-slate-500 mb-5 leading-relaxed">Dispara um e-mail padronizado e elegante para toda a carteira de clientes ativos ou para um cliente específico.</p>
+                     </div>
+                     <button onclick="abrirModalComunicadoGlobal()" class="w-full bg-slate-100 border border-slate-200 text-slate-600 hover:bg-fuchsia-50 hover:text-fuchsia-600 hover:border-fuchsia-200 font-bold py-2.5 rounded text-[10px] uppercase tracking-wider transition"><i class="fa-solid fa-pen-to-square mr-2"></i> Redigir Mensagem</button>
+                  </div>
+
+                  <!-- Robô 6: Backup -->
                   <div class="bg-slate-800 border-2 border-slate-900 p-6 rounded-xl shadow-md hover:shadow-lg transition group flex flex-col justify-between relative overflow-hidden">
                      <div class="absolute right-0 top-0 opacity-10">
                          <i class="fa-solid fa-database text-9xl text-emerald-300"></i>
                      </div>
                      <div class="relative z-10">
                         <i class="fa-solid fa-lock text-4xl text-emerald-400 mb-4 group-hover:scale-110 transition-transform"></i>
-                        <h4 class="font-bold text-emerald-100 mb-2 truncate">5. Acionamento de Backup Seguro</h4>
+                        <h4 class="font-bold text-emerald-100 mb-2 truncate">6. Acionamento de Backup Seguro</h4>
                         <p class="text-[11px] text-slate-400 mb-5 leading-relaxed text-justify">Roteia uma varredura atestada com o Google Drive para fragmentar as abas ativas, contruir log espelho e despachar para o diretório de Backups Criptografados do Janio Pontes SaaS.</p>
                      </div>
                      <button id="btnAdmin_backup" onclick="acionarRoboAdmin('comandoBackupManual', 'btnAdmin_backup')" class="relative z-10 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded text-[11px] uppercase tracking-wider transition border border-emerald-500 shadow"><i class="fa-solid fa-shield-cat mr-2"></i> Consolidar Backup Agora</button>
@@ -696,6 +706,55 @@
          <button onclick="fecharModalTarefa()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded mr-2 transition">Cancelar</button>
          <button id="btnFinalizarWeb" onclick="finalizarProcessoWeb()" class="px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center">
             <i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento
+         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL DE COMUNICADO GLOBAL ==================== -->
+  <div id="modalComunicadoGlobal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center hidden opacity-0 transition-opacity duration-500">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300 pointer-events-auto">
+      <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-fuchsia-50 text-fuchsia-900">
+        <h3 class="font-bold uppercase tracking-widest text-[11px]"><i class="fa-solid fa-bullhorn mr-2"></i> Emissor de Comunicado Global</h3>
+        <button onclick="fecharModalComunicadoGlobal()" class="text-fuchsia-400 hover:text-fuchsia-600 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      
+      <div class="p-6">
+        <div class="mb-4">
+           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Destinatário(s)</label>
+           <select id="selectClienteGlobal" onchange="onChangeDestinatarioGlobal()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none transition-all cursor-pointer">
+              <option value="ALL">🚨 TODA A CARTEIRA DE CLIENTES ATIVOS</option>
+           </select>
+        </div>
+
+        <div class="mb-4">
+           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Assunto do E-mail</label>
+           <input type="text" id="inputAssuntoGlobal" placeholder="Ex: Aviso de Recesso Fim de Ano" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none transition-all">
+        </div>
+
+        <div class="mb-4">
+           <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Mensagem (Corpo do E-mail)</label>
+           <textarea id="textoComunicadoGlobal" rows="6" placeholder="Prezados clientes,\n\nInformamos que..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none transition-all resize-none"></textarea>
+        </div>
+
+        <div id="alertaMassaGlobal" class="bg-amber-50 border-l-4 border-amber-400 p-3 rounded mb-4">
+            <p class="text-[10px] text-amber-700 font-bold flex items-center"><i class="fa-solid fa-triangle-exclamation mr-2 text-sm"></i> Operação Crítica</p>
+            <p class="text-[10px] text-amber-600 mt-1 leading-relaxed">Esta ação enviará um e-mail para TODOS os clientes da base que possuem e-mail válido.</p>
+        </div>
+        
+        <div id="areaCheckGlobal" class="flex items-center">
+            <input type="checkbox" id="checkConfirmaGlobal" class="w-4 h-4 text-fuchsia-600 bg-slate-100 border-slate-300 rounded focus:ring-fuchsia-500">
+            <label for="checkConfirmaGlobal" class="ml-2 text-[11px] font-bold text-slate-600 uppercase tracking-widest cursor-pointer">Confirmo e quero disparar para toda carteira.</label>
+        </div>
+
+        <div id="feedbackComunicadoGlobal" class="mt-4 text-center text-[11px] font-bold hidden p-3 rounded shadow-sm border"></div>
+      </div>
+      
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end items-center">
+         <div id="spinnerGlobal" class="hidden mr-4"><i class="fa-solid fa-circle-notch fa-spin text-fuchsia-600 text-xl"></i></div>
+         <button onclick="fecharModalComunicadoGlobal()" class="px-4 py-2 text-[11px] font-black text-slate-500 hover:bg-slate-200 rounded mr-2 transition uppercase tracking-widest">Cancelar</button>
+         <button id="btnDispararGlobal" onclick="dispararComunicadoGlobal()" class="px-6 py-2 text-[11px] font-black bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded shadow transition flex items-center uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-paper-plane mr-2"></i> Enviar a Todos
          </button>
       </div>
     </div>

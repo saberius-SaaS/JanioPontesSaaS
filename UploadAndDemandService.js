@@ -129,6 +129,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
         
         if (statusFinal !== getSafeStatus("REVISAO")) {
            acionarWorkflowFaseSeguinte(taskId, rowIdx);
+           moverTarefaParaHistoricoImediato(rowIdx);
         }
         reordenarTarefasElite(); 
         invalidarCacheSistema(); 
@@ -272,6 +273,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
     // Só aciona fase seguinte se NÃO for revisão
     if (statusFinal !== getSafeStatus("REVISAO")) {
        acionarWorkflowFaseSeguinte(taskId, rowIdx);
+       moverTarefaParaHistoricoImediato(rowIdx);
     }
     reordenarTarefasElite(); 
     invalidarCacheSistema();
@@ -560,6 +562,7 @@ function finalizarLoteUploadsCliente(solId, linksGerados, textoResposta) {
       if (String(dataTf[j][0]) === String(idTarefa)) {
         wsTarefas.getRange(j + 1, 6, 1, 2).setValues([[getSafeStatus("ENTREGUE"), "PORTAL-" + solId]]);
         acionarWorkflowFaseSeguinte(idTarefa, j + 1);
+        moverTarefaParaHistoricoImediato(j + 1);
         break;
       }
     }

@@ -513,3 +513,40 @@ function enviarComunicadoCliente(cliente, emailCli, obrigacao, protocolo, mensag
     throw new Error("Falha no envio do Comunicado: " + e.message);
   }
 }
+
+/**
+ * 📢 Comunicado Global de Lote (Toda a Carteira)
+ * Padrão premium fuchsia para comunicados não atrelados a protocolos específicos.
+ */
+function enviarEmailGlobal(cliente, emailCli, assunto, mensagem) {
+  if(!emailCli || emailCli.indexOf("@") === -1) return;
+  try {
+    var html = `
+      <div style="margin:0; padding:0; background-color:#f8fafc; font-family:'Inter', sans-serif; padding:40px 20px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:550px; margin:0 auto; background-color:#ffffff; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 10px 15px -3px rgba(0,0,0,0.05);">
+          <tr><td style="padding:25px; background-color:#86198f; color:#ffffff; text-align:center;">
+            <div style="font-size:16px; font-weight:900; letter-spacing:1px; line-height:1.2;">JANIO PONTES CONTABILIDADE</div>
+            <div style="font-size:10px; font-weight:700; opacity:0.8; text-transform:uppercase; letter-spacing:2px; margin-top:4px;">COMUNICADO OFICIAL</div>
+          </td></tr>
+          <tr><td style="padding:45px 35px; text-align:center;">
+              <h2 style="color:#1e293b; margin:0 0 10px 0; font-size:20px; font-weight:700;">Olá, ${cliente}</h2>
+              <p style="color:#64748b; font-size:14px; margin-bottom:25px; line-height:1.5;">Temos uma mensagem importante para você.</p>
+              
+              <div style="background-color:#fdf4ff; border-left:4px solid #c026d3; padding:20px; margin-bottom:30px; text-align:left; border-radius:4px; margin-top: 15px;">
+                <div style="font-size:14px; font-weight:600; color:#4a044e; line-height:1.6; white-space: pre-wrap;">${mensagem}</div>
+              </div>
+          </td></tr>
+
+          <tr><td style="padding:25px; background-color:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
+              <div style="font-size:11px; color:#86198f; font-weight:800; text-transform:uppercase; margin-bottom:4px;">Núcleo de Consultoria Estratégica (NCE)</div>
+              <div style="font-size:9px; color:#64748b; font-weight:400; line-height:1.4;">Esta é uma mensagem automática enviada a todos os clientes ativos.</div>
+          </td></tr>
+        </table>
+      </div>
+    `;
+
+    GmailApp.sendEmail(emailCli, assunto, "", { htmlBody: html });
+  } catch (e) {
+    registrarLogSistema("EMAIL_GLOBAL_FAIL", "Falha ao enviar para " + emailCli + ": " + e.message);
+  }
+}

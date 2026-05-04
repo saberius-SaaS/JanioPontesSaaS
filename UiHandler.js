@@ -601,6 +601,9 @@ function aprovarTarefaRevisao(taskId, userLevel) {
         
         // 5. Aciona o workflow de fase seguinte
         acionarWorkflowFaseSeguinte(taskId, i + 1);
+
+        // 5b. Transfere imediatamente para DB_HISTORICO
+        moverTarefaParaHistoricoImediato(i + 1);
         
         // 6. Envia as notificações finais baseadas no tipo de ação
         var acaoTarefa = dataT[i][7];

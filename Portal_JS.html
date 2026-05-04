@@ -68,11 +68,37 @@ document.addEventListener("DOMContentLoaded", function(event) {
     document.getElementById('currentUserEmail').textContent = "Aguardando Login...";
     // O carregamento agora é engatilhado apenas APÓS o login (handleCredentialResponse)
     
-    // Configura sincronização periódica (30 segundos) - Mas checa se o token existe primeiro
+    // 🔄 Sincronização Periódica de Dados (60 segundos)
     setInterval(() => {
         if (window.GIS_TOKEN) carregarDadosBase(true);
-    }, 30000);
+    }, 60000);
+
+    // 💓 Heartbeat / Keep-Alive (5 minutos)
+    // Evita que o ambiente de execução do Apps Script hiberne ou que a tela fique branca.
+    setInterval(() => {
+        if (window.GIS_TOKEN) {
+            console.log("Iniciando pulso de manutenção de sessão...");
+            google.script.run
+                .withFailureHandler(err => {
+                    console.error("Falha no Heartbeat:", err);
+                    // Se falhar 3 vezes seguidas, podemos assumir que a sessão caiu
+                    handleHeartbeatFailure();
+                })
+                .withSuccessHandler(() => console.log("Sessão ativa."))
+                .keepAlive();
+        }
+    }, 300000); 
 });
+
+let heartbeatFailures = 0;
+function handleHeartbeatFailure() {
+    heartbeatFailures++;
+    if (heartbeatFailures >= 3) {
+        console.warn("Múltiplas falhas de conexão. Tentando reconectar o portal...");
+        // Em vez de deixar a tela branca, tentamos recarregar a página para restaurar o estado
+        window.location.reload();
+    }
+}
 
 let tarefasGlobaisBase = []; // Cache das tarefas para busca Local
 let historicoGlobalBase = []; // Cache do arquivo morto
@@ -228,9 +254,16 @@ function carregarDadosBase(isAutoSync) {
               
               if(cliDemanda && cliSol) {
                  let htmlCli = '<option value="">-- SELECIONE O CLIENTE --</option>';
-                 res.clientes.forEach(c => htmlCli += `<option value="${c}">${c}</option>`);
+                 let htmlCliGlobal = '<option value="ALL">🚨 TODA A CARTEIRA DE CLIENTES ATIVOS</option>';
+                 res.clientes.forEach(c => {
+                    htmlCli += `<option value="${c}">${c}</option>`;
+                    htmlCliGlobal += `<option value="${c}">${c}</option>`;
+                 });
                  cliDemanda.innerHTML = htmlCli;
                  cliSol.innerHTML = htmlCli;
+                 
+                 const selectGlobal = document.getElementById('selectClienteGlobal');
+                 if(selectGlobal) selectGlobal.innerHTML = htmlCliGlobal;
               }
               if(tipoDem) {
                  let htmlTipo = '<option value="">-- SELECIONE O CLASSIFICADOR --</option>';
@@ -597,6 +630,116 @@ function fecharModalTarefa() {
         modal.classList.add('hidden');
         tarefaEmFoco = null;
     }, 300);
+}
+
+// ================= MODAL COMUNICADO GLOBAL =================
+function abrirModalComunicadoGlobal() {
+    document.getElementById('inputAssuntoGlobal').value = "";
+    document.getElementById('textoComunicadoGlobal').value = "";
+    document.getElementById('checkConfirmaGlobal').checked = false;
+    document.getElementById('selectClienteGlobal').value = "ALL";
+    onChangeDestinatarioGlobal(); // Reset UI
+    
+    const fb = document.getElementById('feedbackComunicadoGlobal');
+    fb.classList.add('hidden');
+    fb.className = "mt-4 text-center text-[11px] font-bold hidden p-3 rounded shadow-sm border";
+    
+    const modal = document.getElementById('modalComunicadoGlobal');
+    const content = modal.querySelector('div'); // The inner content div
+    
+    modal.classList.remove('hidden');
+    // Force reflow
+    void modal.offsetWidth;
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+}
+
+function fecharModalComunicadoGlobal() {
+    const modal = document.getElementById('modalComunicadoGlobal');
+    const content = modal.querySelector('div');
+    
+    modal.classList.add('opacity-0');
+    content.classList.add('scale-95');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function onChangeDestinatarioGlobal() {
+    const alvo = document.getElementById('selectClienteGlobal').value;
+    const alertaDiv = document.getElementById('alertaMassaGlobal');
+    const checkDiv = document.getElementById('areaCheckGlobal');
+    const btnEnviar = document.getElementById('btnDispararGlobal');
+    
+    if (alvo === "ALL") {
+        if(alertaDiv) alertaDiv.classList.remove('hidden');
+        if(checkDiv) checkDiv.classList.remove('hidden');
+        if(btnEnviar) btnEnviar.innerHTML = `<i class="fa-solid fa-paper-plane mr-2"></i> Enviar a Todos`;
+    } else {
+        if(alertaDiv) alertaDiv.classList.add('hidden');
+        if(checkDiv) checkDiv.classList.add('hidden');
+        if(btnEnviar) btnEnviar.innerHTML = `<i class="fa-solid fa-paper-plane mr-2"></i> Enviar para Cliente`;
+    }
+}
+
+function dispararComunicadoGlobal() {
+    const assunto = document.getElementById('inputAssuntoGlobal').value.trim();
+    const texto = document.getElementById('textoComunicadoGlobal').value.trim();
+    const check = document.getElementById('checkConfirmaGlobal').checked;
+    const clienteAlvo = document.getElementById('selectClienteGlobal').value;
+    const fb = document.getElementById('feedbackComunicadoGlobal');
+    const btn = document.getElementById('btnDispararGlobal');
+    const spinner = document.getElementById('spinnerGlobal');
+    
+    if (!assunto || !texto) {
+        fb.innerHTML = "<i class='fa-solid fa-triangle-exclamation mr-1'></i> Preencha o assunto e a mensagem.";
+        fb.className = "mt-4 text-center text-[11px] font-bold p-3 rounded shadow-sm border bg-amber-50 text-amber-700 border-amber-200";
+        fb.classList.remove('hidden');
+        return;
+    }
+    
+    if (clienteAlvo === "ALL" && !check) {
+        fb.innerHTML = "<i class='fa-solid fa-lock mr-1'></i> Confirme a operação na caixa de seleção.";
+        fb.className = "mt-4 text-center text-[11px] font-bold p-3 rounded shadow-sm border bg-rose-50 text-rose-700 border-rose-200";
+        fb.classList.remove('hidden');
+        return;
+    }
+    
+    fb.classList.add('hidden');
+    btn.disabled = true;
+    spinner.classList.remove('hidden');
+    btn.innerHTML = `Processando...`;
+    
+    google.script.run
+      .withFailureHandler(err => {
+         btn.disabled = false;
+         spinner.classList.add('hidden');
+         btn.innerHTML = clienteAlvo === "ALL" ? `<i class="fa-solid fa-paper-plane mr-2"></i> Enviar a Todos` : `<i class="fa-solid fa-paper-plane mr-2"></i> Enviar para Cliente`;
+         fb.innerHTML = `<i class="fa-solid fa-circle-xmark mr-1"></i> Erro: ${err.message}`;
+         fb.className = "mt-4 text-center text-[11px] font-bold p-3 rounded shadow-sm border bg-rose-50 text-rose-700 border-rose-200";
+         fb.classList.remove('hidden');
+      })
+      .withSuccessHandler(res => {
+         spinner.classList.add('hidden');
+         if (res.success) {
+            btn.innerHTML = `<i class="fa-solid fa-check-double mr-2"></i> Enviado`;
+            fb.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i> ${res.message}`;
+            fb.className = "mt-4 text-center text-[11px] font-bold p-3 rounded shadow-sm border bg-emerald-50 text-emerald-700 border-emerald-200";
+            fb.classList.remove('hidden');
+            setTimeout(() => { 
+                fecharModalComunicadoGlobal(); 
+                btn.disabled = false; 
+                btn.innerHTML = clienteAlvo === "ALL" ? `<i class="fa-solid fa-paper-plane mr-2"></i> Enviar a Todos` : `<i class="fa-solid fa-paper-plane mr-2"></i> Enviar para Cliente`; 
+            }, 3000);
+         } else {
+            btn.disabled = false;
+            btn.innerHTML = clienteAlvo === "ALL" ? `<i class="fa-solid fa-paper-plane mr-2"></i> Enviar a Todos` : `<i class="fa-solid fa-paper-plane mr-2"></i> Enviar para Cliente`;
+            fb.innerHTML = `<i class="fa-solid fa-circle-xmark mr-1"></i> ${res.error}`;
+            fb.className = "mt-4 text-center text-[11px] font-bold p-3 rounded shadow-sm border bg-rose-50 text-rose-700 border-rose-200";
+            fb.classList.remove('hidden');
+         }
+      }).enviarComunicadoGlobalWeb(window.GIS_TOKEN, assunto, texto, clienteAlvo);
 }
 
 async function adicionarArquivosWeb() {
@@ -980,6 +1123,43 @@ function filtrarHistoricoWeb() {
 
 // ================= PROTOCOLOS (LAZY LOADING) =================
 
+// Helper: Extrai Date de string "dd/MM/yyyy" ou "dd/MM/yyyy HH:mm"
+function _parseDataProtocolo(str) {
+   if (!str) return null;
+   const partesEspaco = String(str).trim().split(' ');
+   const partesData = partesEspaco[0].split('/');
+   if (partesData.length < 3) return null;
+   
+   const dt = new Date(parseInt(partesData[2],10), parseInt(partesData[1],10)-1, parseInt(partesData[0],10));
+   
+   // Se tiver hora (HH:mm), inclui na precisão do Date para ordenação correta
+   if (partesEspaco.length > 1) {
+      const partesHora = partesEspaco[1].split(':');
+      if (partesHora.length >= 2) {
+         dt.setHours(parseInt(partesHora[0], 10), parseInt(partesHora[1], 10), 0, 0);
+      }
+   }
+   return dt;
+}
+
+// Helper: Verifica se a data é de um dia anterior a hoje
+function _isProtocoloAnterior(dataStr) {
+   var dt = _parseDataProtocolo(dataStr);
+   if (!dt) return false;
+   var hoje = new Date();
+   hoje.setHours(0,0,0,0);
+   return dt < hoje;
+}
+
+// Helper: Comparador para ordenar protocolos do mais antigo ao mais recente
+function _compararDataProtocolo(a, b) {
+   var dA = _parseDataProtocolo(a.data);
+   var dB = _parseDataProtocolo(b.data);
+   if (!dA) return -1;
+   if (!dB) return 1;
+   return dA - dB;
+}
+
 function carregarProtocolosServer(forcarRefresh, isQuiet) {
    if (forcarRefresh) carregouProtocolos = false;
    
@@ -1025,6 +1205,10 @@ function renderizarProtocolosInfo(pendentes, todos) {
    const containerP = document.getElementById('containerProtocolosPendentes');
    const containerT = document.getElementById('containerProtocolosTodos');
    
+   // Ordenar ambas as listas: mais antigos primeiro
+   if (pendentes && pendentes.length > 1) pendentes.sort(_compararDataProtocolo);
+   if (todos && todos.length > 1) todos.sort(_compararDataProtocolo);
+
    // 1. Renderizar Não Lidos
    if(!pendentes || pendentes.length === 0) {
       containerP.innerHTML = '<div class="p-4 text-center text-emerald-600 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-center gap-3"><i class="fa-solid fa-check-double text-lg"></i><span class="text-[10px] font-bold uppercase tracking-widest">Parabéns! Todos os protocolos deste lote foram lidos.</span></div>';
@@ -1064,21 +1248,24 @@ function renderizarGradeProtocolosTodos(lista) {
 
    lista.forEach(p => {
       const isConfirmado = p.recebidoEm && p.recebidoEm !== '---' && p.recebidoEm !== 'AGUARDANDO' && p.recebidoEm !== '';
+      const isAnterior = _isProtocoloAnterior(p.data);
       const statusBadge = isConfirmado 
          ? `<div class="flex flex-col items-center"><span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-bold border border-emerald-200 uppercase tracking-tighter"><i class="fa-solid fa-check-circle mr-1"></i>Recebido</span><span class="text-[8px] text-slate-400 mt-0.5 font-mono">${p.recebidoEm}</span></div>`
          : `<div class="flex flex-col items-center"><span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full text-[9px] font-bold border border-amber-100 uppercase tracking-tighter"><i class="fa-solid fa-clock mr-1"></i>Pendente</span></div>`;
 
+      const trClass = isAnterior ? 'bg-red-50/70 hover:bg-red-100/80' : 'hover:bg-slate-50';
+
       htmlT += `
-         <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50 group">
+         <tr class="${trClass} transition-colors border-b border-slate-50 group">
             <td class="p-3 whitespace-nowrap">
-               <span class="font-mono text-slate-400 text-[10px]">${p.data}</span>
+               <span class="font-mono ${isAnterior ? 'text-red-500 font-bold' : 'text-slate-400'} text-[10px]">${p.data}</span>
             </td>
             <td class="p-3 max-w-[300px]">
-               <div class="font-bold text-jp-navy uppercase truncate" title="${p.cliente}">${p.cliente}</div>
-               <div class="text-slate-500 text-[10px] truncate" title="${p.obrigacao}">${p.obrigacao}</div>
+               <div class="font-bold ${isAnterior ? 'text-red-800' : 'text-jp-navy'} uppercase truncate" title="${p.cliente}">${p.cliente}</div>
+               <div class="${isAnterior ? 'text-red-500' : 'text-slate-500'} text-[10px] truncate" title="${p.obrigacao}">${p.obrigacao}</div>
             </td>
             <td class="p-3">
-               <span class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-500 text-[10px]">#${p.protocolo}</span>
+               <span class="${isAnterior ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'} px-1.5 py-0.5 rounded font-mono text-[10px]">#${p.protocolo}</span>
             </td>
             <td class="p-3 whitespace-nowrap">
                <span class="text-rose-600 font-bold">${p.vencimentoLegal}</span>
@@ -1104,23 +1291,25 @@ function renderizarGradeProtocolosTodos(lista) {
 }
 
 function gerarCardProtocolo(p, isPendente) {
-   const borderClass = isPendente ? 'border-l-orange-400' : 'border-l-slate-300 hover:border-l-indigo-400';
+   const isAnterior = _isProtocoloAnterior(p.data);
+   const borderClass = isAnterior ? 'border-l-red-500' : (isPendente ? 'border-l-orange-400' : 'border-l-slate-300 hover:border-l-indigo-400');
+   const bgClass = isAnterior ? 'bg-red-50/60 border-red-200' : 'bg-white border-slate-100';
    const badgeStatus = isPendente 
       ? '<span class="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest border border-orange-200 uppercase animate-pulse">Novo</span>'
       : '<span class="bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-slate-200 uppercase">Lido</span>';
 
    return `
-      <div class="task-card flex flex-col p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition group border-l-4 ${borderClass}">
+      <div class="task-card flex flex-col p-4 ${bgClass} rounded-xl shadow-sm hover:shadow-md transition group border-l-4 ${borderClass}">
          <div class="flex justify-between items-start mb-2">
             <div class="flex flex-col">
-               <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1"><i class="fa-regular fa-calendar mr-1"></i> ${p.data}</span>
+               <span class="text-[8px] font-bold ${isAnterior ? 'text-red-500' : 'text-slate-400'} uppercase tracking-widest mb-1"><i class="fa-regular fa-calendar mr-1"></i> ${p.data}</span>
                ${badgeStatus}
             </div>
-            <span class="bg-slate-50 px-2 py-0.5 rounded text-[8px] font-mono text-slate-500 tracking-widest border border-slate-200">#${p.protocolo}</span>
+            <span class="${isAnterior ? 'bg-red-100 text-red-600 border-red-200' : 'bg-slate-50 text-slate-500 border-slate-200'} px-2 py-0.5 rounded text-[8px] font-mono tracking-widest border">#${p.protocolo}</span>
          </div>
-         <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider mb-0.5 truncate" title="${p.cliente}">${p.cliente}</div>
-         <div class="text-xs text-slate-600 font-medium mb-3 line-clamp-1" title="${p.obrigacao}">${p.obrigacao}</div>
-         <div class="mt-auto pt-3 border-t border-slate-50 flex items-center justify-between">
+         <div class="text-[10px] font-bold ${isAnterior ? 'text-red-800' : 'text-jp-navy'} uppercase tracking-wider mb-0.5 truncate" title="${p.cliente}">${p.cliente}</div>
+         <div class="text-xs ${isAnterior ? 'text-red-600' : 'text-slate-600'} font-medium mb-3 line-clamp-1" title="${p.obrigacao}">${p.obrigacao}</div>
+         <div class="mt-auto pt-3 border-t ${isAnterior ? 'border-red-100' : 'border-slate-50'} flex items-center justify-between">
             <span class="text-[8px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded uppercase">Vcto: ${p.vencimentoLegal}</span>
             <a href="${p.link}" target="_blank" class="text-indigo-600 hover:text-white hover:bg-indigo-600 p-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-700" title="Ver Arquivo">
                <i class="fa-solid fa-file-pdf text-sm"></i>

@@ -194,6 +194,55 @@ function arquivarTarefasConcluidas() {
 }
 
 /**
+ * ⚡ TRANSFERÊNCIA IMEDIATA PARA HISTÓRICO
+ * Move uma tarefa ENTREGUE diretamente para DB_HISTORICO e remove de DB_TAREFAS.
+ * Chamada automaticamente ao concluir uma tarefa (sem depender do Robô de Arquivamento).
+ * @param {number} rowIdx - Índice da linha na DB_TAREFAS (1-based, incluindo header)
+ */
+function moverTarefaParaHistoricoImediato(rowIdx) {
+  try {
+    var ss = getSs();
+    var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
+    var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
+    var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+    
+    if (!wsTarefas || !wsHist) return;
+
+    // 1. Lê os 12 campos da tarefa
+    var rowData = wsTarefas.getRange(rowIdx, 1, 1, 12).getValues()[0];
+
+    // 2. Cruza com DB_PROTOCOLOS para obter statusEnvio e confRecto
+    var idTarefa = String(rowData[9]).trim();
+    var statusEnvio = "-";
+    var confRecto = "-";
+
+    if (wsProt) {
+      var dataProt = wsProt.getDataRange().getValues();
+      for (var p = dataProt.length - 1; p >= 1; p--) {
+        if (String(dataProt[p][3]).trim() === idTarefa) {
+          statusEnvio = dataProt[p][8] || "MANUAL";
+          confRecto = (dataProt[p][9] instanceof Date)
+            ? Utilities.formatDate(dataProt[p][9], "GMT-3", "dd/MM/yyyy HH:mm:ss")
+            : String(dataProt[p][9] || "");
+          break;
+        }
+      }
+    }
+
+    // 3. Grava no DB_HISTORICO (14 colunas: 12 tarefa + statusEnvio + confRecto)
+    var histRow = rowData.concat([statusEnvio, confRecto]);
+    wsHist.getRange(wsHist.getLastRow() + 1, 1, 1, 14).setValues([histRow]);
+
+    // 4. Remove da DB_TAREFAS
+    wsTarefas.deleteRow(rowIdx);
+
+    registrarLogSistema("ARCHIVE_INSTANT", "Tarefa " + idTarefa + " transferida imediatamente para histórico.");
+  } catch (e) {
+    registrarLogSistema("ARCHIVE_INSTANT_ERR", "Falha ao transferir tarefa (row " + rowIdx + "): " + e.message);
+  }
+}
+
+/**
  * Identifica tarefas pendentes e atrasadas para alimentar o relatório de compliance.
  */
 function atualizarRelatorioRisco() {
