@@ -216,7 +216,8 @@ function getRelatorioAuditoria(clienteIdx) {
   var cliNorm = norm(clienteNome);
   var regCli = norm(dataCli[c][6]);
   var excStr = String(dataCli[c][11]);
-  var excecoes = excStr ? excStr.split(',').map(e => norm(e)) : [];
+  var excecoes = excStr ? excStr.split(',').map(e => norm(e)).filter(e => e !== "") : [];
+  var perfisCliente = String(dataCli[c][14] || "");
 
   var dataReg = wsRegras.getDataRange().getValues();
   var dataTf = wsTarefas.getDataRange().getValues();
@@ -225,6 +226,8 @@ function getRelatorioAuditoria(clienteIdx) {
   var agora = new Date();
   var mesAnoRef = Utilities.formatDate(agora, "GMT-3", "MM/yyyy");
   var mesAtualInt = parseInt(Utilities.formatDate(agora, "GMT-3", "MM"), 10);
+  var competenciaDate = new Date(agora.getFullYear(), agora.getMonth(), 1);
+  var inicioMesAtual = new Date(agora.getFullYear(), agora.getMonth(), 1);
 
   var mapaTf = {};
   for(var i=1; i<dataTf.length; i++) {
@@ -246,8 +249,14 @@ function getRelatorioAuditoria(clienteIdx) {
     if (!nomeRegra) continue;
     var status = "OK", detalhe = "Geraria Tarefa Hoje", cor = "green";
     var regraNorm = norm(nomeRegra);
+
+    // Verificação de Tags/Perfis (Whitelist) — alinhada com TaskCoreService
+    var possuiTag = verificarAcessoPorTag(perfisCliente, dataReg[r][11]);
+    if (!possuiTag) {
+      status = "BLOQUEADO"; detalhe = "Sem Tag/Perfil compatível"; cor = "red";
+    }
     
-    if (excecoes.indexOf(regraNorm) > -1) {
+    if (status === "OK" && excecoes.indexOf(regraNorm) > -1) {
       status = "BLOQUEADO"; detalhe = "Cliente possui Exceção"; cor = "red";
     }
     
@@ -262,6 +271,16 @@ function getRelatorioAuditoria(clienteIdx) {
     var regRegra = norm(dataReg[r][4]);
     if (status === "OK" && regRegra && regRegra !== "TODOS" && regRegra !== regCli) {
       status = "BLOQUEADO"; detalhe = "Regime Divergente"; cor = "red";
+    }
+
+    // Verificação de Data Calculável — alinhada com TaskCoreService L119-122
+    if (status === "OK") {
+      var dtPrazoAudit = calcularDataComplexa(competenciaDate, dataReg[r][2], dataReg[r][8], dataReg[r][10]);
+      if (!dtPrazoAudit) {
+        status = "BLOQUEADO"; detalhe = "Data não calculável (Dia/Desloca inválido)"; cor = "orange";
+      } else if (dtPrazoAudit < inicioMesAtual) {
+        status = "BLOQUEADO"; detalhe = "Vencimento retroativo (" + Utilities.formatDate(dtPrazoAudit, "GMT-3", "dd/MM/yyyy") + ") — não gera tarefa nova"; cor = "orange";
+      }
     }
 
     var hash = norm(mesAnoRef) + "|" + cliNorm + "|" + regraNorm;

@@ -162,6 +162,7 @@ Esta aba é recriada automaticamente e contém estritamente 6 colunas visíveis:
 2.  **Modularidade:** Mantenha a arquitetura SRP (Single Responsibility Principle). Arquivos particionados: `TaskCoreService.gs`, `WorkflowService.gs`, `DashboardService.gs`, `MaintenanceService.gs`, `UploadAndDemandService.gs`.
 3.  **Logs:** Toda operação crítica registra entrada em `DB_LOGS`.
 4.  **Triggers:** Utilize LockService (`waitLock`) em todas as transações que manipulam a `DB_TAREFAS` simultaneamente.
+5.  **Operação:** O sistema está em operação. Portanto, qualquer alteração deve ser extremamente cuidadosa e restringir-se exclusivamente aquilo que foi solicitado.
 
 ---
 

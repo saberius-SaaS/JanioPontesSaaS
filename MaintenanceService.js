@@ -298,6 +298,7 @@ function atualizarRelatorioRisco() {
 
 /**
  * Sincroniza informações de visualização do protocolo com o Histórico.
+ * Otimizado com Batch Operations (Regra 5.1) para evitar timeout em grandes volumes.
  */
 function sincronizarHistoricoComProtocolos() {
   var ss = getSs();
@@ -306,11 +307,16 @@ function sincronizarHistoricoComProtocolos() {
   if (!wsHist || !wsProt) return 0;
   var dataHist = wsHist.getDataRange().getValues();
   var dataProt = wsProt.getDataRange().getValues();
+  if (dataHist.length <= 1) return 0;
   var mapProt = {};
   for (var p = 1; p < dataProt.length; p++) {
     var idTarefa = String(dataProt[p][3]).trim();
     if (idTarefa) mapProt[idTarefa] = { status: dataProt[p][8], conf: dataProt[p][9] };
   }
+  // Leitura em lote das colunas M e N (13 e 14) do Histórico
+  var qtdLinhas = dataHist.length - 1;
+  var rangeSync = wsHist.getRange(2, 13, qtdLinhas, 2);
+  var valoresSync = rangeSync.getValues();
   var updates = 0;
   for (var h = 1; h < dataHist.length; h++) {
     var id = String(dataHist[h][9]).trim();
@@ -320,10 +326,15 @@ function sincronizarHistoricoComProtocolos() {
       var histConf = dataHist[h][13];
       var histConfStr = (histConf instanceof Date) ? Utilities.formatDate(histConf, "GMT-3", "dd/MM/yyyy HH:mm:ss") : String(histConf || "");
       if (String(p.status) !== String(dataHist[h][12]) || confStr !== histConfStr) {
-        wsHist.getRange(h + 1, 13, 1, 2).setValues([[p.status, confStr]]);
+        valoresSync[h - 1] = [p.status, confStr];
         updates++;
       }
     }
+  }
+  // Gravação em lote única (somente se houve mudanças reais)
+  if (updates > 0) {
+    rangeSync.setValues(valoresSync);
+    SpreadsheetApp.flush();
   }
   return updates;
 }
