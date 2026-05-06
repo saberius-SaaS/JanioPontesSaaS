@@ -220,12 +220,26 @@
     const areaCom = document.getElementById('areaComunicacao');
     if (areaCom) areaCom.style.display = ehComunicar ? 'block' : 'none';
 
+    // Justificativa: visível para ENVIAR (não AUDITAR) e COMUNICAR
+    const areaJustP = document.getElementById('areaJustificativaSemEnvioPainel');
+    if (areaJustP) areaJustP.style.display = ((ehEnvio && !ehAuditoria) || ehComunicar) ? 'block' : 'none';
+
     precisaUploadGlobal = ehEnvio || ehAuditoria;
     if (arq) arq.style.display = precisaUploadGlobal ? 'block' : 'none'; 
     if (esc) esc.style.display = precisaUploadGlobal ? 'block' : 'none';
     
     if (ehComunicar) {
-      btnFin.disabled = false;
+      // COMUNICAR: permite finalizar com mensagem OU com justificativa
+      const justPC = document.getElementById('textoJustificativaSemEnvioPainel');
+      const temJustC = justPC && justPC.value.trim().length >= 10;
+      const txtCom = document.getElementById('textoComunicar');
+      const temMsg = txtCom && txtCom.value.trim().length > 0;
+      btnFin.disabled = !temMsg && !temJustC;
+    } else if (ehEnvio && !ehAuditoria) {
+      // ENVIAR: permite finalizar com arquivos OU com justificativa
+      const justP = document.getElementById('textoJustificativaSemEnvioPainel');
+      const temJust = justP && justP.value.trim().length >= 10;
+      btnFin.disabled = (!arquivosStaged || !arquivosStaged.length) && !temJust;
     } else {
       btnFin.disabled = precisaUploadGlobal && (!arquivosStaged || !arquivosStaged.length);
     }
@@ -307,14 +321,26 @@
 
     // Validar se há mensagens
     if (acaoAtual.indexOf("COMUNICAR") > -1 && !textoComunicar) {
-      showFeedback("Por favor, digite a mensagem antes de finalizar.", true);
-      return;
+      if (justPainel.length < 10) {
+        showFeedback("Digite o comunicado ou preencha a justificativa (mín. 10 caracteres).", true);
+        return;
+      }
     }
 
     // Validar se há arquivos (Obrigatório apenas se a AÇÃO exigir envio ou auditoria)
+    const justPainel = document.getElementById('textoJustificativaSemEnvioPainel') ? document.getElementById('textoJustificativaSemEnvioPainel').value.trim() : "";
+    const ehEnvioAtualP = acaoAtual.indexOf("ENVIAR") > -1;
+    
     if (precisaUploadGlobal && arquivosStaged.length === 0) {
-      showFeedback("Por favor, anexe o arquivo antes de finalizar.", true);
-      return;
+      if (ehEnvioAtualP && justPainel.length >= 10) {
+        // OK: segue sem arquivo, justificativa registrada
+      } else if (ehEnvioAtualP) {
+        showFeedback("Sem arquivo: preencha a justificativa (mín. 10 caracteres).", true);
+        return;
+      } else {
+        showFeedback("Por favor, anexe o arquivo antes de finalizar.", true);
+        return;
+      }
     }
     
     showLoader("Processando upload de dados...");
@@ -323,7 +349,8 @@
       arquivos: arquivosStaged,
       mensagem: acaoAtual.indexOf("COMUNICAR") > -1 ? textoComunicar : "",
       taskId: id,
-      clienteNome: cli
+      clienteNome: cli,
+      justificativaSemEnvio: ((ehEnvioAtualP && arquivosStaged.length === 0) || (acaoAtual.indexOf("COMUNICAR") > -1 && !textoComunicar)) ? justPainel : ""
     };
     
     google.script.run
@@ -404,6 +431,10 @@
     if (txtCom) txtCom.value = '';
     const areaCom = document.getElementById('areaComunicacao');
     if (areaCom) areaCom.style.display = 'none';
+    const justPainelLimpar = document.getElementById('textoJustificativaSemEnvioPainel');
+    if (justPainelLimpar) justPainelLimpar.value = '';
+    const areaJustLimpar = document.getElementById('areaJustificativaSemEnvioPainel');
+    if (areaJustLimpar) areaJustLimpar.style.display = 'none';
     document.getElementById('areaArquivos').style.display = 'none';
     document.getElementById('btnEscolher').style.display = 'none';
     const btnFin = document.getElementById('btnFinalizar');

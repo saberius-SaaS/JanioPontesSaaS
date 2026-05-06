@@ -34,13 +34,21 @@
           <div id="statusAcaoArea"></div>
           <div id="areaComunicacao" style="display:none; margin-top:20px;">
             <label>3. Mensagem para o Cliente</label>
-            <textarea id="textoComunicar" rows="5" placeholder="Digite o texto do comunicado (ex: alíquota, aviso) que será enviado ao cliente..."></textarea>
+            <textarea id="textoComunicar" rows="5" placeholder="Digite o texto do comunicado (ex: alíquota, aviso) que será enviado ao cliente..." oninput="atualizarInterfacePorAcao()"></textarea>
           </div>
           <div id="areaArquivos" style="display:none">
             <label>3. Documentos</label>
             <div class="file-list" id="fileListDisplay">
               <span style="color:#94a3b8; font-size:10px;">Vazio</span>
             </div>
+          </div>
+          <div id="areaJustificativaSemEnvioPainel" style="display:none; margin-top:15px;">
+            <div style="background:#FEF3C7; border:1px solid #FCD34D; border-radius:8px; padding:10px; margin-bottom:8px;">
+              <div style="font-size:9px; font-weight:900; color:#92400E; text-transform:uppercase; letter-spacing:0.5px;">⚠ Finalização sem Envio de Arquivo</div>
+              <div style="font-size:9px; color:#B45309; margin-top:3px; line-height:1.4;">Preencha a justificativa abaixo para concluir sem anexo.</div>
+            </div>
+            <label>Justificativa (mín. 10 caracteres)</label>
+            <textarea id="textoJustificativaSemEnvioPainel" rows="3" placeholder="Ex: Obrigação dispensada neste período, documento já entregue, etc." oninput="atualizarInterfacePorAcao()"></textarea>
           </div>
           <div class="btn-group">
             <button type="button" class="btn-outline" id="btnEscolher" style="display:none" onclick="document.getElementById('fileInput').click()">ANEXAR</button>

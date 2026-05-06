@@ -287,7 +287,7 @@ function doPost(e) {
     }
     
     if (payload.action === "uploadBatch") {
-      var resultado = processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar, userLevel);
+      var resultado = processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar, userLevel, payload.justificativaSemEnvio || "");
       return ContentService.createTextOutput(JSON.stringify(resultado))
         .setMimeType(ContentService.MimeType.JSON);
     }
@@ -613,11 +613,16 @@ function aprovarTarefaRevisao(taskId, userLevel) {
            } else {
               if (norm(acaoTarefa).indexOf(CONFIG_SISTEMA.ACOES.COMUNICAR) > -1) {
                  // Recupera a mensagem do protocolo se for COMUNICAR
-                 var msgComunicado = "";
+                 var msgProtocolo = "";
                  if (protRowIdx !== -1) {
-                    msgComunicado = String(dataP[protRowIdx-1][7]).replace("COMUNICADO: ", ""); // Coluna H: Index 7
+                    msgProtocolo = String(dataP[protRowIdx-1][7]); // Coluna H: Index 7
                  }
-                 enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, msgComunicado);
+                 
+                 // Só envia se for de fato um comunicado (e não um SEM_COMUNICADO gerado por justificativa)
+                 if (msgProtocolo.indexOf("COMUNICADO:") > -1 && msgProtocolo.indexOf("SEM_COMUNICADO:") === -1) {
+                    var msgComunicado = msgProtocolo.replace("COMUNICADO: ", "");
+                    enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, msgComunicado);
+                 }
               } else if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) {
                  notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, folderUrl, protRowIdx, false, mesAno, vctoLegal);
               }

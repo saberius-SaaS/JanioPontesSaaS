@@ -519,6 +519,12 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw, status, d
     precisaUploadWeb = (ehEnvio || ehAuditoria || exigeRevisao) && !ehRevisao;
     document.getElementById('areaUpload').style.display = precisaUploadWeb ? 'block' : 'none';
     
+    // Justificativa: visível para ENVIAR (não AUDITAR) e COMUNICAR
+    const areaJust = document.getElementById('areaJustificativaSemEnvio');
+    if (areaJust) areaJust.style.display = ((ehEnvio && !ehAuditoria) || ehComunicar) && !ehRevisao ? 'block' : 'none';
+    const txtJust = document.getElementById('textoJustificativaSemEnvio');
+    if (txtJust) txtJust.value = '';
+    
     const areaCom = document.getElementById('areaComunicacaoWeb');
     if (areaCom) areaCom.style.display = (ehComunicar && !ehRevisao) ? 'block' : 'none';
     
@@ -837,15 +843,29 @@ async function finalizarProcessoWeb() {
     const acaoAtual = String(tarefaEmFoco.acao || "").toUpperCase().trim();
 
     if (acaoAtual.indexOf("COMUNICAR") > -1 && !textoComunicar) {
-      feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-orange-50 border-orange-200 text-orange-700 block";
-      feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Escreva a mensagem do comunicado antes de avançar.`;
-      return;
+      const justTmp = document.getElementById('textoJustificativaSemEnvio') ? document.getElementById('textoJustificativaSemEnvio').value.trim() : "";
+      if (justTmp.length < 10) {
+        feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-orange-50 border-orange-200 text-orange-700 block";
+        feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Escreva o comunicado ou preencha a justificativa abaixo (mínimo 10 caracteres).`;
+        return;
+      }
     }
 
+    const justificativaSemEnvio = document.getElementById('textoJustificativaSemEnvio') ? document.getElementById('textoJustificativaSemEnvio').value.trim() : "";
+    const ehEnvioAtual = acaoAtual.indexOf("ENVIAR") > -1;
+
     if (precisaUploadWeb && arquivosStagedWeb.length === 0) {
-      feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-orange-50 border-orange-200 text-orange-700 block";
-      feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Anexe os documentos mandatórios para avançar.`;
-      return;
+      if (ehEnvioAtual && justificativaSemEnvio.length >= 10) {
+        // OK: prossegue sem arquivo, justificativa registrada
+      } else if (ehEnvioAtual) {
+        feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-orange-50 border-orange-200 text-orange-700 block";
+        feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Sem arquivo anexado: preencha a justificativa abaixo (mínimo 10 caracteres).`;
+        return;
+      } else {
+        feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-orange-50 border-orange-200 text-orange-700 block";
+        feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Anexe os documentos mandatórios para avançar.`;
+        return;
+      }
     }
     
     const btnFin = document.getElementById('btnFinalizarWeb');
@@ -880,7 +900,8 @@ async function finalizarProcessoWeb() {
                mensagem: acaoAtual.indexOf("COMUNICAR") > -1 ? textoComunicar : "",
                taskId: tarefaEmFoco.id,
                clienteNome: tarefaEmFoco.cliente,
-               forcar: forcarUpload
+               forcar: forcarUpload,
+                justificativaSemEnvio: ((ehEnvioAtual && arquivosStagedWeb.length === 0) || (acaoAtual.indexOf("COMUNICAR") > -1 && !textoComunicar)) ? justificativaSemEnvio : ""
              };
              
              const resposta = await fetch(urlWebApp, {

@@ -22,10 +22,10 @@ function processarUploadViaPainel(payload) {
         }
     }
   }
-  return processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar, userLevel);
+  return processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar, userLevel, payload.justificativaSemEnvio || "");
 }
 
-function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, forcar, userLevel) {
+function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, forcar, userLevel, justificativaSemEnvio) {
   var lock = LockService.getScriptLock();
   try { 
     lock.waitLock(25000); 
@@ -124,7 +124,12 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
     // INTERCEPTAÇÃO: AÇÃO COMUNICAR
     if (norm(acaoTarefa).indexOf(CONFIG_SISTEMA.ACOES.COMUNICAR) > -1) {
         var vctoLegal = typeof rowVal[11] === 'object' && rowVal[11] instanceof Date ? Utilities.formatDate(rowVal[11], "GMT-3", "dd/MM/yyyy") : (rowVal[11] || "---");
-        var protRowIdx = registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, "COMUNICADO: " + mensagem, vctoLegal, acaoTarefa);
+        
+        // COMUNICAR sem mensagem (com justificativa)
+        var semMensagem = !mensagem || mensagem.trim() === "";
+        var descricaoProtocolo = semMensagem ? "SEM_COMUNICADO: " + (justificativaSemEnvio || "Sem detalhes") : "COMUNICADO: " + mensagem;
+        
+        var protRowIdx = registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, descricaoProtocolo, vctoLegal, acaoTarefa);
         wsTarefas.getRange(rowIdx, 6, 1, 2).setValues([[statusFinal, protocolo]]);
         
         if (statusFinal !== getSafeStatus("REVISAO")) {
@@ -135,16 +140,44 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
         invalidarCacheSistema(); 
         
         try {
-            if (statusFinal !== getSafeStatus("REVISAO")) {
+            // Só envia e-mail se houver mensagem real e não estiver em REVISAO
+            if (statusFinal !== getSafeStatus("REVISAO") && !semMensagem) {
                enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, mensagem);
             }
         } catch(eMailCom) {
             registrarLogSistema("EMAIL_COM_ERR", "Falha comunicado: " + eMailCom.message);
         }
 
+        if (semMensagem) {
+            registrarLogSistema("COMUNICAR_SEM_MSG", "Tarefa: " + taskId + " | Cliente: " + clienteNome + " | Justificativa: " + (justificativaSemEnvio || "N/A"));
+        }
+
         return { 
           success: true, 
-          message: "Comunicado enviado com sucesso.",
+          message: semMensagem ? "Tarefa conclu\u00edda sem comunicado (justificativa registrada)." : "Comunicado enviado com sucesso.",
+          auditoriaRodou: false,
+          dispararEmailVIP: false,
+          backgroundPayload: null
+        };
+    }
+
+    // INTERCEPTAÇÃO: ENVIAR SEM ARQUIVO (com justificativa)
+    if (justificativaSemEnvio && (!arquivos || arquivos.length === 0) && norm(acaoTarefa).indexOf(CONFIG_SISTEMA.ACOES.ENVIAR) > -1) {
+        var vctoLegal = typeof rowVal[11] === 'object' && rowVal[11] instanceof Date ? Utilities.formatDate(rowVal[11], "GMT-3", "dd/MM/yyyy") : (rowVal[11] || "---");
+        var protRowIdx = registrarProtocoloDB(clienteNome, protocolo, taskId, obrig, emailCli, "SEM_ENVIO: " + justificativaSemEnvio, vctoLegal, acaoTarefa);
+        wsTarefas.getRange(rowIdx, 6, 1, 2).setValues([[statusFinal, protocolo]]);
+        
+        if (statusFinal !== getSafeStatus("REVISAO")) {
+           acionarWorkflowFaseSeguinte(taskId, rowIdx);
+           moverTarefaParaHistoricoImediato(rowIdx);
+        }
+        reordenarTarefasElite(); 
+        invalidarCacheSistema();
+        registrarLogSistema("ENVIO_SEM_ARQUIVO", "Tarefa: " + taskId + " | Cliente: " + clienteNome + " | Justificativa: " + justificativaSemEnvio);
+        
+        return { 
+          success: true, 
+          message: "Tarefa conclu\u00edda sem envio de arquivo (justificativa registrada).",
           auditoriaRodou: false,
           dispararEmailVIP: false,
           backgroundPayload: null
