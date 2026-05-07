@@ -268,8 +268,12 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
          var deveNotificar = (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR);
          if (deveNotificar) {
            // Passamos o protRowIdx em vez do rowIdx da tarefa para rastreio direto no DB_PROTOCOLOS
-           // NOVO: Sem try-catch silencioso. Se estourar erro de OAuth ou Permissão, vai abortar tudo e subir pro Frontend.
-           notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), protRowIdx || "", false, mesRef, vctoLegal);
+           // PROTEÇÃO: Falha no e-mail NÃO deve abortar a finalização da tarefa.
+           try {
+             notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), protRowIdx || "", false, mesRef, vctoLegal);
+           } catch(eMailNotif) {
+             registrarLogSistema("EMAIL_NOTIF_ERR", "Tarefa finalizada mas e-mail falhou: " + eMailNotif.message);
+           }
          }
        }
     }

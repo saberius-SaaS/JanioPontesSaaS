@@ -550,3 +550,119 @@ function enviarEmailGlobal(cliente, emailCli, assunto, mensagem) {
     registrarLogSistema("EMAIL_GLOBAL_FAIL", "Falha ao enviar para " + emailCli + ": " + e.message);
   }
 }
+
+/**
+ * 🔄 REENVIO DE NOTIFICAÇÃO POR PROTOCOLO
+ * Busca os dados de um protocolo já finalizado e reenvia a notificação para o e-mail
+ * atualmente cadastrado na DB_CLIENTES (roteado por departamento).
+ * SEGURANÇA: Função 100% somente-leitura nos dados. Nenhum status é alterado.
+ * @param {string} protocolo - Código do protocolo (ex: PRT174139...)
+ * @returns {object} { success: boolean, message: string }
+ */
+function reenviarNotificacaoPorProtocolo(protocolo) {
+  if (!protocolo) {
+    return { success: false, message: "Protocolo inválido." };
+  }
+
+  try {
+    var ss = getSs();
+    var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+    if (!wsProt) return { success: false, message: "Aba de protocolos não encontrada." };
+
+    // 1. Busca o protocolo (somente leitura)
+    var dataP = wsProt.getDataRange().getValues();
+    var protData = null;
+    var protRowIdx = -1;
+
+    for (var i = dataP.length - 1; i >= 1; i--) {
+      if (String(dataP[i][2]).trim().toUpperCase() === String(protocolo).trim().toUpperCase()) {
+        protData = dataP[i];
+        protRowIdx = i + 1;
+        break;
+      }
+    }
+
+    if (!protData) return { success: false, message: "Protocolo não localizado: " + protocolo };
+
+    // 2. Extração dos dados do protocolo (somente leitura)
+    var clienteNome = protData[1];         // B: CLIENTE
+    var obrigacao   = protData[4];         // E: OBRIGACAO
+    var linksRaw    = String(protData[7]); // H: LINKS
+    var vctoLegal   = protData[10] || "---"; // K: VCTO_LEGAL
+    var acaoTarefa  = String(protData[11] || "").toUpperCase().trim(); // L: ACAO
+
+    // 3. Resolver e-mail ATUAL do cliente via DB_CLIENTES (roteamento departamental)
+    var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
+    var dataCli = wsCli.getDataRange().getValues();
+    var emailDestino = "";
+    var deptoProtocolo = "";
+
+    // Busca departamento da tarefa original na DB_TAREFAS ou DB_HISTORICO
+    var idTarefa = String(protData[3] || ""); // D: ID_TAREFA
+    if (idTarefa) {
+      var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
+      var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
+      var fontes = [wsTarefas, wsHist];
+      for (var f = 0; f < fontes.length && !deptoProtocolo; f++) {
+        if (!fontes[f]) continue;
+        var dataF = fontes[f].getDataRange().getValues();
+        for (var j = 1; j < dataF.length; j++) {
+          if (String(dataF[j][9]).trim() === idTarefa.trim()) {
+            deptoProtocolo = String(dataF[j][4] || "");
+            break;
+          }
+        }
+      }
+    }
+
+    for (var c = 1; c < dataCli.length; c++) {
+      if (norm(dataCli[c][1]) === norm(clienteNome)) {
+        emailDestino = obterEmailDirecionado(dataCli[c], deptoProtocolo);
+        break;
+      }
+    }
+
+    if (!emailDestino || emailDestino.indexOf("@") === -1) {
+      return { success: false, message: "E-mail do cliente '" + clienteNome + "' não localizado na base de clientes." };
+    }
+
+    // 4. Determinar MES/ANO a partir da data do protocolo
+    var dataProtocolo = protData[0];
+    var mesAno = (dataProtocolo instanceof Date) ? Utilities.formatDate(dataProtocolo, "GMT-3", "MM/yyyy") : "---";
+    var vctoStr = (typeof vctoLegal === 'object' && vctoLegal instanceof Date) ? Utilities.formatDate(vctoLegal, "GMT-3", "dd/MM/yyyy") : String(vctoLegal);
+
+    // 5. Despacho por tipo de ação
+    if (acaoTarefa.indexOf("COMUNICAR") > -1) {
+      var msgOriginal = linksRaw;
+      if (msgOriginal.indexOf("COMUNICADO: ") > -1) {
+        msgOriginal = msgOriginal.replace("COMUNICADO: ", "");
+      } else if (msgOriginal.indexOf("SEM_COMUNICADO:") > -1) {
+        return { success: false, message: "Este protocolo foi finalizado sem comunicado (justificativa). Não há mensagem para reenviar." };
+      }
+      enviarComunicadoCliente(clienteNome, emailDestino, obrigacao, protocolo, msgOriginal);
+
+    } else if (acaoTarefa.indexOf("ENVIAR") > -1 || acaoTarefa.indexOf("AUDITAR") > -1) {
+      if (linksRaw.indexOf("SEM_ENVIO:") > -1) {
+        return { success: false, message: "Este protocolo foi finalizado sem arquivo (justificativa). Não há documento para reenviar." };
+      }
+      var linksParaEmail = [];
+      if (linksRaw && linksRaw.indexOf("http") > -1) {
+        var urls = linksRaw.split(" | ");
+        urls.forEach(function(u) {
+          if (u.trim()) linksParaEmail.push({ url: u.trim(), name: "Documento Enviado" });
+        });
+      }
+      notificarEntregaClienteRefatorada(clienteNome, obrigacao, protocolo, emailDestino, linksParaEmail, "", protRowIdx, false, mesAno, vctoStr);
+
+    } else {
+      notificarEntregaClienteRefatorada(clienteNome, obrigacao, protocolo, emailDestino, [], "", protRowIdx, false, mesAno, vctoStr);
+    }
+
+    registrarLogSistema("REENVIO_EMAIL", "Prot: " + protocolo + " -> " + emailDestino + " (Ação: " + acaoTarefa + ")");
+    return { success: true, message: "Reenviado para " + emailDestino };
+
+  } catch (e) {
+    registrarLogSistema("REENVIO_FAIL", "Prot: " + protocolo + " | Erro: " + e.message);
+    return { success: false, message: "Falha no reenvio: " + e.message };
+  }
+}

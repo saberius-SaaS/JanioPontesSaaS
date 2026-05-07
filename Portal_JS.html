@@ -1177,12 +1177,53 @@ function renderizarHistorico(lista) {
                   <span class="px-2 py-1 text-[8px] rounded-lg uppercase font-bold tracking-wider border shadow-sm ${bEnvio}"><i class="fa-solid fa-paper-plane mr-1"></i> ${item.statusEnvio}</span>
                   <span class="px-2 py-1 text-[8px] rounded-lg uppercase font-bold tracking-wider border shadow-sm ${bLeitura}"><i class="fa-solid fa-envelope-open mr-1"></i> ${item.leitura}</span>
                </div>
+               ${item.protocolo ? `<button onclick="reenviarPorProtocolo('${item.protocolo}', this)" class="bg-jp-navy hover:bg-indigo-700 text-white text-[8px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition uppercase tracking-wider"><i class="fa-solid fa-rotate-right mr-1"></i>Reenviar</button>` : ''}
             </div>
          </div>
       `;
    });
    html += '</div>';
    container.innerHTML = html;
+}
+
+function showToast(msg, type) {
+   var existing = document.getElementById('toastReenvio');
+   if (existing) existing.remove();
+   var toast = document.createElement('div');
+   toast.id = 'toastReenvio';
+   var bgColor = type === 'success' ? 'bg-emerald-600' : 'bg-red-600';
+   var icon = type === 'success' ? 'fa-check-circle' : 'fa-circle-xmark';
+   toast.className = 'fixed top-4 right-4 z-[9999] ' + bgColor + ' text-white px-5 py-3 rounded-xl shadow-2xl text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 animate-fadeIn';
+   toast.innerHTML = '<i class="fa-solid ' + icon + '"></i>' + msg;
+   document.body.appendChild(toast);
+   setTimeout(function() { if (toast.parentNode) toast.remove(); }, 5000);
+}
+function reenviarPorProtocolo(protocolo, btn) {
+   if (!confirm('Confirma o REENVIO do e-mail para o protocolo ' + protocolo + '?')) return;
+   btn.disabled = true;
+   var textoOriginal = btn.innerHTML;
+   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Enviando...';
+   btn.className = "bg-slate-400 text-white text-[8px] font-bold px-3 py-1.5 rounded-lg shadow-sm uppercase tracking-wider cursor-not-allowed";
+   google.script.run
+     .withSuccessHandler(function(res) {
+        if (res && res.success) {
+           btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Enviado';
+           btn.className = "bg-emerald-600 text-white text-[8px] font-bold px-3 py-1.5 rounded-lg shadow-sm uppercase tracking-wider";
+           showToast(res.message || 'Reenviado com sucesso!', 'success');
+        } else {
+           btn.innerHTML = '<i class="fa-solid fa-xmark mr-1"></i>Falha';
+           btn.className = "bg-red-600 text-white text-[8px] font-bold px-3 py-1.5 rounded-lg shadow-sm uppercase tracking-wider";
+           showToast(res.message || 'Falha no reenvio.', 'error');
+        }
+        setTimeout(function() { btn.disabled = false; btn.innerHTML = textoOriginal; btn.className = "bg-jp-navy hover:bg-indigo-700 text-white text-[8px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition uppercase tracking-wider"; }, 4000);
+     })
+     .withFailureHandler(function(err) {
+        btn.innerHTML = '<i class="fa-solid fa-xmark mr-1"></i>Erro';
+        btn.className = "bg-red-600 text-white text-[8px] font-bold px-3 py-1.5 rounded-lg shadow-sm uppercase tracking-wider";
+        showToast('Erro: ' + err.message, 'error');
+        setTimeout(function() { btn.disabled = false; btn.innerHTML = textoOriginal; btn.className = "bg-jp-navy hover:bg-indigo-700 text-white text-[8px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition uppercase tracking-wider"; }, 4000);
+     })
+     .reenviarNotificacaoPorProtocolo(protocolo);
 }
 
 function filtrarHistoricoWeb() {

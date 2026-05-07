@@ -498,6 +498,7 @@ function getDadosHistoricoWeb() {
            obrigacao: String(dataH[i][2]),
            vencimento: vctoStr,
            depto: String(dataH[i][4]),
+           protocolo: String(dataH[i][6] || ""),
            statusEnvio: statusEnvio,
            leitura: leituraStr
         });

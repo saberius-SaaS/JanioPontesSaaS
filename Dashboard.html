@@ -36,6 +36,15 @@
     .proto-table td { padding: 12px; border-bottom: 1px solid #F1F5F9; font-size: 11px; color: #1e293b; font-weight: 600;}
     .proto-table tr:hover { background: #F8FAFC; }
     .btn-link { padding: 8px 14px; background: #E2E8F0; color: #1C3051; text-decoration: none; border-radius: 6px; font-size: 9px; font-weight: 900; text-transform: uppercase; border: none; cursor: pointer; display: inline-block;}
+    .btn-reenviar { padding: 8px 14px; background: #1C3051; color: #ffffff; border-radius: 6px; font-size: 9px; font-weight: 900; text-transform: uppercase; border: none; cursor: pointer; display: inline-block; margin-left: 6px; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(28,48,81,0.2);}
+    .btn-reenviar:hover { background: #2A4571; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(28,48,81,0.3);}
+    .btn-reenviar:disabled { background: #94A3B8; cursor: not-allowed; transform: none; box-shadow: none;}
+    .btn-reenviar.sucesso { background: #059669; }
+    .btn-reenviar.erro { background: #DC2626; }
+    .feedback-dash { position: fixed; top: 20px; right: 20px; padding: 14px 22px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; z-index: 200; opacity: 0; transform: translateX(100px); transition: all 0.4s ease; box-shadow: 0 8px 20px rgba(0,0,0,0.15);}
+    .feedback-dash.show { opacity: 1; transform: translateX(0); }
+    .feedback-dash.ok { background: #059669; color: white; }
+    .feedback-dash.fail { background: #DC2626; color: white; }
     .loader-dash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; }
     .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #1C3051; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -95,12 +104,15 @@
           <th>Obrigação</th>
           <th style="color: #B91C1C;">Vcto Legal</th>
           <th>Protocolo</th>
-          <th style="text-align: center;">Ação</th>
+          <th style="text-align: center;">Ações</th>
         </tr>
       </thead>
       <tbody id="tbProtocolos"></tbody>
     </table>
   </div>
+  </div>
+
+  <div id="feedbackDash" class="feedback-dash"></div>
 
   <script>
     document.addEventListener('DOMContentLoaded', carregarDados);
@@ -129,13 +141,14 @@
         return;
       }
       dados.forEach(p => {
+        const linkBtn = (p.link && p.link.indexOf('http') > -1) ? `<a href="${p.link}" target="_blank" class="btn-link">ARQUIVO</a>` : '';
         tbody.innerHTML += `<tr>
           <td>${p.data}</td>
           <td style="color:#1C3051;">${p.cliente}</td>
           <td>${p.obrigacao}</td>
           <td style="color:#B91C1C; font-weight:800;">${p.vencimentoLegal}</td>
           <td><span style="background:#F1F5F9; padding:6px 8px; border-radius:4px; font-family:monospace; color:#64748b; font-size:10px;">${p.protocolo}</span></td>
-          <td style="text-align: center;"><a href="${p.link}" target="_blank" class="btn-link">ARQUIVO</a></td>
+          <td style="text-align: center;">${linkBtn}<button class="btn-reenviar" onclick="reenviarProtocolo('${p.protocolo}', this)">REENVIAR</button></td>
         </tr>`;
       });
     }
@@ -191,6 +204,47 @@
             if (progress < 1) window.requestAnimationFrame(step);
         };
         window.requestAnimationFrame(step);
+    }
+
+    function reenviarProtocolo(protocolo, btn) {
+      if (!confirm('Confirma o REENVIO do e-mail para o protocolo ' + protocolo + '?')) return;
+      btn.disabled = true;
+      btn.textContent = 'ENVIANDO...';
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.success) {
+            btn.textContent = 'ENVIADO \u2713';
+            btn.classList.add('sucesso');
+            mostrarFeedbackDash(res.message || 'Reenviado com sucesso!', false);
+          } else {
+            btn.textContent = 'FALHA \u2715';
+            btn.classList.add('erro');
+            mostrarFeedbackDash(res.message || 'Falha no reenvio.', true);
+          }
+          setTimeout(function() {
+            btn.disabled = false;
+            btn.textContent = 'REENVIAR';
+            btn.classList.remove('sucesso', 'erro');
+          }, 4000);
+        })
+        .withFailureHandler(function(err) {
+          btn.textContent = 'ERRO';
+          btn.classList.add('erro');
+          btn.disabled = false;
+          mostrarFeedbackDash('Erro de servidor: ' + err.message, true);
+          setTimeout(function() {
+            btn.textContent = 'REENVIAR';
+            btn.classList.remove('erro');
+          }, 4000);
+        })
+        .reenviarNotificacaoPorProtocolo(protocolo);
+    }
+
+    function mostrarFeedbackDash(msg, isError) {
+      const fb = document.getElementById('feedbackDash');
+      fb.textContent = msg;
+      fb.className = 'feedback-dash show ' + (isError ? 'fail' : 'ok');
+      setTimeout(function() { fb.classList.remove('show'); }, 5000);
     }
   </script>
 </body>
