@@ -86,7 +86,7 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
       </div>
     `;
 
-    GmailApp.sendEmail(emailCli, "[DOCUMENTO DISPONÍVEL] " + obrigacao + " [" + protocolo + "]", "", { htmlBody: html });
+    GmailApp.sendEmail(emailCli, "[DOCUMENTO DISPONÍVEL] " + obrigacao + " [" + protocolo + "]", "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
     registrarLogSistema("EMAIL_SENT", "Prot: " + protocolo);
   } catch (e) {
     registrarLogSistema("EMAIL_SEND_FAIL", e.message);
@@ -139,7 +139,7 @@ function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitaca
         </table>
       </div>
     `;
-    GmailApp.sendEmail(emailCli, "[SOLICITAÇÃO DE DOCUMENTO] " + cliente, "", { htmlBody: html });
+    GmailApp.sendEmail(emailCli, "[SOLICITAÇÃO DE DOCUMENTO] " + cliente, "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
     registrarLogSistema("SOLICITATION_EMAIL_SENT", "Cliente: " + cliente);
   } catch (e) {
     registrarLogSistema("EMAIL_REQ_FAIL", e.message);
@@ -196,7 +196,7 @@ function enviarLembreteCobranca(cliente, emailCli, solicitacao, idSolicitacao, q
       </div>
     `;
 
-    GmailApp.sendEmail(emailCli, "[PENDÊNCIA IMPORTANTE] " + cliente + " (Aviso " + (qtdAvisos + 1) + ")", "", { htmlBody: html });
+    GmailApp.sendEmail(emailCli, "[PENDÊNCIA IMPORTANTE] " + cliente + " (Aviso " + (qtdAvisos + 1) + ")", "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
     registrarLogSistema("COBRANCA_AUTO_SENT", "Cliente: " + cliente + " | Aviso #" + (qtdAvisos + 1));
   } catch (e) { registrarLogSistema("EMAIL_COB_FAIL", e.message); }
 }
@@ -281,7 +281,7 @@ function notificarRecebimentoAoResponsavel(cliente, pedido, responsavel, links, 
         </table>
       </div>
     `;
-    GmailApp.sendEmail(responsavel, "[SOLICITAÇÃO RESPONDIDA] " + cliente, "", { htmlBody: html });
+    GmailApp.sendEmail(responsavel, "[SOLICITAÇÃO RESPONDIDA] " + cliente, "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
   } catch (e) { registrarLogSistema("NOTIF_RESP_FAIL", e.message); }
 }
 
@@ -381,7 +381,7 @@ function enviarRelatorioAnaliseIA(emailResponsavel, nomeResponsavel, cliente, ob
       </div>
     `;
 
-    GmailApp.sendEmail(emailResponsavel, "[DIAGNÓSTICO ESTRATÉGICO] " + cliente + " (" + obrigacao + ")", "", { htmlBody: html });
+    GmailApp.sendEmail(emailResponsavel, "[DIAGNÓSTICO ESTRATÉGICO] " + cliente + " (" + obrigacao + ")", "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
     
     registrarLogSistema("EMAIL_AI_REPORT_SENT", "Cliente: " + cliente);
   } catch (e) {
@@ -426,7 +426,7 @@ function notificarAuditAdmin(cliente, obrigacao, aprovado, detalhes) {
       </div>
   `;
 
-  GmailApp.sendEmail(emailAdmin, (aprovado ? "[APROVADO]" : "[ALERTA REPROVADO]") + " AUDITORIA " + statusTexto + ": " + cliente, "", { htmlBody: html });
+  GmailApp.sendEmail(emailAdmin, (aprovado ? "[APROVADO]" : "[ALERTA REPROVADO]") + " AUDITORIA " + statusTexto + ": " + cliente, "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
 }
 
 /**
@@ -506,7 +506,7 @@ function enviarComunicadoCliente(cliente, emailCli, obrigacao, protocolo, mensag
       </div>
     `;
 
-    GmailApp.sendEmail(emailCli, "[INFORMATIVO DA CONTABILIDADE] " + obrigacao, "", { htmlBody: html });
+    GmailApp.sendEmail(emailCli, "[INFORMATIVO DA CONTABILIDADE] " + obrigacao, "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
     registrarLogSistema("EMAIL_COMUNICADO_SENT", "Prot: " + protocolo);
   } catch (e) {
     registrarLogSistema("EMAIL_COMUNICADO_FAIL", e.message);
@@ -545,7 +545,7 @@ function enviarEmailGlobal(cliente, emailCli, assunto, mensagem) {
       </div>
     `;
 
-    GmailApp.sendEmail(emailCli, assunto, "", { htmlBody: html });
+    GmailApp.sendEmail(emailCli, assunto, "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
   } catch (e) {
     registrarLogSistema("EMAIL_GLOBAL_FAIL", "Falha ao enviar para " + emailCli + ": " + e.message);
   }

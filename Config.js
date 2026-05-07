@@ -7,7 +7,7 @@ var CONFIG_SISTEMA = {
   ID_PLANILHA: "1gey_Q16UVbihSRSLFvD6a7JZtwFaYzLXtTwVKySEijw",
   VERSAO: "v131.06",
   // 🌐 URLs E CONEXÕES
-  URL_WEBAPP: "https://script.google.com/macros/s/AKfycby828QsUFLVmtQ1WegcdkaNVMtW4s3xQvhRFcrK0hEiw62xwE-Cqq3SwHMEw5521Euelw/exec", 
+  URL_WEBAPP: "https://script.google.com/macros/s/AKfycby828QsUFLVmtQ1WegcdkaNVMtW4s3xQvhRFcrK0hEiw62xwE-Cqq3SwHMEw5521Euelw/exec",
 
   DIAS_INTERVALO_COBRANCA: 2,
   TURNOS_PARA_CHECKPOINT: 5,
@@ -25,7 +25,7 @@ var CONFIG_SISTEMA = {
   ABA_LOGS: "DB_LOGS",
   ABA_WORKFLOWS: "DB_WORKFLOWS",
   ABA_CONFIG_IA: "DB_CONFIG_IA",
-  
+
   PASTAS: {
     NOME: "OPERACIONAL",
     BASE: "19f-w65G1jROg78UUmn6zGUIpAAg6i3wX",
@@ -33,7 +33,7 @@ var CONFIG_SISTEMA = {
     CLIENTES_DIGITAL: "1RfP4l6po0g46YYjdzh1EmJDkgSP8lFVo",
     ENVIADOS: "1DqR1Zg6_ASKXux80UxYJ_6FWGrV4MvYn"
   },
- 
+
   STATUS: {
     PENDENTE: "PENDENTE",
     ENTREGUE: "ENTREGUE",
@@ -56,10 +56,11 @@ var CONFIG_SISTEMA = {
   },
 
   EMAILS: {
-    ADMIN_AUDITORIA: "contato@janiopontes.com.br" // Email padrão para alertas de auditoria
+    ADMIN_AUDITORIA: "contabil@janiopontes.com.br", // Email padrão para alertas de auditoria
+    REMETENTE: "sac@janiopontes.com.br"             // Alias de envio (Gmail → Contas e Importação)
   },
 
-  FERIADOS: ["01/01", "21/04", "01/05", "07/09", "12/10", "02/11", "15/11", "20/11", "25/12"]
+  FERIADOS: ["01/01", "21/04", "01/05", "15/08", "07/09", "12/10", "02/11", "15/11", "20/11", "25/12"]
 };
 
 

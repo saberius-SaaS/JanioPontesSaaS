@@ -300,3 +300,33 @@ function limparTextoOcrParaComparacao(texto) {
     .replace(/B/g, "8")
     .replace(/\D/g, ""); // Remove tudo que não for dígito após a normalização
 }
+
+/**
+ * 📧 Resolve o email de destino do cliente baseado no departamento da tarefa.
+ * Busca nas colunas departamentais (Q-T) e faz fallback para a coluna E (email principal).
+ * Suporta múltiplos emails separados por vírgula em cada célula.
+ * @param {Array} linhaDadosCliente - Array com os dados da linha do cliente em DB_CLIENTES
+ * @param {string} departamento - Departamento da tarefa (FISCAL, CONTABIL, PESSOAL, SOCIETARIO)
+ * @returns {string} Email resolvido (departamental ou fallback principal)
+ */
+function obterEmailDirecionado(linhaDadosCliente, departamento) {
+  var MAPA_DEPTO = {
+    "FISCAL": 16,       // Coluna Q: EMAIL_FISCAL
+    "CONTABIL": 17,     // Coluna R: EMAIL_CONTABIL
+    "PESSOAL": 18,      // Coluna S: EMAIL_PESSOAL
+    "SOCIETARIO": 19    // Coluna T: EMAIL_SOCIETARIO
+  };
+
+  var deptoNorm = norm(departamento);
+  var indice = MAPA_DEPTO[deptoNorm];
+
+  if (indice !== undefined && linhaDadosCliente[indice]) {
+    var emailDepto = String(linhaDadosCliente[indice]).trim();
+    if (emailDepto && emailDepto.indexOf("@") > -1) {
+      return emailDepto;
+    }
+  }
+
+  // Fallback: Email principal (Coluna E, índice 4)
+  return String(linhaDadosCliente[4] || "").trim();
+}

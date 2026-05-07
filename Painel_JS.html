@@ -7,13 +7,13 @@
   document.addEventListener('DOMContentLoaded', () => {
     carregarPayloadInicial();
 
-    // 💓 Heartbeat / Keep-Alive (5 minutos)
+    // 💓 Heartbeat / Keep-Alive (4 minutos)
     setInterval(() => {
         google.script.run
             .withFailureHandler(err => console.warn("Sessão Painel instável:", err))
             .withSuccessHandler(() => console.log("Sessão Painel ativa."))
             .keepAlive();
-    }, 300000);
+    }, 240000);
   });
 
   function showFeedback(msg, isError = false) {

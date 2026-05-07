@@ -571,7 +571,7 @@ function aprovarTarefaRevisao(taskId, userLevel) {
         var dataC = wsCli.getDataRange().getValues();
         for (var c = 1; c < dataC.length; c++) {
            if (norm(dataC[c][1]) === norm(clienteNome)) {
-              emailCli = dataC[c][4];
+              emailCli = obterEmailDirecionado(dataC[c], dataT[i][4]); // Roteamento por Departamento c/ Fallback Col E
               folderUrl = dataC[c][12];
               break;
            }

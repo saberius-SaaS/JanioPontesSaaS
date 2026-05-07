@@ -59,7 +59,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
       if(norm(dadosC[i][1]) === norm(clienteNome)) { 
         cnpj = String(dadosC[i][2]).replace(/[^0-9]/g, "");
         nomeResp = dadosC[i][3]; // Coluna D: RESPONSAVEL
-        emailCli = dadosC[i][4]; // Coluna E: EMAIL
+        emailCli = obterEmailDirecionado(dadosC[i], rowVal[4]); // Roteamento por Departamento c/ Fallback Col E
         var urlM = String(dadosC[i][12]);
         if (urlM.indexOf("id=") > -1) pastaId = urlM.split("id=")[1];
         else if (urlM.indexOf("folders/") > -1) pastaId = urlM.split("folders/")[1].split("?")[0];

@@ -5,12 +5,16 @@
  */
 
 window.GIS_TOKEN = window.INITIAL_TOKEN || null; // Token de Segurança do GIS (pode vir via Redirect)
+window.GIS_TOKEN_TIMESTAMP = null; // Momento em que o token foi obtido
 const GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID;
+const GIS_TOKEN_MAX_AGE_MS = 45 * 60 * 1000; // 45 minutos (token expira em ~60min, renovamos antes)
 
 // Callback do Google Identity Services (Executado no modo Popup ou manualmente no Redirect)
 function handleCredentialResponse(response) {
    if (response && response.credential) {
       window.GIS_TOKEN = response.credential;
+      window.GIS_TOKEN_TIMESTAMP = Date.now(); // Registra momento da obtenção
+      heartbeatFailures = 0; // Reset contador de falhas
       const fb = document.getElementById('gisFeedback');
       if (fb) {
          fb.classList.remove('hidden', 'bg-red-50', 'text-red-600');
@@ -30,6 +34,38 @@ function handleCredentialResponse(response) {
       // Esconde o botão e inicia a autorização com o backend
       document.getElementById('gisButtonContainer').classList.add('hidden');
       carregarDadosBase();
+   }
+}
+
+/**
+ * 🔄 Verifica se o token GIS está próximo da expiração e tenta renovar silenciosamente.
+ * Se a renovação silenciosa falhar, força re-autenticação via redirect.
+ */
+function verificarERenovarToken() {
+   if (!window.GIS_TOKEN || !window.GIS_TOKEN_TIMESTAMP) return;
+   
+   const idade = Date.now() - window.GIS_TOKEN_TIMESTAMP;
+   if (idade < GIS_TOKEN_MAX_AGE_MS) return; // Token ainda é jovem, nada a fazer
+   
+   console.log("Token GIS próximo da expiração (" + Math.round(idade / 60000) + "min). Renovando...");
+   
+   try {
+      // Tenta renovação silenciosa via One Tap (auto_select)
+      google.accounts.id.initialize({
+         client_id: GOOGLE_CLIENT_ID,
+         callback: handleCredentialResponse,
+         auto_select: true,
+         cancel_on_tap_outside: true
+      });
+      google.accounts.id.prompt((notification) => {
+         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            console.warn("Renovação silenciosa não disponível. Token será validado pelo backend via fallback.");
+            // O backend tem fallback de decodificação local do JWT,
+            // então o sistema continua funcionando mesmo com token expirado
+         }
+      });
+   } catch (e) {
+      console.warn("Erro na renovação de token:", e);
    }
 }
 
@@ -70,33 +106,53 @@ document.addEventListener("DOMContentLoaded", function(event) {
     
     // 🔄 Sincronização Periódica de Dados (60 segundos)
     setInterval(() => {
-        if (window.GIS_TOKEN) carregarDadosBase(true);
+        if (window.GIS_TOKEN) {
+            verificarERenovarToken(); // Verifica e renova token antes de sincronizar
+            carregarDadosBase(true);
+        }
     }, 60000);
 
-    // 💓 Heartbeat / Keep-Alive (5 minutos)
+    // 💓 Heartbeat / Keep-Alive (4 minutos)
     // Evita que o ambiente de execução do Apps Script hiberne ou que a tela fique branca.
     setInterval(() => {
         if (window.GIS_TOKEN) {
-            console.log("Iniciando pulso de manutenção de sessão...");
+            console.log("[Heartbeat] Pulso de manutenção...");
             google.script.run
                 .withFailureHandler(err => {
-                    console.error("Falha no Heartbeat:", err);
-                    // Se falhar 3 vezes seguidas, podemos assumir que a sessão caiu
+                    console.error("[Heartbeat] Falha:", err);
                     handleHeartbeatFailure();
                 })
-                .withSuccessHandler(() => console.log("Sessão ativa."))
+                .withSuccessHandler(() => {
+                    console.log("[Heartbeat] Sessão ativa.");
+                    heartbeatFailures = 0; // Reset em caso de sucesso
+                })
                 .keepAlive();
         }
-    }, 300000); 
+    }, 240000); // 4 minutos (mais agressivo que 5min para evitar hibernação)
 });
 
 let heartbeatFailures = 0;
 function handleHeartbeatFailure() {
     heartbeatFailures++;
-    if (heartbeatFailures >= 3) {
-        console.warn("Múltiplas falhas de conexão. Tentando reconectar o portal...");
-        // Em vez de deixar a tela branca, tentamos recarregar a página para restaurar o estado
-        window.location.reload();
+    console.warn("[Heartbeat] Falha #" + heartbeatFailures);
+    
+    if (heartbeatFailures >= 2) {
+        // Mostra aviso visual ao usuário antes de recarregar
+        const banner = document.createElement('div');
+        banner.id = 'reconnectBanner';
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1C3051,#2A4571);color:white;padding:16px 24px;text-align:center;font-family:Inter,sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;gap:12px;';
+        banner.innerHTML = '<i class="fa-solid fa-rotate fa-spin" style="font-size:16px;"></i> Conexão perdida. Reconectando automaticamente...';
+        
+        // Remove banner antigo se existir
+        const old = document.getElementById('reconnectBanner');
+        if (old) old.remove();
+        
+        document.body.prepend(banner);
+        
+        // Aguarda 3 segundos para o usuário ver o aviso, depois recarrega
+        setTimeout(() => {
+            window.location.reload();
+        }, 3000);
     }
 }
 

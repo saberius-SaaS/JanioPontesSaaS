@@ -59,6 +59,9 @@ A estrutura abaixo é rígida. Scripts dependem da posição exata dessas coluna
 
 ### Aba DB_CLIENTES
 * A = ID | B = CLIENTE | C = CNPJ | D = RESPONSAVEL | ... | L = EXCECOES | M = PASTA_DRIVE | N = NIVEL
+* **Colunas de E-mail por Departamento (Roteamento Segmentado):**
+* Q = EMAIL_FISCAL | R = EMAIL_CONTABIL | S = EMAIL_PESSOAL | T = EMAIL_SOCIETARIO
+* *Nota:* Se a coluna departamental estiver vazia, o sistema usa automaticamente o e-mail principal da Coluna E (Fallback).
 
 ### Aba DB_PROTOCOLOS
 * A = DATA | B = CLIENTE | C = PROTOCOLO | D = ID_TAREFA | ... | I = STATUS_ENVIO | J = CONF_RECTO | K = VENC_LEGAL | L = ACAO
