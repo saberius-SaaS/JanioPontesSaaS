@@ -144,10 +144,13 @@ function getListaProtocolos(apenasPendentes) {
 
       // Protocolos finalizados com justificativa (sem arquivo/sem comunicado) não possuem
       // conteúdo para o cliente ler — devem ser tratados como já lidos.
+      // Protocolos COMUNICAR também são "lidos por natureza": não há arquivo no Drive
+      // para o DriveActivityService rastrear, apenas uma mensagem de e-mail.
       var linkBrutoRaw = String(dataP[j][7]).toUpperCase().trim(); // Coluna H: LINK_ARQUIVO / Descrição
       var ehJustificativa = linkBrutoRaw.indexOf("SEM_ENVIO:") === 0 || linkBrutoRaw.indexOf("SEM_COMUNICADO:") === 0;
+      var ehComunicar = acaoProt.indexOf("COMUNICAR") > -1;
 
-      var isLido = ehJustificativa || !(statusEnvio === "ENVIADO" && (confRecto === "" || confRecto === "---" || confRecto === "AGUARDANDO"));
+      var isLido = ehJustificativa || ehComunicar || !(statusEnvio === "ENVIADO" && (confRecto === "" || confRecto === "---" || confRecto === "AGUARDANDO"));
       
       // Se pedimos apenas pendentes e já estiver lido, ignoramos
       if (apenasPendentes && isLido) continue;

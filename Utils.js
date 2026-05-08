@@ -190,6 +190,9 @@ function isDiaUtil(data) {
 
 function registrarLogSistema(acao, detalhe) {
   try {
+    var ignoreList = ["CACHE_INVALIDATED", "PORTAL_AUTH", "GIS_FALLBACK_OK", "PING_SESSION"];
+    if (ignoreList.indexOf(acao) > -1) return; // Filtra logs de infraestrutura para preservar performance
+
     var ss = getSs();
     var wsLog = ss.getSheetByName(CONFIG_SISTEMA.ABA_LOGS);
     if (wsLog) wsLog.appendRow([new Date(), Session.getActiveUser().getEmail() || "SISTEMA", acao, detalhe]);

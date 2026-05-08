@@ -147,112 +147,229 @@ function getRelatorioEquipe() {
 }
 
 /**
- * Gera um relatório consolidado do MÊS ATUAL.
- * OTIMIZADO: Busca o início do mês na planilha e agrega por usuário.
+ * Gera um relatório consolidado do MÊS ATUAL lendo a DB_FREQUENCIA + DB_LOGS (Hoje).
  */
 function getRelatorioEquipeMensal() {
   try {
     var agora = new Date();
-    // Updated prefix to v3 to force refresh
-    var cacheKey = "TEAM_MONTHLY_REPORT_V3_" + agora.getMonth() + "_" + agora.getFullYear();
+    var cacheKey = "TEAM_MONTHLY_REPORT_V4_" + agora.getMonth() + "_" + agora.getFullYear();
     var cached = CacheService.getScriptCache().get(cacheKey);
     if (cached) return JSON.parse(cached);
 
     var ss = getSs();
+    var wsFreq = ss.getSheetByName("DB_FREQUENCIA");
     var wsLog = ss.getSheetByName(CONFIG_SISTEMA.ABA_LOGS);
     var wsUsuarios = ss.getSheetByName(CONFIG_SISTEMA.ABA_USUARIOS);
-    if (!wsLog) return { success: false, error: "Aba de logs não encontrada." };
 
-    var lastRow = wsLog.getLastRow();
-    if (lastRow <= 1) return { success: true, usuarios: [] };
-
-    // Define o limite: Início do mês atual
-    var dataLimite = new Date();
-    dataLimite.setDate(1);
-    dataLimite.setHours(0, 0, 0, 0);
-
-    // Mapeia nomes para o relatório mensal (evita prefixos de email como departamento)
+    var mapaMensal = {};
     var masterNomes = {};
     if (wsUsuarios) {
        var du = wsUsuarios.getDataRange().getValues();
        for(var u=1; u<du.length; u++) {
-          var emailU = String(du[u][0]).trim().toLowerCase();
-          var nomeU = String(du[u][1]).trim();
-          if (emailU) masterNomes[emailU] = nomeU;
+          if (du[u][0]) masterNomes[String(du[u][0]).trim().toLowerCase()] = String(du[u][1]).trim();
        }
     }
 
-    // Busca ampliada para 5000 linhas para o Mês
-    var numRows = Math.min(lastRow - 1, 5000);
-    var startRow = lastRow - numRows + 1;
-    var dataLog = wsLog.getRange(startRow, 1, numRows, 3).getValues();
+    // 1. DADOS CONSOLIDADOS (DB_FREQUENCIA)
+    if (wsFreq) {
+      var dataFreq = wsFreq.getDataRange().getValues();
+      var mesAtual = String(agora.getMonth() + 1).padStart(2, '0');
+      var anoAtual = String(agora.getFullYear());
+      var filtroMesAno = "/" + mesAtual + "/" + anoAtual;
 
-    var mapaMensal = {};
-    
-    for (var i = 0; i < dataLog.length; i++) {
-        var data = dataLog[i][0];
-        if (!(data instanceof Date)) data = new Date(data);
-        if (data < dataLimite) continue;
+      for (var i = 1; i < dataFreq.length; i++) {
+         var dtStr = String(dataFreq[i][0]);
+         if (dtStr.indexOf(filtroMesAno) > -1) {
+            var email = String(dataFreq[i][1]).toLowerCase().trim();
+            var min = parseInt(dataFreq[i][3]) || 0;
+            if (!mapaMensal[email]) {
+               mapaMensal[email] = { totalMin: 0, dias: 0, nome: masterNomes[email] || dataFreq[i][2] };
+            }
+            mapaMensal[email].totalMin += min;
+            mapaMensal[email].dias++;
+         }
+      }
+    }
 
-        var email = String(dataLog[i][1]).toLowerCase().trim();
-        var acao = String(dataLog[i][2]);
-        if (acao.indexOf("ACESSO_") !== 0) continue;
+    // 2. DADOS DE HOJE (DB_LOGS)
+    if (wsLog) {
+      var dataLog = wsLog.getDataRange().getValues();
+      var hojeLimit = new Date();
+      hojeLimit.setHours(0,0,0,0);
+      var pingsHoje = {};
 
-        var diaKey = Utilities.formatDate(data, "GMT-3", "yyyy-MM-dd");
-        
-        if (!mapaMensal[email]) {
-           var nomeFinal = masterNomes[email] || email.split("@")[0].toUpperCase();
-           mapaMensal[email] = { totalMin: 0, diasAtivos: {}, nome: nomeFinal };
-        }
-        if (!mapaMensal[email].diasAtivos[diaKey]) {
-            mapaMensal[email].diasAtivos[diaKey] = { logs: [] };
-        }
-        
-        mapaMensal[email].diasAtivos[diaKey].logs.push(data.getTime());
+      var maxL = Math.min(dataLog.length - 1, 2000);
+      for (var j = dataLog.length - 1; j >= dataLog.length - maxL; j--) {
+         if (!dataLog[j]) continue;
+         var dataLogD = dataLog[j][0];
+         if (!(dataLogD instanceof Date)) dataLogD = new Date(dataLogD);
+         if (dataLogD < hojeLimit) continue; 
+
+         var acaoLog = String(dataLog[j][2]);
+         if (acaoLog.indexOf("ACESSO_") === 0) {
+            var em = String(dataLog[j][1]).toLowerCase().trim();
+            if (!pingsHoje[em]) pingsHoje[em] = [];
+            pingsHoje[em].push(dataLogD.getTime());
+         }
+      }
+
+      var thresholdMs = 720000;
+      for (var userHoje in pingsHoje) {
+         var pingsUser = pingsHoje[userHoje].sort(function(a,b){return a-b;});
+         var msHoje = 0;
+         for (var k = 1; k < pingsUser.length; k++) {
+            var diff = pingsUser[k] - pingsUser[k-1];
+            if (diff <= thresholdMs) msHoje += diff;
+         }
+         var minHoje = Math.round(msHoje / 60000);
+         if (minHoje === 0 && pingsUser.length > 0) minHoje = 1;
+
+         if (!mapaMensal[userHoje]) {
+            mapaMensal[userHoje] = { totalMin: 0, dias: 0, nome: masterNomes[userHoje] || userHoje.split("@")[0].toUpperCase() };
+         }
+         mapaMensal[userHoje].totalMin += minHoje;
+         mapaMensal[userHoje].dias++;
+      }
     }
 
     var resultado = [];
-    var thresholdMs = 720000; // 12 minutos
-    for (var email in mapaMensal) {
-        var user = mapaMensal[email];
-        var totalMin = 0;
-        var qtdDias = 0;
-
-        for (var d in user.diasAtivos) {
-            var logs = user.diasAtivos[d].logs.sort(function(a, b) { return a - b; });
-            var totalMsDia = 0;
-            
-            for (var l = 1; l < logs.length; l++) {
-                var gap = logs[l] - logs[l-1];
-                if (gap <= thresholdMs) {
-                    totalMsDia += gap;
-                }
-            }
-            
-            var minDia = Math.round(totalMsDia / 60000);
-            totalMin += (minDia === 0 ? 1 : minDia); 
-            qtdDias++;
-        }
-
+    for (var emailMap in mapaMensal) {
+        var u = mapaMensal[emailMap];
         resultado.push({
-            email: email,
-            nome: user.nome,
-            tempoTotal: totalMin,
-            dias: qtdDias,
-            mediaDiaria: Math.round(totalMin / qtdDias)
+            email: emailMap,
+            nome: u.nome,
+            tempoTotal: u.totalMin,
+            dias: u.dias,
+            mediaDiaria: u.dias > 0 ? Math.round(u.totalMin / u.dias) : 0
         });
     }
 
     var response = { 
       success: true, 
       usuarios: resultado.sort((a, b) => b.tempoTotal - a.tempoTotal),
-      mesFmt: Utilities.formatDate(dataLimite, "GMT-3", "MMMM/yyyy")
+      mesFmt: Utilities.formatDate(agora, "GMT-3", "MMMM/yyyy")
     };
 
-    CacheService.getScriptCache().put(cacheKey, JSON.stringify(response), 3600); // 1 hora de cache
+    CacheService.getScriptCache().put(cacheKey, JSON.stringify(response), 1800);
     return response;
 
   } catch (e) {
     return { success: false, error: e.message };
   }
+}
+
+/**
+ * 🧹 Consolida os acessos do dia anterior, salva em DB_FREQUENCIA e limpa os logs
+ */
+function consolidarFrequenciaDiaria() {
+  try {
+    var ss = getSs();
+    var wsLog = ss.getSheetByName(CONFIG_SISTEMA.ABA_LOGS);
+    var wsFreq = ss.getSheetByName("DB_FREQUENCIA");
+    
+    // Cria a aba se não existir
+    if (!wsFreq) {
+      wsFreq = ss.insertSheet("DB_FREQUENCIA");
+      wsFreq.appendRow(["DATA", "EMAIL", "NOME", "TEMPO_MINUTOS", "PINGS"]);
+      wsFreq.getRange(1, 1, 1, 5).setBackground("#1C3051").setFontColor("white").setFontWeight("bold").setHorizontalAlignment("center");
+      wsFreq.setFrozenRows(1);
+    }
+    
+    if (!wsLog) return;
+    
+    var dataLog = wsLog.getDataRange().getValues();
+    if (dataLog.length <= 1) return;
+    
+    var limite = new Date();
+    limite.setHours(0, 0, 0, 0); // Tudo antes de HOJE (00:00) será consolidado
+    
+    var masterNomes = {};
+    var wsUsuarios = ss.getSheetByName(CONFIG_SISTEMA.ABA_USUARIOS);
+    if (wsUsuarios) {
+       var du = wsUsuarios.getDataRange().getValues();
+       for(var u=1; u<du.length; u++) {
+          if (du[u][0]) masterNomes[String(du[u][0]).trim().toLowerCase()] = String(du[u][1]).trim();
+       }
+    }
+
+    var mapa = {}; 
+    var linhasManter = [dataLog[0]]; // Mantém o Cabeçalho
+
+    for (var i = 1; i < dataLog.length; i++) {
+       var data = dataLog[i][0];
+       if (!(data instanceof Date)) data = new Date(data);
+       var acao = String(dataLog[i][2]);
+
+       if (data < limite && acao.indexOf("ACESSO_") === 0) {
+          var email = String(dataLog[i][1]).toLowerCase().trim();
+          if (!mapa[email]) mapa[email] = [];
+          mapa[email].push(data.getTime());
+       } else {
+          // Mantém logs de HOJE ou logs vitais de negócio (ARCHIVE, SEND, etc)
+          if (acao.indexOf("ACESSO_") === 0 && data < limite) {
+             // Descarta (já foi pro mapa)
+          } else {
+             linhasManter.push(dataLog[i]);
+          }
+       }
+    }
+
+    // Grava consolidação do dia anterior
+    var registrosFreq = [];
+    var ontem = new Date();
+    ontem.setDate(ontem.getDate() - 1);
+    var dataStr = Utilities.formatDate(ontem, "GMT-3", "dd/MM/yyyy");
+
+    for (var em in mapa) {
+       var logsUser = mapa[em].sort(function(a,b){return a-b;});
+       var totalMs = 0;
+       var thresholdMs = 720000;
+       for (var l = 1; l < logsUser.length; l++) {
+          var gap = logsUser[l] - logsUser[l-1];
+          if (gap <= thresholdMs) totalMs += gap;
+       }
+       var minDia = Math.round(totalMs / 60000);
+       if (minDia === 0 && logsUser.length > 0) minDia = 1;
+       
+       var nome = masterNomes[em] || em.split("@")[0].toUpperCase();
+       registrosFreq.push([dataStr, em, nome, minDia, logsUser.length]);
+    }
+
+    if (registrosFreq.length > 0) {
+       wsFreq.getRange(wsFreq.getLastRow() + 1, 1, registrosFreq.length, 5).setValues(registrosFreq);
+    }
+
+    // Repõe DB_LOGS apenas com o residual (Hoje + Negócios)
+    wsLog.clearContents();
+    if (linhasManter.length > 0) {
+       wsLog.getRange(1, 1, linhasManter.length, linhasManter[0].length).setValues(linhasManter);
+    }
+
+    SpreadsheetApp.flush();
+    registrarLogSistema("SYSTEM_MAINTENANCE", "Consolidação D-1: " + registrosFreq.length + " usuários (" + dataStr + ")");
+    
+  } catch(e) {
+    registrarLogSistema("CONSOLIDATE_ERR", e.message);
+  }
+}
+
+/**
+ * ⏰ Instala o gatilho para a consolidação noturna (DB_FREQUENCIA).
+ */
+function instalarGatilhoConsolidacaoDiaria() {
+  var nomeFuncao = 'consolidarFrequenciaDiaria';
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === nomeFuncao) {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger(nomeFuncao)
+    .timeBased()
+    .everyDays(1)
+    .atHour(2) // Rodar às 02:00 AM
+    .create();
+    
+  registrarLogSistema("TRIGGER_INSTALLED", "Gatilho de consolidação D-1 ativado.");
+  return "✅ Automação de Frequência ativada (Diário às 02:00h).";
 }

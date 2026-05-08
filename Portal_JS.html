@@ -1077,6 +1077,7 @@ let carregouAcessos = false;
 let carregouSolicitacoes = false;
 let solicitacoesGlobalBase = [];
 let protocolosGlobalBase = []; // Cache de protocolos (todos)
+let protocolosPendentesBase = []; // Cache de protocolos (pendentes)
 
 function carregarRiscoServer(forcarRefresh, isQuiet) {
    if (forcarRefresh) carregouRisco = false;
@@ -1308,15 +1309,16 @@ function carregarProtocolosServer(forcarRefresh, isQuiet) {
               badge.classList.remove('hidden');
            } else {
               badge.classList.add('hidden');
-           }
-        }
+            }
+         }
 
-        const bPend = document.getElementById('badgeProtocolosPendentes');
-        if(bPend) bPend.textContent = res.pendentes ? res.pendentes.length : 0;
-        
-        protocolosGlobalBase = res.todos || [];
-        renderizarProtocolosInfo(res.pendentes || [], protocolosGlobalBase);
-     }).getDadosProtocolosWeb(window.GIS_TOKEN);
+         const bPend = document.getElementById('badgeProtocolosPendentes');
+         if(bPend) bPend.textContent = res.pendentes ? res.pendentes.length : 0;
+         
+         protocolosPendentesBase = res.pendentes || [];
+         protocolosGlobalBase = res.todos || [];
+         renderizarProtocolosInfo(protocolosPendentesBase, protocolosGlobalBase);
+      }).getDadosProtocolosWeb(window.GIS_TOKEN);
 }
 
 function renderizarProtocolosInfo(pendentes, todos) {
@@ -1440,15 +1442,27 @@ function gerarCardProtocolo(p, isPendente) {
 function filtrarProtocolosHistorico() {
    if (!carregouProtocolos) return;
    const q = document.getElementById('inputBuscaProtocolos').value.toLowerCase().trim();
-   if (!q) { renderizarGradeProtocolosTodos(protocolosGlobalBase); return; }
+   
+   if (!q) { 
+      renderizarProtocolosInfo(protocolosPendentesBase, protocolosGlobalBase); 
+      return; 
+   }
 
-   const fList = protocolosGlobalBase.filter(p =>
+   const fPendentes = protocolosPendentesBase.filter(p =>
       p.cliente.toLowerCase().includes(q) ||
       p.obrigacao.toLowerCase().includes(q) ||
       p.protocolo.toLowerCase().includes(q) ||
       p.data.toLowerCase().includes(q)
    );
-   renderizarGradeProtocolosTodos(fList);
+
+   const fTodos = protocolosGlobalBase.filter(p =>
+      p.cliente.toLowerCase().includes(q) ||
+      p.obrigacao.toLowerCase().includes(q) ||
+      p.protocolo.toLowerCase().includes(q) ||
+      p.data.toLowerCase().includes(q)
+   );
+
+   renderizarProtocolosInfo(fPendentes, fTodos);
 }
 
 // ================= GESTÃO DE EQUIPE E TELEMETRIA =================

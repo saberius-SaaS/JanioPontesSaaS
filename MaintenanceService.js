@@ -551,3 +551,44 @@ function instalarGatilhoCobrancaDiaria() {
   registrarLogSistema("TRIGGER_INSTALLED", "Gatilho de cobrança automática ativado.");
   return "✅ Automação de solicitações ativada (Diário às 08h).";
 }
+
+/**
+ * 🧹 Limpeza em Lote de Logs de Infraestrutura (DB_LOGS)
+ * Recomendado para reduzir inchaço de dezenas de milhares de linhas.
+ */
+function limparDbLogsEmLote() {
+  try {
+    var ss = getSs();
+    var wsLog = ss.getSheetByName(CONFIG_SISTEMA.ABA_LOGS);
+    if (!wsLog) return;
+    
+    var data = wsLog.getDataRange().getValues();
+    if (data.length <= 1) return;
+    
+    var cabecalho = data[0];
+    var ignorar = ["CACHE_INVALIDATED", "PORTAL_AUTH", "GIS_FALLBACK_OK", "PING_SESSION"];
+    var filtrados = [cabecalho];
+    
+    for (var i = 1; i < data.length; i++) {
+      var acao = String(data[i][2]).toUpperCase().trim(); // Ação fica na coluna C (índice 2)
+      if (ignorar.indexOf(acao) === -1) {
+        filtrados.push(data[i]);
+      }
+    }
+    
+    // Limpa tudo (CORREÇÃO: o método na classe Sheet é clearContents)
+    wsLog.clearContents();
+    
+    // Escreve apenas os filtrados de volta
+    if (filtrados.length > 0) {
+      wsLog.getRange(1, 1, filtrados.length, filtrados[0].length).setValues(filtrados);
+    }
+    
+    SpreadsheetApp.flush();
+    var msg = "✅ Limpeza Concluída!\n\nForam removidas " + (data.length - filtrados.length) + " linhas de infraestrutura.";
+    try { SpreadsheetApp.getUi().alert(msg); } catch(e) { console.log(msg); }
+    
+  } catch (e) {
+    try { SpreadsheetApp.getUi().alert("❌ Erro ao limpar logs: " + e.message); } catch(err) {}
+  }
+}
