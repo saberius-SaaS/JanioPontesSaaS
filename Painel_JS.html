@@ -311,6 +311,9 @@
   }
 
   async function finalizarProcesso() {
+    const btnFin = document.getElementById('btnFinalizar');
+    if (btnFin && btnFin.disabled) return;
+    
     const id = document.getElementById('obrigacao').value;
     const cli = document.getElementById('clienteUpload').value;
     if(!id || !cli) { showFeedback("Selecione os campos", true); return; }
@@ -343,6 +346,7 @@
       }
     }
     
+    if (btnFin) btnFin.disabled = true;
     showLoader("Processando upload de dados...");
     const payload = {
       action: "uploadBatch",
@@ -357,6 +361,7 @@
       .withFailureHandler(err => {
         console.error(err);
         showFeedback("Falha no servidor: " + err.message, true);
+        if (btnFin) btnFin.disabled = false;
         hideLoader();
       })
       .withSuccessHandler(result => {

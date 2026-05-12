@@ -105,8 +105,9 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
           var textoExtraido = extrairTextoOCR(blob1);
           var textoLimpo = limparTextoOcrParaComparacao(textoExtraido);
           
-          if (textoLimpo.indexOf(cnpj) === -1) {
-             registrarLogSistema("OCR_MISMATCH", "CNPJ Esperado: " + cnpj + " | Texto Limpo (Primeiros 50 dígitos): " + textoLimpo.substring(0, 50));
+          var cnpjBase = cnpj.substring(0, 8);
+          if (textoLimpo.indexOf(cnpj) === -1 && textoLimpo.indexOf(cnpjBase) === -1) {
+             registrarLogSistema("OCR_MISMATCH", "CNPJ Esperado: " + cnpj + " (ou Raiz " + cnpjBase + ") | Texto: " + textoLimpo.substring(0, 50));
              return {
                success: false,
                needsConfirmation: true,

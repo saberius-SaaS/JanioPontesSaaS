@@ -166,6 +166,7 @@ Esta aba é recriada automaticamente e contém estritamente 6 colunas visíveis:
 3.  **Logs:** Toda operação crítica registra entrada em `DB_LOGS`.
 4.  **Triggers:** Utilize LockService (`waitLock`) em todas as transações que manipulam a `DB_TAREFAS` simultaneamente.
 5.  **Operação:** O sistema está em operação. Portanto, qualquer alteração deve ser extremamente cuidadosa e restringir-se exclusivamente aquilo que foi solicitado.
+6.  **LocalTrabalho:** Todos os usuários utilizam somente o portal para executar as tarefas. As planilhas são acessadas somente pelos administradores para qualquer ação necessária.
 
 ---
 

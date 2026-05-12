@@ -283,7 +283,7 @@ function carregarDadosBase(isAutoSync) {
 
           // 2. Injetar layout HTML puro para a Fila de Prioridades
           tarefasGlobaisBase = res.prioridades;
-          renderizarTarefas(tarefasGlobaisBase);
+          if (typeof filtrarTarefasWeb === 'function') filtrarTarefasWeb(); else renderizarTarefas(tarefasGlobaisBase);
           
           // 2. Contador de Revisões (Badge)
           const revCount = tarefasGlobaisBase.filter(t => (t.status || "").toUpperCase() === "REVISAO").length;
@@ -893,6 +893,9 @@ function confirmarCustom(mensagem) {
 
 async function finalizarProcessoWeb() {
     if(!tarefaEmFoco) return;
+    const btnFinGuard = document.getElementById('btnFinalizarWeb');
+    if (btnFinGuard && btnFinGuard.disabled) return;
+    
     const feedback = document.getElementById('modalFeedback');
     
     const textoComunicar = document.getElementById('textoComunicarWeb') ? document.getElementById('textoComunicarWeb').value.trim() : "";
@@ -1016,6 +1019,13 @@ async function finalizarProcessoWeb() {
 function navigate(pageId) {
     console.log("Navegando para rota interna: " + pageId);
     window.currentView = pageId;
+
+    // Resetar pesquisas e limpar filtro visual ao trocar de tela
+    if (document.getElementById('inputBuscaTarefas') && document.getElementById('inputBuscaTarefas').value) { document.getElementById('inputBuscaTarefas').value = ''; if (typeof filtrarTarefasWeb === 'function') filtrarTarefasWeb(); }
+    if (document.getElementById('inputBuscaHistorico') && document.getElementById('inputBuscaHistorico').value) { document.getElementById('inputBuscaHistorico').value = ''; if (typeof filtrarHistoricoWeb === 'function') filtrarHistoricoWeb(); }
+    if (document.getElementById('inputBuscaProtocolos') && document.getElementById('inputBuscaProtocolos').value) { document.getElementById('inputBuscaProtocolos').value = ''; if (typeof filtrarProtocolosHistorico === 'function') filtrarProtocolosHistorico(); }
+    if (document.getElementById('inputBuscaSolicitacoes') && document.getElementById('inputBuscaSolicitacoes').value) { document.getElementById('inputBuscaSolicitacoes').value = ''; if (typeof filtrarSolicitacoesWeb === 'function') filtrarSolicitacoesWeb(); }
+    if (document.getElementById('inputBuscaLogs') && document.getElementById('inputBuscaLogs').value) { document.getElementById('inputBuscaLogs').value = ''; if (typeof filtrarLogsWeb === 'function') filtrarLogsWeb(); }
 
     
     // 1. Tratamento Visual dos Botões na Sidebar
@@ -1146,7 +1156,7 @@ function carregarHistoricoServer(forcarRefresh, isQuiet) {
         if(!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-sm text-center">${res.error}</div>`; return; }
         carregouHistorico = true;
         historicoGlobalBase = res.data;
-        renderizarHistorico(historicoGlobalBase);
+        if (typeof filtrarHistoricoWeb === 'function') filtrarHistoricoWeb(); else renderizarHistorico(historicoGlobalBase);
      }).getDadosHistoricoWeb();
 }
 
@@ -1317,7 +1327,7 @@ function carregarProtocolosServer(forcarRefresh, isQuiet) {
          
          protocolosPendentesBase = res.pendentes || [];
          protocolosGlobalBase = res.todos || [];
-         renderizarProtocolosInfo(protocolosPendentesBase, protocolosGlobalBase);
+         if (typeof filtrarProtocolosHistorico === 'function') filtrarProtocolosHistorico(); else renderizarProtocolosInfo(protocolosPendentesBase, protocolosGlobalBase);
       }).getDadosProtocolosWeb(window.GIS_TOKEN);
 }
 
@@ -1810,7 +1820,7 @@ function carregarLogsServer(forcarRefresh, isQuiet) {
         if (!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">${res.error}</div>`; return; }
         carregouLogs = true;
         logsGlobalBase = res.data;
-        renderizarLogs(logsGlobalBase);
+        if (typeof filtrarLogsWeb === 'function') filtrarLogsWeb(); else renderizarLogs(logsGlobalBase);
      }).getDadosLogsWeb(window.GIS_TOKEN);
 }
 
@@ -1880,7 +1890,7 @@ function carregarSolicitacoesServer(forcarRefresh, isQuiet) {
         if (!res.success) { container.innerHTML = `<div class="p-6 text-red-500 font-bold text-[11px] text-center border-t border-red-100">${res.error}</div>`; return; }
         carregouSolicitacoes = true;
         solicitacoesGlobalBase = res.data;
-        renderizarSolicitacoes(solicitacoesGlobalBase);
+        if (typeof filtrarSolicitacoesWeb === 'function') filtrarSolicitacoesWeb(); else renderizarSolicitacoes(solicitacoesGlobalBase);
      }).getDadosSolicitacoesTabWeb(window.GIS_TOKEN);
 }
 
