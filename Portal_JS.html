@@ -1431,9 +1431,12 @@ function gerarCardProtocolo(p, isPendente) {
          <div class="text-xs ${isAnterior ? 'text-red-600' : 'text-slate-600'} font-medium mb-3 line-clamp-1" title="${p.obrigacao}">${p.obrigacao}</div>
          <div class="mt-auto pt-3 border-t ${isAnterior ? 'border-red-100' : 'border-slate-50'} flex items-center justify-between">
             <span class="text-[8px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded uppercase">Vcto: ${p.vencimentoLegal}</span>
-            <a href="${p.link}" target="_blank" class="text-indigo-600 hover:text-white hover:bg-indigo-600 p-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-700" title="Ver Arquivo">
-               <i class="fa-solid fa-file-pdf text-sm"></i>
-            </a>
+            <div class="flex items-center gap-2">
+               ${isPendente && window.userDataGlobal && (["ADMIN", "MASTER", "CONSULTOR"].indexOf(window.userDataGlobal.userLevel) > -1) ? `<button onclick="baixarProtocoloManualWeb('${p.protocolo}', this)" title="Confirmar Recebimento Manual" class="bg-teal-500 hover:bg-teal-600 text-white text-[8px] font-bold px-2 py-1 rounded-lg shadow-sm transition inline-flex items-center"><i class="fa-solid fa-check-double mr-1"></i>Baixa Manual</button>` : ''}
+               <a href="${p.link}" target="_blank" class="text-indigo-600 hover:text-white hover:bg-indigo-600 p-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-700" title="Ver Arquivo">
+                  <i class="fa-solid fa-file-pdf text-sm"></i>
+               </a>
+            </div>
          </div>
       </div>
    `;
@@ -1904,8 +1907,10 @@ function renderizarSolicitacoes(lista) {
       const rowId = String(item.id).replace(/'/g, "\'");
       
       let btnAcao = '';
+      let btnBaixaManual = '';
       if (isPendente && isAdmin) {
         btnAcao = `<button onclick="cobrarSolicitacao('${rowId}', this)" title="Reenviar Cobrança" class="bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition"><i class="fa-solid fa-paper-plane mr-1.5"></i>Cobrar Agora</button>`;
+        btnBaixaManual = `<button onclick="baixarSolicitacaoManualWeb('${rowId}', this)" title="Baixa Manual" class="bg-teal-500 hover:bg-teal-600 text-white text-[9px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition inline-flex items-center"><i class="fa-solid fa-check-double mr-1.5"></i>Baixa Manual</button>`;
       } else if (!isPendente && item.linkArquivo) {
         if (item.linkArquivo.startsWith("RESPOSTA:")) {
            const safePayload = item.linkArquivo.replace(/'/g, "&apos;").replace(/"/g, "&quot;").replace(/\\n/g, "\\\\n").replace(/\\r/g, "");
@@ -1949,6 +1954,7 @@ function renderizarSolicitacoes(lista) {
                </div>
                <div class="flex gap-2">
                   ${btnAcao}
+                  ${btnBaixaManual}
                </div>
             </div>
          </div>
@@ -2014,6 +2020,95 @@ function cobrarSolicitacao(solId, btnEl) {
         // Recarrega silenciosamente em 2 segundos
         setTimeout(() => { carregarSolicitacoesServer(); }, 2000);
      }).cobrarSolicitacaoUnica(window.GIS_TOKEN, solId);
+}
+async function baixarSolicitacaoManualWeb(solId, btnEl) {
+   if (!solId || !btnEl) return;
+   const confirmou = await confirmarCustom('Confirma a BAIXA MANUAL desta solicitação? O status será alterado para ENTREGUE e a pendência será encerrada.');
+   if (!confirmou) return;
+
+   const oldHtml = btnEl.innerHTML;
+   btnEl.disabled = true;
+   btnEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+   btnEl.classList.add('opacity-50');
+
+   google.script.run
+     .withFailureHandler(err => {
+        btnEl.disabled = false;
+        btnEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        btnEl.classList.remove('opacity-50', 'bg-teal-500');
+        btnEl.classList.add('bg-red-500');
+        showToast('Erro: ' + err.message, 'error');
+        setTimeout(() => {
+           btnEl.innerHTML = oldHtml;
+           btnEl.classList.remove('bg-red-500');
+           btnEl.classList.add('bg-teal-500');
+        }, 3000);
+     })
+     .withSuccessHandler(res => {
+        if (!res.success) {
+           btnEl.disabled = false;
+           btnEl.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+           btnEl.classList.remove('opacity-50', 'bg-teal-500');
+           btnEl.classList.add('bg-orange-500');
+           showToast(res.error || 'Falha na baixa manual.', 'error');
+           setTimeout(() => {
+              btnEl.innerHTML = oldHtml;
+              btnEl.classList.remove('bg-orange-500');
+              btnEl.classList.add('bg-teal-500');
+           }, 3000);
+           return;
+        }
+        btnEl.innerHTML = '<i class="fa-solid fa-check"></i>';
+        btnEl.classList.remove('opacity-50', 'bg-teal-500');
+        btnEl.classList.add('bg-emerald-500');
+        showToast(res.message || 'Baixa manual efetuada!', 'success');
+        setTimeout(() => { carregarSolicitacoesServer(); }, 2000);
+     }).baixarSolicitacaoManual(window.GIS_TOKEN, solId);
+}
+async function baixarProtocoloManualWeb(protocoloNum, btnEl) {
+   if (!protocoloNum || !btnEl) return;
+   const confirmou = await confirmarCustom('Confirma a BAIXA MANUAL do protocolo #' + protocoloNum + '? O documento será marcado como recebido pelo cliente.');
+   if (!confirmou) return;
+
+   const oldHtml = btnEl.innerHTML;
+   btnEl.disabled = true;
+   btnEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+   btnEl.classList.add('opacity-50');
+
+   google.script.run
+     .withFailureHandler(err => {
+        btnEl.disabled = false;
+        btnEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        btnEl.classList.remove('opacity-50', 'bg-teal-500');
+        btnEl.classList.add('bg-red-500');
+        showToast('Erro: ' + err.message, 'error');
+        setTimeout(() => {
+           btnEl.innerHTML = oldHtml;
+           btnEl.classList.remove('bg-red-500');
+           btnEl.classList.add('bg-teal-500');
+        }, 3000);
+     })
+     .withSuccessHandler(res => {
+        if (!res.success) {
+           btnEl.disabled = false;
+           btnEl.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+           btnEl.classList.remove('opacity-50', 'bg-teal-500');
+           btnEl.classList.add('bg-orange-500');
+           showToast(res.error || 'Falha na baixa manual.', 'error');
+           setTimeout(() => {
+              btnEl.innerHTML = oldHtml;
+              btnEl.classList.remove('bg-orange-500');
+              btnEl.classList.add('bg-teal-500');
+           }, 3000);
+           return;
+        }
+        btnEl.innerHTML = '<i class="fa-solid fa-check"></i>';
+        btnEl.classList.remove('opacity-50', 'bg-teal-500');
+        btnEl.classList.add('bg-emerald-500');
+        showToast(res.message || 'Baixa manual efetuada!', 'success');
+        carregouProtocolos = false;
+        setTimeout(() => { carregarProtocolosServer(); }, 2000);
+     }).baixarProtocoloManual(window.GIS_TOKEN, protocoloNum);
 }
 function abrirConteudoResposta(payload) {
     let texto = payload;

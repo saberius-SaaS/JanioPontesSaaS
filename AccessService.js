@@ -178,7 +178,8 @@ function getRelatorioEquipeMensal() {
       var filtroMesAno = "/" + mesAtual + "/" + anoAtual;
 
       for (var i = 1; i < dataFreq.length; i++) {
-         var dtStr = String(dataFreq[i][0]);
+         var dtRaw = dataFreq[i][0];
+         var dtStr = (dtRaw instanceof Date) ? Utilities.formatDate(dtRaw, "GMT-3", "dd/MM/yyyy") : String(dtRaw);
          if (dtStr.indexOf(filtroMesAno) > -1) {
             var email = String(dataFreq[i][1]).toLowerCase().trim();
             var min = parseInt(dataFreq[i][3]) || 0;

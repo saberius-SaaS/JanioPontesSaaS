@@ -587,3 +587,81 @@ function enviarComunicadoGlobalWeb(token, assunto, texto, clienteAlvo) {
   }
 }
 
+/**
+ * ⚡ BAIXAR SOLICITAÇÃO MANUAL (Admin Web)
+ * Baixa manualmente uma solicitação que foi resolvida por outros meios.
+ */
+function baixarSolicitacaoManual(token, solId) {
+  try {
+    var emailFinal = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!emailFinal) return { success: false, error: "AUTENTICACAO_REQUERIDA" };
+
+    var ss = getSs();
+    var wsSol = ss.getSheetByName(CONFIG_SISTEMA.ABA_SOLICITACOES);
+    var dataSol = wsSol.getDataRange().getValues();
+    var rowIdx = -1;
+
+    for (var i = 1; i < dataSol.length; i++) {
+       if (String(dataSol[i][0]) === String(solId)) {
+          rowIdx = i + 1;
+          break;
+       }
+    }
+
+    if (rowIdx === -1) return { success: false, error: "Solicitação não encontrada." };
+
+    var status = String(dataSol[rowIdx-1][6]).toUpperCase().trim();
+    if (status !== getSafeStatus("PENDENTE")) return { success: false, error: "Apenas solicitações PENDENTES podem ser baixadas manualmente." };
+
+    wsSol.getRange(rowIdx, 7).setValue(getSafeStatus("ENTREGUE")); // G = STATUS
+    wsSol.getRange(rowIdx, 8).setValue("RESPOSTA: [BAIXA MANUAL] Cliente atendeu por outro canal. Resolvido por: " + emailFinal); // H = LINK_ARQUIVO/RESPOSTA
+
+    invalidarCacheSistema();
+    registrarLogSistema("MANUAL_BAIXA_SOL", "ID: " + solId + " | Por: " + emailFinal);
+
+    return { success: true, message: "Baixa manual da solicitação efetuada com sucesso!" };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * ⚡ BAIXAR PROTOCOLO MANUAL (Admin Web)
+ * Baixa manualmente um protocolo.
+ */
+function baixarProtocoloManual(token, protocoloNum) {
+  try {
+    var emailFinal = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!emailFinal) return { success: false, error: "AUTENTICACAO_REQUERIDA" };
+
+    var ss = getSs();
+    var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+    var dataProt = wsProt.getDataRange().getValues();
+    var rowIdx = -1;
+
+    for (var i = 1; i < dataProt.length; i++) {
+       if (String(dataProt[i][2]) === String(protocoloNum)) { // C = PROTOCOLO = idx 2
+          rowIdx = i + 1;
+          break;
+       }
+    }
+
+    if (rowIdx === -1) return { success: false, error: "Protocolo não encontrado." };
+
+    var confRecto = dataProt[rowIdx-1][9]; // J = CONF_RECTO = idx 9
+    if (confRecto && String(confRecto).trim() !== "" && String(confRecto).trim() !== "---" && String(confRecto).indexOf("AGUARDANDO") === -1) {
+       return { success: false, error: "Este protocolo já consta como lido." };
+    }
+
+    wsProt.getRange(rowIdx, 9).setValue("LIDO_MANUAL"); // I = STATUS_ENVIO
+    wsProt.getRange(rowIdx, 10).setValue(new Date());   // J = CONF_RECTO
+
+    invalidarCacheSistema();
+    registrarLogSistema("MANUAL_BAIXA_PROT", "Protocolo: " + protocoloNum + " | Por: " + emailFinal);
+
+    return { success: true, message: "Baixa manual do protocolo efetuada com sucesso!" };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
