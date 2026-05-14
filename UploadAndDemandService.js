@@ -143,7 +143,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
         try {
             // Só envia e-mail se houver mensagem real e não estiver em REVISAO
             if (statusFinal !== getSafeStatus("REVISAO") && !semMensagem) {
-               enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, mensagem);
+               enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, mensagem, rowVal[8]);
             }
         } catch(eMailCom) {
             registrarLogSistema("EMAIL_COM_ERR", "Falha comunicado: " + eMailCom.message);
@@ -271,7 +271,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
            // Passamos o protRowIdx em vez do rowIdx da tarefa para rastreio direto no DB_PROTOCOLOS
            // PROTEÇÃO: Falha no e-mail NÃO deve abortar a finalização da tarefa.
            try {
-             notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), protRowIdx || "", false, mesRef, vctoLegal);
+             notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, target.getUrl(), protRowIdx || "", false, mesRef, vctoLegal, rowVal[8]);
            } catch(eMailNotif) {
              registrarLogSistema("EMAIL_NOTIF_ERR", "Tarefa finalizada mas e-mail falhou: " + eMailNotif.message);
            }
@@ -452,7 +452,7 @@ function enviarSolicitacaoDocumento(dados, token) {
 
     // 4. Dispara E-mail
     try {
-      enviarSolicitacaoAoCliente(dados.cliente, emailCli, dados.solicitacao, solId, infoTarefa);
+      enviarSolicitacaoAoCliente(dados.cliente, emailCli, dados.solicitacao, solId, infoTarefa, userEmail);
     } catch(errMail) {
       registrarLogSistema("SOL_MAIL_FAIL", errMail.message);
     }

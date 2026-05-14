@@ -434,7 +434,7 @@ function cobrarSolicitacaoUnica(token, solId) {
     if (status !== "PENDENTE") return { success: false, error: "Apenas solicitações PENDENTES podem ser cobradas." };
 
     // Dispara via EmailService
-    enviarLembreteCobranca(cliente, email, pedido, solId, qtdAvisos, infoTarefa);
+    enviarLembreteCobranca(cliente, email, pedido, solId, qtdAvisos, infoTarefa, dataSol[rowIdx-1][10]);
 
     // Atualiza Planilha
     wsSol.getRange(rowIdx, 9).setValue(new Date()); // Column I: DATA_COBRANCA
@@ -499,6 +499,7 @@ function getDadosHistoricoWeb() {
            vencimento: vctoStr,
            depto: String(dataH[i][4]),
            protocolo: String(dataH[i][6] || ""),
+           acao: String(dataH[i][7] || "").toUpperCase().trim(),
            statusEnvio: statusEnvio,
            leitura: leituraStr
         });

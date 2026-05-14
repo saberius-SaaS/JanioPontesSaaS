@@ -1,5 +1,5 @@
 /**
- * ⚙️ TASK CORE SERVICE v131.10
+ * ⚙️ TASK CORE SERVICE v131.11
  * Motor de Geração Híbrido: Whitelist (Tags) + Blacklist (Exceções) + Sincronismo Total.
  */
 
@@ -190,48 +190,41 @@ function gerarTarefasDoMes() {
         novasLinhasDB.push(linhaSincronizada);
         hashesProcessados[h] = true;
       } else if (decisao && decisao.acao === "EXCLUIR") {
-        // PROTEÇÃO CONTRA DELEÇÃO DE BACKLOG VENCIDO:
-        var vctoTf = dataTf[i][3];
-        var dtVctoAnterior = (vctoTf instanceof Date) ? vctoTf : new Date(vctoTf);
-        if (!isNaN(dtVctoAnterior.getTime()) && dtVctoAnterior < inicioMesAtual) {
-          // Se estava ativa no banco e o vencimento já passou há muito tempo,
-          // preservamos ela, mas atualizamos o Responsável se estiver Pendente/Revisão
-          var linhaPreservada = [...dataTf[i]];
+        // Motor determinou exclusão (regra removida, tag perdida, exceção adicionada, regime/mês incompatível)
+        // → Expurgo incondicional da tarefa pendente
+        tarefasExcluidasCount++;
+      } else {
+        // Sem decisão do motor para esta tarefa.
+        // Verificamos se a competência está dentro da janela retroativa ativa.
+        var compTfStr = safeGetMesAnoStr(dataTf[i][0]);
+        var compParts = compTfStr.split("/");
+        var compMes = parseInt(compParts[0]);
+        var compAno = parseInt(compParts[1]);
+        var compDate = new Date(compAno, compMes - 1, 1);
+        var janelaInicio = new Date(hoje.getFullYear(), hoje.getMonth() - CONFIG_SISTEMA.JANELA_RETROATIVA_MESES, 1);
+
+        if (statusAtual === CONFIG_SISTEMA.STATUS.PENDENTE && compDate >= janelaInicio) {
+          // Competência dentro da janela ativa mas sem regra correspondente
+          // → Regra foi excluída ou renomeada → Expurgo
+          tarefasExcluidasCount++;
+        } else {
+          // Fora da janela retroativa ou status protegido (REVISÃO) → preserva como backlog legado
+          var linhaLegada = [...dataTf[i]];
           if (cliDados && (statusAtual === CONFIG_SISTEMA.STATUS.PENDENTE || statusAtual === CONFIG_SISTEMA.STATUS.REVISAO)) {
-            var depT = norm(linhaPreservada[4]);
-            var nResp = cliDados.responsavelGeral || "SISTEMA";
-            if (depT.indexOf("FISCAL") > -1) nResp = cliDados.fiscal;
-            else if (depT.indexOf("CONTABIL") > -1) nResp = cliDados.contabil;
-            else if (depT.indexOf("PESSOAL") > -1) nResp = cliDados.pessoal;
-            else if (depT.indexOf("SOCIETARIO") > -1) nResp = cliDados.societario;
-            
-            if (linhaPreservada[8] !== nResp) {
-              linhaPreservada[8] = nResp;
-              tarefasAtualizadasCount++;
+            var depL = norm(linhaLegada[4]);
+            var nRespL = cliDados.responsavelGeral || "SISTEMA";
+            if (depL.indexOf("FISCAL") > -1) nRespL = cliDados.fiscal;
+            else if (depL.indexOf("CONTABIL") > -1) nRespL = cliDados.contabil;
+            else if (depL.indexOf("PESSOAL") > -1) nRespL = cliDados.pessoal;
+            else if (depL.indexOf("SOCIETARIO") > -1) nRespL = cliDados.societario;
+
+            if (linhaLegada[8] !== nRespL) {
+               linhaLegada[8] = nRespL;
+               tarefasAtualizadasCount++;
             }
           }
-          novasLinhasDB.push(linhaPreservada);
-        } else {
-          tarefasExcluidasCount++;
+          novasLinhasDB.push(linhaLegada);
         }
-      } else {
-        // Se não há decisão (fora da janela ou regra removida), preservamos o Backlog Legado
-        // MAS atualizamos o responsável se for PENDENTE ou REVISÃO
-        var linhaLegada = [...dataTf[i]];
-        if (cliDados && (statusAtual === CONFIG_SISTEMA.STATUS.PENDENTE || statusAtual === CONFIG_SISTEMA.STATUS.REVISAO)) {
-          var depL = norm(linhaLegada[4]);
-          var nRespL = cliDados.responsavelGeral || "SISTEMA";
-          if (depL.indexOf("FISCAL") > -1) nRespL = cliDados.fiscal;
-          else if (depL.indexOf("CONTABIL") > -1) nRespL = cliDados.contabil;
-          else if (depL.indexOf("PESSOAL") > -1) nRespL = cliDados.pessoal;
-          else if (depL.indexOf("SOCIETARIO") > -1) nRespL = cliDados.societario;
-          
-          if (linhaLegada[8] !== nRespL) {
-             linhaLegada[8] = nRespL;
-             tarefasAtualizadasCount++;
-          }
-        }
-        novasLinhasDB.push(linhaLegada);
       }
     }
 
@@ -256,7 +249,7 @@ function gerarTarefasDoMes() {
     
     SpreadsheetApp.flush();
     reordenarTarefasElite();
-    registrarLogSistema("SYNC_V131.10", "Sinc: " + tarefasAtualizadasCount + " | Novas: " + novasTarefasCount + " | Expurgos: " + tarefasExcluidasCount);
+    registrarLogSistema("SYNC_V131.11", "Sinc: " + tarefasAtualizadasCount + " | Novas: " + novasTarefasCount + " | Expurgos: " + tarefasExcluidasCount);
     invalidarCacheSistema(); // ⚡ Garante visibilidade imediata no Portal
     return "Sincronização concluída: " + tarefasAtualizadasCount + " atualizadas, " + novasTarefasCount + " novas, " + tarefasExcluidasCount + " expurgos.";
 

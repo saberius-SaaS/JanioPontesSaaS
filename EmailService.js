@@ -16,7 +16,7 @@ function getPublicWebAppUrl() {
 /**
  * Notificação de Entrega ao Cliente (Ajustado p/ NÃO enviar links diretos se o user preferir)
  */
-function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailCli, linksArquivo, pastaLink, rowIdx, incluirLinks, mesAno, vencimento) {
+function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailCli, linksArquivo, pastaLink, rowIdx, incluirLinks, mesAno, vencimento, emailReplyTo) {
   if(!emailCli || emailCli.indexOf("@") === -1) return;
   try {
     var webAppUrl = getPublicWebAppUrl();
@@ -86,7 +86,9 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
       </div>
     `;
 
-    GmailApp.sendEmail(emailCli, "[DOCUMENTO DISPONÍVEL] " + obrigacao + " [" + protocolo + "]", "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
+    var options = { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE };
+    if (emailReplyTo && emailReplyTo.indexOf("@") > -1) options.replyTo = emailReplyTo;
+    GmailApp.sendEmail(emailCli, "[DOCUMENTO DISPONÍVEL] " + obrigacao + " [" + protocolo + "]", "", options);
     registrarLogSistema("EMAIL_SENT", "Prot: " + protocolo);
   } catch (e) {
     registrarLogSistema("EMAIL_SEND_FAIL", e.message);
@@ -97,7 +99,7 @@ function notificarEntregaClienteRefatorada(cliente, obrigacao, protocolo, emailC
 /**
  * 🛡️ Notificação de Solicitação (SOLICITAR DOCUMENTOS)
  */
-function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitacao, infoTarefa) {
+function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitacao, infoTarefa, emailReplyTo) {
   if(!emailCli || emailCli.indexOf("@") === -1) return;
   var baseUrl = getPublicWebAppUrl(); 
   var portalLink = baseUrl + (baseUrl.indexOf('?') > -1 ? '&' : '?') + "mode=client&sol=" + String(idSolicitacao).trim();
@@ -139,7 +141,9 @@ function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitaca
         </table>
       </div>
     `;
-    GmailApp.sendEmail(emailCli, "[SOLICITAÇÃO DE DOCUMENTO] " + cliente, "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
+    var options = { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE };
+    if (emailReplyTo && emailReplyTo.indexOf("@") > -1) options.replyTo = emailReplyTo;
+    GmailApp.sendEmail(emailCli, "[SOLICITAÇÃO DE DOCUMENTO] " + cliente, "", options);
     registrarLogSistema("SOLICITATION_EMAIL_SENT", "Cliente: " + cliente);
   } catch (e) {
     registrarLogSistema("EMAIL_REQ_FAIL", e.message);
@@ -150,7 +154,7 @@ function enviarSolicitacaoAoCliente(cliente, emailCli, solicitacao, idSolicitaca
 /**
  * 📢 LEMBRETE DE COBRANÇA (Novo!) - PADRÃO ELITE
  */
-function enviarLembreteCobranca(cliente, emailCli, solicitacao, idSolicitacao, qtdAvisos, infoTarefa) {
+function enviarLembreteCobranca(cliente, emailCli, solicitacao, idSolicitacao, qtdAvisos, infoTarefa, emailReplyTo) {
   if(!emailCli || emailCli.indexOf("@") === -1) return;
   var baseUrl = getPublicWebAppUrl(); 
   var portalLink = baseUrl + (baseUrl.indexOf('?') > -1 ? '&' : '?') + "mode=client&sol=" + String(idSolicitacao).trim();
@@ -196,7 +200,9 @@ function enviarLembreteCobranca(cliente, emailCli, solicitacao, idSolicitacao, q
       </div>
     `;
 
-    GmailApp.sendEmail(emailCli, "[PENDÊNCIA IMPORTANTE] " + cliente + " (Aviso " + (qtdAvisos + 1) + ")", "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
+    var options = { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE };
+    if (emailReplyTo && emailReplyTo.indexOf("@") > -1) options.replyTo = emailReplyTo;
+    GmailApp.sendEmail(emailCli, "[PENDÊNCIA IMPORTANTE] " + cliente + " (Aviso " + (qtdAvisos + 1) + ")", "", options);
     registrarLogSistema("COBRANCA_AUTO_SENT", "Cliente: " + cliente + " | Aviso #" + (qtdAvisos + 1));
   } catch (e) { registrarLogSistema("EMAIL_COB_FAIL", e.message); }
 }
@@ -477,7 +483,7 @@ function formatarDetalhesAudit(texto) {
 /**
  * Envia um Comunicado de Texto (Ação COMUNICAR)
  */
-function enviarComunicadoCliente(cliente, emailCli, obrigacao, protocolo, mensagem) {
+function enviarComunicadoCliente(cliente, emailCli, obrigacao, protocolo, mensagem, emailReplyTo) {
   if(!emailCli || emailCli.indexOf("@") === -1) return;
   try {
     var html = `
@@ -506,7 +512,9 @@ function enviarComunicadoCliente(cliente, emailCli, obrigacao, protocolo, mensag
       </div>
     `;
 
-    GmailApp.sendEmail(emailCli, "[INFORMATIVO DA CONTABILIDADE] " + obrigacao, "", { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE });
+    var options = { htmlBody: html, from: CONFIG_SISTEMA.EMAILS.REMETENTE };
+    if (emailReplyTo && emailReplyTo.indexOf("@") > -1) options.replyTo = emailReplyTo;
+    GmailApp.sendEmail(emailCli, "[INFORMATIVO DA CONTABILIDADE] " + obrigacao, "", options);
     registrarLogSistema("EMAIL_COMUNICADO_SENT", "Prot: " + protocolo);
   } catch (e) {
     registrarLogSistema("EMAIL_COMUNICADO_FAIL", e.message);
@@ -599,17 +607,19 @@ function reenviarNotificacaoPorProtocolo(protocolo) {
 
     // Busca departamento da tarefa original na DB_TAREFAS ou DB_HISTORICO
     var idTarefa = String(protData[3] || ""); // D: ID_TAREFA
+    var respTarefa = "";
     if (idTarefa) {
       var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
       var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
       var fontes = [wsTarefas, wsHist];
-      for (var f = 0; f < fontes.length && !deptoProtocolo; f++) {
+      for (var f = 0; f < fontes.length && (!deptoProtocolo || !respTarefa); f++) {
         if (!fontes[f]) continue;
         var dataF = fontes[f].getDataRange().getValues();
         for (var j = 1; j < dataF.length; j++) {
           if (String(dataF[j][9]).trim() === idTarefa.trim()) {
-            deptoProtocolo = String(dataF[j][4] || "");
-            break;
+            if (!deptoProtocolo) deptoProtocolo = String(dataF[j][4] || "");
+            if (!respTarefa) respTarefa = String(dataF[j][8] || "");
+            if (deptoProtocolo && respTarefa) break;
           }
         }
       }
@@ -639,7 +649,7 @@ function reenviarNotificacaoPorProtocolo(protocolo) {
       } else if (msgOriginal.indexOf("SEM_COMUNICADO:") > -1) {
         return { success: false, message: "Este protocolo foi finalizado sem comunicado (justificativa). Não há mensagem para reenviar." };
       }
-      enviarComunicadoCliente(clienteNome, emailDestino, obrigacao, protocolo, msgOriginal);
+      enviarComunicadoCliente(clienteNome, emailDestino, obrigacao, protocolo, msgOriginal, respTarefa);
 
     } else if (acaoTarefa.indexOf("ENVIAR") > -1 || acaoTarefa.indexOf("AUDITAR") > -1) {
       if (linksRaw.indexOf("SEM_ENVIO:") > -1) {
@@ -652,10 +662,10 @@ function reenviarNotificacaoPorProtocolo(protocolo) {
           if (u.trim()) linksParaEmail.push({ url: u.trim(), name: "Documento Enviado" });
         });
       }
-      notificarEntregaClienteRefatorada(clienteNome, obrigacao, protocolo, emailDestino, linksParaEmail, "", protRowIdx, false, mesAno, vctoStr);
+      notificarEntregaClienteRefatorada(clienteNome, obrigacao, protocolo, emailDestino, linksParaEmail, "", protRowIdx, false, mesAno, vctoStr, respTarefa);
 
     } else {
-      notificarEntregaClienteRefatorada(clienteNome, obrigacao, protocolo, emailDestino, [], "", protRowIdx, false, mesAno, vctoStr);
+      notificarEntregaClienteRefatorada(clienteNome, obrigacao, protocolo, emailDestino, [], "", protRowIdx, false, mesAno, vctoStr, respTarefa);
     }
 
     registrarLogSistema("REENVIO_EMAIL", "Prot: " + protocolo + " -> " + emailDestino + " (Ação: " + acaoTarefa + ")");

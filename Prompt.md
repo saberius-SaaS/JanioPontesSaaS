@@ -167,7 +167,7 @@ Esta aba é recriada automaticamente e contém estritamente 6 colunas visíveis:
 4.  **Triggers:** Utilize LockService (`waitLock`) em todas as transações que manipulam a `DB_TAREFAS` simultaneamente.
 5.  **Operação:** O sistema está em operação. Portanto, qualquer alteração deve ser extremamente cuidadosa e restringir-se exclusivamente aquilo que foi solicitado.
 6.  **LocalTrabalho:** Todos os usuários utilizam somente o portal para executar as tarefas. As planilhas são acessadas somente pelos administradores para qualquer ação necessária.
-
+7.  **Controle de Versão:** Sempre que houve alguma alteração relevante, o número da versão presente no arquivo Config.js e informada no rodapé do menu do portal (Abaixo de NCE - Núcleo Estratégico) deve ser atualizada.
 ---
 
 # 6. GESTÃO DE CONTEXTO E META-COGNIÇÃO

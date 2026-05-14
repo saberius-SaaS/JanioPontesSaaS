@@ -611,6 +611,7 @@ function aprovarTarefaRevisao(taskId, userLevel) {
            if (!emailCli || emailCli.indexOf("@") === -1) {
               registrarLogSistema("APROVA_EMAIL_SKIP", "Email do cliente não localizado para " + clienteNome);
            } else {
+              var respTarefa = String(dataT[i][8] || "");
               if (norm(acaoTarefa).indexOf(CONFIG_SISTEMA.ACOES.COMUNICAR) > -1) {
                  // Recupera a mensagem do protocolo se for COMUNICAR
                  var msgProtocolo = "";
@@ -621,10 +622,10 @@ function aprovarTarefaRevisao(taskId, userLevel) {
                  // Só envia se for de fato um comunicado (e não um SEM_COMUNICADO gerado por justificativa)
                  if (msgProtocolo.indexOf("COMUNICADO:") > -1 && msgProtocolo.indexOf("SEM_COMUNICADO:") === -1) {
                     var msgComunicado = msgProtocolo.replace("COMUNICADO: ", "");
-                    enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, msgComunicado);
+                    enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, msgComunicado, respTarefa);
                  }
               } else if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) {
-                 notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, folderUrl, protRowIdx, false, mesAno, vctoLegal);
+                 notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, folderUrl, protRowIdx, false, mesAno, vctoLegal, respTarefa);
               }
            }
         } catch(eNotif) {

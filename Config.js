@@ -5,7 +5,7 @@
 
 var CONFIG_SISTEMA = {
   ID_PLANILHA: "1gey_Q16UVbihSRSLFvD6a7JZtwFaYzLXtTwVKySEijw",
-  VERSAO: "v131.06",
+  VERSAO: "v131.12",
   // 🌐 URLs E CONEXÕES
   URL_WEBAPP: "https://script.google.com/macros/s/AKfycby828QsUFLVmtQ1WegcdkaNVMtW4s3xQvhRFcrK0hEiw62xwE-Cqq3SwHMEw5521Euelw/exec",
 
@@ -60,7 +60,21 @@ var CONFIG_SISTEMA = {
     REMETENTE: "sac@janiopontes.com.br"             // Alias de envio (Gmail → Contas e Importação)
   },
 
-  FERIADOS: ["01/01", "21/04", "01/05", "15/08", "07/09", "12/10", "02/11", "15/11", "20/11", "25/12"]
+  FERIADOS: ["01/01", "21/04", "01/05", "15/08", "07/09", "12/10", "02/11", "15/11", "20/11", "25/12"],
+
+  // 📱 WHATSAPP — MÓDULO DORMANT (BSP: Maxbot)
+  // Preencha os dados do Maxbot (Configuração > API Maxbot) antes de instalar o gatilho.
+  WHATSAPP: {
+    ATIVO: true,                                                           // Chave-mestra: false = módulo 100% inerte
+    API_TOKEN: "W1I2W4A1B0U3T5O3J4E2B7E7Y9A6Y1I71770330388",               // Token do Maxbot (Configuração > API Maxbot)
+    CHANNEL_TOKEN: "20260198DDC3338A09-45ABA6-463B1A",                      // Token do canal WhatsApp (obtido via diagnosticoMaxbot)
+    TEMPLATE_ID: 52950,                                                    // ID numérico do template "DOCUMENTO PRONTO"
+    TEMPLATE_NAME: "DOCUMENTO PRONTO",                                     // Nome do template (apenas referência)
+    TEMPLATE_LANG: "pt_BR",                                                // Idioma do template
+    DIAS_INTERVALO_RENOTIFICACAO: 2,                                       // Mínimo de dias entre notificações do mesmo protocolo
+    MAX_ENVIOS_POR_CICLO: 30,                                              // Limite de mensagens por execução (controle de custo)
+    COL_NOTIF_WPP: 13                                                      // Coluna M da DB_PROTOCOLOS (rastreio de envio)
+  }
 };
 
 

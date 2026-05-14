@@ -114,7 +114,7 @@ function executarRotinaCobrancas() {
           pedido = dataSol[i][4],
           infoTarefa = dataSol[i][11]; // Coluna L: META_TAREFA
 
-      enviarLembreteCobranca(cliente, email, pedido, idSolicitacao, qtdAvisos, infoTarefa);
+      enviarLembreteCobranca(cliente, email, pedido, idSolicitacao, qtdAvisos, infoTarefa, dataSol[i][10]);
       wsSol.getRange(i + 1, 9).setValue(hoje); 
       wsSol.getRange(i + 1, 10).setValue(qtdAvisos + 1); 
       totalEnviados++;
