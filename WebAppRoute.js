@@ -46,30 +46,6 @@ function keepAlive() {
 function getDadosPortalWeb(token) {
   try {
     var hoje = new Date();
-    // 1. Dados Básicos do Dashboard (Mês Atual)
-    var dashMes = getDashboardData("ESTE_MES");
-    
-    // 2. Calcula Risco Legal (Atrasados Pendentes globais)
-    var wsTarefas = getSs().getSheetByName("DB_TAREFAS");
-    var totalRisco = 0;
-    if (wsTarefas) {
-       var dados = wsTarefas.getDataRange().getValues();
-       var hojeNormal = new Date();
-       hojeNormal.setHours(0,0,0,0);
-       
-       for (var i = 1; i < dados.length; i++) {
-         if (String(dados[i][5]).toUpperCase() === "PENDENTE") {
-           var vcto = dados[i][3];
-           if (vcto && (vcto instanceof Date || !isNaN(new Date(vcto).getTime()))) {
-              var dataV = new Date(vcto);
-              dataV.setHours(0,0,0,0);
-              if (dataV <= hojeNormal) {
-                totalRisco++;
-              }
-           }
-         }
-       }
-    }
     
     // ⚡ CAPTURA DE CONTEXTO DE USUÁRIO (GIS Token como prioridade, com Fallback para DevMode)
     var emailFinal = validarTokenGIS(token) || Session.getActiveUser().getEmail().toLowerCase().trim();
@@ -83,14 +59,16 @@ function getDadosPortalWeb(token) {
         };
     }
 
-    // 2. Calcula o UserLevel Real baseado na Aba Usuários
+    // Calcula o UserLevel e Departamento Baseado na Aba Usuários
     var userLevel = null; // Inicia nulo para forçar validação
     var userName = "";
+    var userDepto = "";
     var dataU = getSheetDataCached("DB_USUARIOS", "DATA_USUARIOS");
     for (var u = 1; u < dataU.length; u++) {
        if (String(dataU[u][0]).toLowerCase().trim() === emailFinal.toLowerCase().trim()) { 
            userLevel = String(dataU[u][2]).toUpperCase().trim(); 
            userName = String(dataU[u][1]).trim();
+           userDepto = norm(String(dataU[u][3] || ""));
            break; 
        }
     }
@@ -105,6 +83,47 @@ function getDadosPortalWeb(token) {
          error: "SISTEMA_BLOQUEADO", 
          message: "Acesso não autorizado. Seu e-mail (" + emailFinal + ") não consta na lista de usuários permitidos. Entre em contato com o administrador." 
        };
+    }
+
+    // 1. Dados Básicos do Dashboard (Mês Atual)
+    var dashMes = getDashboardData("ESTE_MES");
+    
+    // Filtro RBAC (Role-Based Access Control) para os quadros principais do Dashboard
+    if (userLevel === "USER" && userDepto && dashMes && !dashMes.error) {
+       var deptoStats = dashMes.departamentos[userDepto];
+       dashMes.pendentes = deptoStats ? deptoStats.pendentes : 0;
+       dashMes.entregues = deptoStats ? deptoStats.entregues : 0;
+    }
+    
+    // 2. Calcula Risco Legal (Atrasados Pendentes globais ou restritos por departamento)
+    var wsTarefas = getSs().getSheetByName("DB_TAREFAS");
+    var totalRisco = 0;
+    var riscoPorDepto = {};
+    if (wsTarefas) {
+       var dados = wsTarefas.getDataRange().getValues();
+       var hojeNormal = new Date();
+       hojeNormal.setHours(0,0,0,0);
+       
+       for (var i = 1; i < dados.length; i++) {
+         if (String(dados[i][5]).toUpperCase() === "PENDENTE") {
+           var deptoRow = norm(String(dados[i][4] || ""));
+           // Filtro RBAC: Se for USER, contabiliza apenas os riscos do seu departamento
+           if (userLevel === "USER" && userDepto && deptoRow !== userDepto) {
+             continue;
+           }
+
+           var vcto = dados[i][3];
+           if (vcto && (vcto instanceof Date || !isNaN(new Date(vcto).getTime()))) {
+              var dataV = new Date(vcto);
+              dataV.setHours(0,0,0,0);
+              if (dataV <= hojeNormal) {
+                totalRisco++;
+                if (!riscoPorDepto[deptoRow]) riscoPorDepto[deptoRow] = 0;
+                riscoPorDepto[deptoRow]++;
+              }
+           }
+         }
+       }
     }
 
     // 3. Fila de Prioridades Exclusiva do WebApp (Usa o email final + nível autenticado)
@@ -123,6 +142,7 @@ function getDadosPortalWeb(token) {
         pendentes: (dashMes && !dashMes.error) ? dashMes.pendentes : 0,
         entregues: (dashMes && !dashMes.error) ? dashMes.entregues : 0,
         risco: totalRisco,
+        riscoPorDepto: riscoPorDepto,
         departamentos: (dashMes && !dashMes.error) ? dashMes.departamentos : {},
         usuarios: (dashMes && !dashMes.error) ? dashMes.usuarios : {}
       },

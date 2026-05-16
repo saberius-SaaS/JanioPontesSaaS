@@ -5,7 +5,7 @@
 
 var CONFIG_SISTEMA = {
   ID_PLANILHA: "1gey_Q16UVbihSRSLFvD6a7JZtwFaYzLXtTwVKySEijw",
-  VERSAO: "v131.12",
+  VERSAO: "v131.18",
   // 🌐 URLs E CONEXÕES
   URL_WEBAPP: "https://script.google.com/macros/s/AKfycby828QsUFLVmtQ1WegcdkaNVMtW4s3xQvhRFcrK0hEiw62xwE-Cqq3SwHMEw5521Euelw/exec",
 
@@ -60,7 +60,7 @@ var CONFIG_SISTEMA = {
     REMETENTE: "sac@janiopontes.com.br"             // Alias de envio (Gmail → Contas e Importação)
   },
 
-  FERIADOS: ["01/01", "21/04", "01/05", "15/08", "07/09", "12/10", "02/11", "15/11", "20/11", "25/12"],
+  FERIADOS: ["01/01", "02/03", "21/04", "01/05", "04/06", "15/08", "07/09", "12/10", "02/11", "15/11", "20/11", "25/12"],
 
   // 📱 WHATSAPP — MÓDULO DORMANT (BSP: Maxbot)
   // Preencha os dados do Maxbot (Configuração > API Maxbot) antes de instalar o gatilho.
@@ -71,13 +71,12 @@ var CONFIG_SISTEMA = {
     TEMPLATE_ID: 52950,                                                    // ID numérico do template "DOCUMENTO PRONTO"
     TEMPLATE_NAME: "DOCUMENTO PRONTO",                                     // Nome do template (apenas referência)
     TEMPLATE_LANG: "pt_BR",                                                // Idioma do template
+    SECTOR_ID: 8454,                                                       // ID do setor de atendimento para roteamento
     DIAS_INTERVALO_RENOTIFICACAO: 2,                                       // Mínimo de dias entre notificações do mesmo protocolo
-    MAX_ENVIOS_POR_CICLO: 30,                                              // Limite de mensagens por execução (controle de custo)
+    MAX_ENVIOS_POR_CICLO: 100,                                             // Limite de mensagens por execução (controle de custo)
     COL_NOTIF_WPP: 13                                                      // Coluna M da DB_PROTOCOLOS (rastreio de envio)
   }
 };
-
-
 
 /**
  * Retorna a URL do WebApp configurada para o frontend usar no fetch.

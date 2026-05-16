@@ -216,6 +216,9 @@ function registrarProtocoloDB(clienteNome, protocolo, idTarefa, obrigacao, email
     var hoje = new Date();
     var responsavel = Session.getActiveUser().getEmail() || "SISTEMA";
     
+    var isJustificativa = String(linksDrive || "").indexOf("SEM_ENVIO:") === 0 || String(linksDrive || "").indexOf("SEM_COMUNICADO:") === 0;
+    var confRecto = isJustificativa ? hoje : "";
+
     wsProt.appendRow([
       hoje,                    // A: DATA
       clienteNome,             // B: CLIENTE
@@ -226,7 +229,7 @@ function registrarProtocoloDB(clienteNome, protocolo, idTarefa, obrigacao, email
       responsavel,             // G: RESPONSAVEL
       linksDrive || "-",       // H: LINK_ARQUIVO
       "ENVIADO",               // I: STATUS_ENVIO
-      "",                      // J: CONF_RECTO (Vazio inicialmente)
+      confRecto,               // J: CONF_RECTO
       vctoLegal || "",         // K: VCTO_LEGAL
       acaoTarefa || ""         // L: ACAO_TAREFA
     ]);

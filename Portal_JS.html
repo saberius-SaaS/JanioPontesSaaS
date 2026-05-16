@@ -305,14 +305,24 @@ function carregarDadosBase(isAutoSync) {
           document.getElementById('currentUserLevel').textContent = (res.userName || "Usuário") + " - " + res.userLevel;
           setAvatarInitials(userEmailStr);
           
-          // 1. Injetar numéricos de Dashboard
-          const dPendentes = document.getElementById('dash-pendentes');
-          const dEntregues = document.getElementById('dash-entregues');
-          const dRisco = document.getElementById('dash-risco');
+          // Exibir Seletor de Departamento para Admin e Injetar numéricos
+          const adminDeptoSelectorContainer = document.getElementById('adminDeptoSelectorContainer');
+          if (adminDeptoSelectorContainer && res.userLevel === "ADMIN") {
+             adminDeptoSelectorContainer.classList.remove('hidden');
+          }
           
-          if(dPendentes) animateCounter(dPendentes, res.dash.pendentes);
-          if(dEntregues) animateCounter(dEntregues, res.dash.entregues);
-          if(dRisco) animateCounter(dRisco, res.dash.risco);
+          const selAdmin = document.getElementById('adminDeptoSelector');
+          if (selAdmin && selAdmin.value !== "ALL" && res.userLevel === "ADMIN") {
+              filtrarDashboardAdmin(); // Aplica filtro existente
+          } else {
+              const dPendentes = document.getElementById('dash-pendentes');
+              const dEntregues = document.getElementById('dash-entregues');
+              const dRisco = document.getElementById('dash-risco');
+              
+              if(dPendentes) animateCounter(dPendentes, res.dash.pendentes);
+              if(dEntregues) animateCounter(dEntregues, res.dash.entregues);
+              if(dRisco) animateCounter(dRisco, res.dash.risco);
+          }
           
           // 1.1 Injetar Gráficos de Setores e Equipe
           renderizarBarrasPerformance('dash-deptos-box', res.dash.departamentos, 'indigo');
@@ -444,6 +454,36 @@ function renderizarBarrasPerformance(elementId, dataObj, colorBase) {
     box.innerHTML = html;
 }
 
+function filtrarDashboardAdmin() {
+   if (!window.userDataGlobal || !window.userDataGlobal.dash) return;
+   const depto = document.getElementById('adminDeptoSelector').value;
+   const dash = window.userDataGlobal.dash;
+   
+   let p = 0, e = 0, r = 0;
+   
+   if (depto === "ALL") {
+      p = dash.pendentes;
+      e = dash.entregues;
+      r = dash.risco;
+   } else {
+      if (dash.departamentos && dash.departamentos[depto]) {
+         p = dash.departamentos[depto].pendentes || 0;
+         e = dash.departamentos[depto].entregues || 0;
+      }
+      if (dash.riscoPorDepto && dash.riscoPorDepto[depto]) {
+         r = dash.riscoPorDepto[depto] || 0;
+      }
+   }
+   
+   const dPendentes = document.getElementById('dash-pendentes');
+   const dEntregues = document.getElementById('dash-entregues');
+   const dRisco = document.getElementById('dash-risco');
+   
+   if(dPendentes) animateCounter(dPendentes, p);
+   if(dEntregues) animateCounter(dEntregues, e);
+   if(dRisco) animateCounter(dRisco, r);
+}
+
 /**
  * Transforma Objeto JSON (Tarefas) em Cards Visuais e injeta no DOM
  */
@@ -563,13 +603,18 @@ function renderizarRevisoes(tarefas) {
 }
 
 function filtrarTarefasWeb() {
-   const q = document.getElementById('inputBuscaTarefas').value.toLowerCase().trim();
-   if(!q) { renderizarTarefas(tarefasGlobaisBase); return; }
+   const queryStr = document.getElementById('inputBuscaTarefas').value.toLowerCase().trim();
+   if(!queryStr) { renderizarTarefas(tarefasGlobaisBase); return; }
    
+   const terms = queryStr.split(/\s+/);
    const fList = tarefasGlobaisBase.filter(t => 
-      t.cliente.toLowerCase().includes(q) || 
-      t.obrigacao.toLowerCase().includes(q) ||
-      String(t.id).toLowerCase().includes(q)
+      terms.every(term =>
+         t.cliente.toLowerCase().includes(term) || 
+         t.obrigacao.toLowerCase().includes(term) ||
+         String(t.id).toLowerCase().includes(term) ||
+         (t.mesAno && t.mesAno.toLowerCase().includes(term)) ||
+         (t.depto && t.depto.toLowerCase().includes(term))
+      )
    );
    renderizarTarefas(fList);
 }
@@ -1343,13 +1388,16 @@ function reenviarPorProtocolo(protocolo, btn) {
 
 function filtrarHistoricoWeb() {
    if (!carregouHistorico) return;
-   const q = document.getElementById('inputBuscaHistorico').value.toLowerCase().trim();
-   if(!q) { renderizarHistorico(historicoGlobalBase); return; }
+   const queryStr = document.getElementById('inputBuscaHistorico').value.toLowerCase().trim();
+   if(!queryStr) { renderizarHistorico(historicoGlobalBase); return; }
    
+   const terms = queryStr.split(/\s+/);
    const fList = historicoGlobalBase.filter(i => 
-      i.cliente.toLowerCase().includes(q) || 
-      i.obrigacao.toLowerCase().includes(q) ||
-      i.mesAno.toLowerCase().includes(q)
+      terms.every(term =>
+         i.cliente.toLowerCase().includes(term) || 
+         i.obrigacao.toLowerCase().includes(term) ||
+         i.mesAno.toLowerCase().includes(term)
+      )
    );
    renderizarHistorico(fList);
 }
@@ -1439,9 +1487,11 @@ function renderizarProtocolosInfo(pendentes, todos) {
    const containerP = document.getElementById('containerProtocolosPendentes');
    const containerT = document.getElementById('containerProtocolosTodos');
    
-   // Ordenar ambas as listas: mais antigos primeiro
+   // Ordenar pendentes: mais antigos primeiro (Para resolver logo)
    if (pendentes && pendentes.length > 1) pendentes.sort(_compararDataProtocolo);
-   if (todos && todos.length > 1) todos.sort(_compararDataProtocolo);
+   
+   // Ordenar histórico: mais recentes primeiro (Visão cronológica natural)
+   if (todos && todos.length > 1) todos.sort((a, b) => _compararDataProtocolo(b, a));
 
    // 1. Renderizar Não Lidos
    if(!pendentes || pendentes.length === 0) {
@@ -1542,7 +1592,10 @@ function gerarCardProtocolo(p, isPendente) {
             <span class="${isAnterior ? 'bg-red-100 text-red-600 border-red-200' : 'bg-slate-50 text-slate-500 border-slate-200'} px-2 py-0.5 rounded text-[8px] font-mono tracking-widest border">#${p.protocolo}</span>
          </div>
          <div class="text-[10px] font-bold ${isAnterior ? 'text-red-800' : 'text-jp-navy'} uppercase tracking-wider mb-0.5 truncate" title="${p.cliente}">${p.cliente}</div>
-         <div class="text-xs ${isAnterior ? 'text-red-600' : 'text-slate-600'} font-medium mb-3 line-clamp-1" title="${p.obrigacao}">${p.obrigacao}</div>
+         <div class="text-xs ${isAnterior ? 'text-red-600' : 'text-slate-600'} font-medium mb-3 line-clamp-1 flex items-center gap-2" title="${p.obrigacao}">
+            ${p.obrigacao}
+            ${p.depto ? `<span class="text-[8px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 uppercase">${p.depto}</span>` : ''}
+         </div>
          <div class="mt-auto pt-3 border-t ${isAnterior ? 'border-red-100' : 'border-slate-50'} flex items-center justify-between">
             <span class="text-[8px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded uppercase">Vcto: ${p.vencimentoLegal}</span>
             <div class="flex items-center gap-2">
@@ -1558,26 +1611,24 @@ function gerarCardProtocolo(p, isPendente) {
 
 function filtrarProtocolosHistorico() {
    if (!carregouProtocolos) return;
-   const q = document.getElementById('inputBuscaProtocolos').value.toLowerCase().trim();
+   const queryStr = document.getElementById('inputBuscaProtocolos').value.toLowerCase().trim();
    
-   if (!q) { 
+   if (!queryStr) { 
       renderizarProtocolosInfo(protocolosPendentesBase, protocolosGlobalBase); 
       return; 
    }
 
-   const fPendentes = protocolosPendentesBase.filter(p =>
-      p.cliente.toLowerCase().includes(q) ||
-      p.obrigacao.toLowerCase().includes(q) ||
-      p.protocolo.toLowerCase().includes(q) ||
-      p.data.toLowerCase().includes(q)
+   const terms = queryStr.split(/\s+/);
+   const checkMatch = p => terms.every(term =>
+      p.cliente.toLowerCase().includes(term) ||
+      p.obrigacao.toLowerCase().includes(term) ||
+      p.protocolo.toLowerCase().includes(term) ||
+      p.data.toLowerCase().includes(term) ||
+      (p.depto && p.depto.toLowerCase().includes(term))
    );
 
-   const fTodos = protocolosGlobalBase.filter(p =>
-      p.cliente.toLowerCase().includes(q) ||
-      p.obrigacao.toLowerCase().includes(q) ||
-      p.protocolo.toLowerCase().includes(q) ||
-      p.data.toLowerCase().includes(q)
-   );
+   const fPendentes = protocolosPendentesBase.filter(checkMatch);
+   const fTodos = protocolosGlobalBase.filter(checkMatch);
 
    renderizarProtocolosInfo(fPendentes, fTodos);
 }
@@ -2021,14 +2072,17 @@ function renderizarLogs(lista) {
 
 function filtrarLogsWeb() {
    if (!carregouLogs) return;
-   const q = document.getElementById('inputBuscaLogs').value.toLowerCase().trim();
-   if (!q) { renderizarLogs(logsGlobalBase); return; }
+   const queryStr = document.getElementById('inputBuscaLogs').value.toLowerCase().trim();
+   if (!queryStr) { renderizarLogs(logsGlobalBase); return; }
 
+   const terms = queryStr.split(/\s+/);
    const fList = logsGlobalBase.filter(i =>
-      i.usuario.toLowerCase().includes(q) ||
-      i.acao.toLowerCase().includes(q) ||
-      i.detalhe.toLowerCase().includes(q) ||
-      i.data.toLowerCase().includes(q)
+      terms.every(term =>
+         i.usuario.toLowerCase().includes(term) ||
+         i.acao.toLowerCase().includes(term) ||
+         i.detalhe.toLowerCase().includes(term) ||
+         i.data.toLowerCase().includes(term)
+      )
    );
    renderizarLogs(fList);
 }
@@ -2137,14 +2191,17 @@ function renderizarSolicitacoes(lista) {
 
 function filtrarSolicitacoesWeb() {
    if (!carregouSolicitacoes) return;
-   const q = document.getElementById('inputBuscaSolicitacoes').value.toLowerCase().trim();
-   if (!q) { renderizarSolicitacoes(solicitacoesGlobalBase); return; }
+   const queryStr = document.getElementById('inputBuscaSolicitacoes').value.toLowerCase().trim();
+   if (!queryStr) { renderizarSolicitacoes(solicitacoesGlobalBase); return; }
 
+   const terms = queryStr.split(/\s+/);
    const fList = solicitacoesGlobalBase.filter(i =>
-      i.cliente.toLowerCase().includes(q) ||
-      i.pedido.toLowerCase().includes(q) ||
-      i.id.toLowerCase().includes(q) ||
-      i.responsavel.toLowerCase().includes(q)
+      terms.every(term =>
+         i.cliente.toLowerCase().includes(term) ||
+         i.pedido.toLowerCase().includes(term) ||
+         i.id.toLowerCase().includes(term) ||
+         i.responsavel.toLowerCase().includes(term)
+      )
    );
    renderizarSolicitacoes(fList);
 }

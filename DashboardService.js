@@ -114,10 +114,19 @@ function getListaProtocolos(apenasPendentes) {
   try {
     var ss = getSs();
     var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+    var wsRegras = ss.getSheetByName(CONFIG_SISTEMA.ABA_REGRAS);
     if (!wsProt) return [];
     
     var lastRowP = wsProt.getLastRow();
     if (lastRowP <= 1) return [];
+
+    var mapaDeptos = {};
+    if (wsRegras) {
+       var dataR = wsRegras.getDataRange().getValues();
+       for (var r = 1; r < dataR.length; r++) {
+          mapaDeptos[norm(String(dataR[r][1]))] = String(dataR[r][3]).toUpperCase().trim();
+       }
+    }
     
     // Limites de performance
     var limit = apenasPendentes ? 200 : 500;
@@ -160,15 +169,19 @@ function getListaProtocolos(apenasPendentes) {
       var linkBruto = String(dataP[j][7]);
       var primeiroLink = linkBruto.split("|")[0].trim();
       
+      var obrigacaoStr = String(dataP[j][4]);
+      var deptoStr = mapaDeptos[norm(obrigacaoStr)] || "";
+
       lista.push({
         data: dataEnvioFmt,
         cliente: String(dataP[j][1]),
         protocolo: String(dataP[j][2]),
-        obrigacao: String(dataP[j][4]),
+        obrigacao: obrigacaoStr,
         vencimentoLegal: vctoLegalFmt,
         link: primeiroLink,
         lido: isLido,
-        recebidoEm: confRecto
+        recebidoEm: confRecto,
+        depto: deptoStr
       });
     }
     

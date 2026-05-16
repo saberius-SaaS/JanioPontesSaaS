@@ -69,14 +69,22 @@ function _getProtocolosPendentesWpp() {
   var mapaTelefone = {};
   for (var c = 1; c < dataCli.length; c++) {
     var nomeNorm = norm(dataCli[c][1]);
-    var telefone = String(dataCli[c][5] || "").replace(/\D/g, ""); // Coluna F: TELEFONE
-    if (nomeNorm && telefone) mapaTelefone[nomeNorm] = telefone;
+    var telefonesRaw = String(dataCli[c][5] || ""); // Coluna F: TELEFONE
+    if (nomeNorm && telefonesRaw) {
+      var partes = telefonesRaw.split(/[,;\/]/);
+      var telsLimpados = [];
+      for (var p = 0; p < partes.length; p++) {
+        var limpo = partes[p].replace(/\D/g, "");
+        if (limpo.length >= 10) telsLimpados.push(limpo);
+      }
+      if (telsLimpados.length > 0) mapaTelefone[nomeNorm] = telsLimpados;
+    }
   }
 
   var cfg = CONFIG_SISTEMA.WHATSAPP;
   var hoje = new Date();
   var intervaloMs = (cfg.DIAS_INTERVALO_RENOTIFICACAO || 3) * 24 * 60 * 60 * 1000;
-  var pendentes = [];
+  var pendentesMap = {};
 
   for (var i = 0; i < dataProt.length; i++) {
     var statusEnvio = String(dataProt[i][8]).toUpperCase().trim();   // Coluna I
@@ -106,8 +114,8 @@ function _getProtocolosPendentesWpp() {
 
     // ── Filtro 5: Cliente possui telefone cadastrado ──
     var clienteNome = String(dataProt[i][1]);
-    var telefoneCliente = mapaTelefone[norm(clienteNome)];
-    if (!telefoneCliente || telefoneCliente.length < 12) continue;
+    var telefonesCliente = mapaTelefone[norm(clienteNome)];
+    if (!telefonesCliente || telefonesCliente.length === 0) continue;
 
     // ── Dados para o template ──
     var vctoLegal = dataProt[i][10];
@@ -116,14 +124,57 @@ function _getProtocolosPendentesWpp() {
       vctoStr = (vctoLegal instanceof Date) ? Utilities.formatDate(vctoLegal, "GMT-3", "dd/MM/yyyy") : String(vctoLegal);
     }
 
-    pendentes.push({
-      rowSheet: startRow + i,                         // Linha real na planilha (1-based)
-      obrigacao: String(dataProt[i][4]),               // {{1}} [INFO1] Nome do Documento
-      vencimento: vctoStr,                             // {{2}} [INFO2] Data de Vencimento Legal
-      cliente: clienteNome,                           // {{3}} [INFO3] Nome do Cliente
-      protocolo: String(dataProt[i][2]),                // {{4}} [INFO4] Número do Protocolo
-      telefone: telefoneCliente                        // Número WhatsApp destino
-    });
+    var protObj = {
+      rowSheet: startRow + i,
+      obrigacao: String(dataProt[i][4]),
+      vencimento: vctoStr,
+      protocolo: String(dataProt[i][2])
+    };
+
+    var chaveAgrupamento = norm(clienteNome);
+    if (!pendentesMap[chaveAgrupamento]) {
+      pendentesMap[chaveAgrupamento] = {
+        cliente: clienteNome,
+        telefones: telefonesCliente,
+        protocolos: []
+      };
+    }
+    pendentesMap[chaveAgrupamento].protocolos.push(protObj);
+  }
+
+  // ── Consolidar lista agrupada ──
+  var pendentes = [];
+  for (var k in pendentesMap) {
+    var ag = pendentesMap[k];
+    
+    var obrigacaoTexto = "";
+    var vencimentoTexto = "";
+    var protocoloTexto = "";
+    
+    if (ag.protocolos.length === 1) {
+      obrigacaoTexto = ag.protocolos[0].obrigacao;
+      vencimentoTexto = ag.protocolos[0].vencimento;
+      protocoloTexto = ag.protocolos[0].protocolo;
+    } else {
+      var limitText = ag.protocolos[0].obrigacao;
+      if (limitText.length > 35) limitText = limitText.substring(0, 35) + "...";
+      obrigacaoTexto = limitText + " (+ " + (ag.protocolos.length - 1) + " docs)";
+      vencimentoTexto = "Diversos";
+      protocoloTexto = "Múltiplos (" + ag.protocolos.length + ")";
+    }
+    
+    // Se o cliente tem vários números, insere um envio agrupado para cada um
+    for (var telIdx = 0; telIdx < ag.telefones.length; telIdx++) {
+      pendentes.push({
+        telefone: ag.telefones[telIdx],
+        cliente: ag.cliente,
+        obrigacao: obrigacaoTexto,
+        vencimento: vencimentoTexto,
+        protocolo: protocoloTexto,
+        linhasPlanilha: ag.protocolos.map(function(p) { return p.rowSheet; }), // Para atualizar todos
+        listaProts: ag.protocolos.map(function(p) { return p.protocolo; }).join(", ") // Para o log
+      });
+    }
   }
 
   return pendentes;
@@ -147,82 +198,69 @@ function _getProtocolosPendentesWpp() {
  * @returns {{ success: boolean, messageId: string, error: string }}
  */
 // Cache de contatos do Maxbot (preenchido uma vez por ciclo)
-var _cacheContatosMaxbot = null;
+// Removido cache massivo. Busca individual via API para máxima performance e segurança.
 
 /**
- * Baixa a lista de contatos do Maxbot e retorna um mapa whatsapp → contact_id.
- * Indexa por whatsapp, mobile_phone e phone para máxima cobertura.
+ * Busca o contact_id do Maxbot a partir de um telefone diretamente na API.
+ * Tenta buscar o número exato fornecido. Se não encontrar e o número tiver DDI 55,
+ * tenta buscar sem o DDI para garantir máxima cobertura de contatos antigos.
+ * @param {string} telefone - Número do WhatsApp
+ * @returns {string|null} contact_id ou null se não encontrado
  */
-function _getMapaContatosMaxbot() {
-  if (_cacheContatosMaxbot) return _cacheContatosMaxbot;
-
+function _buscarContactIdNaApi(telefone) {
   var cfg = CONFIG_SISTEMA.WHATSAPP;
   var url = "https://app.maxbot.com.br/api/v1.php";
-  var mapa = {};
 
-  try {
-    var resp = UrlFetchApp.fetch(url, {
-      method: "post",
-      contentType: "application/json",
-      payload: JSON.stringify({
-        token: cfg.API_TOKEN,
-        cmd: "get_contact",
-        data_ini: "2020-01-01",
-        data_fim: Utilities.formatDate(new Date(), "GMT-3", "yyyy-MM-dd")
-      }),
-      muteHttpExceptions: true
-    });
-    var data = JSON.parse(resp.getContentText());
+  var telNum = String(telefone).replace(/\D/g, "");
+  if (!telNum) return null;
 
-    if (data.status === 1 && data.data && data.data.length > 0) {
-      for (var i = 0; i < data.data.length; i++) {
-        var c = data.data[i];
-        var cid = c.id;
-        var nums = [
-          String(c.whatsapp || ""),
-          String(c.mobile_phone || ""),
-          String(c.phone || "")
-        ];
-        for (var n = 0; n < nums.length; n++) {
-          var wpp = nums[n].replace(/\D/g, "");
-          if (wpp && cid) {
-            mapa[wpp] = cid;
-          }
-        }
+  // Função interna para disparar a consulta
+  function consultar(num) {
+    try {
+      var resp = UrlFetchApp.fetch(url, {
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify({
+          token: cfg.API_TOKEN,
+          cmd: "get_contact",
+          whatsapp: num
+        }),
+        muteHttpExceptions: true
+      });
+      var data = JSON.parse(resp.getContentText());
+      if (data.status === 1 && data.data && data.data.length > 0) {
+        return data.data[0].id;
       }
+    } catch (e) {
+      console.log("Erro na consulta get_contact: " + e.message);
     }
-  } catch (e) {
-    console.log("Erro ao buscar contatos Maxbot: " + e.message);
+    return null;
   }
 
-  _cacheContatosMaxbot = mapa;
-  return mapa;
-}
+  // Tentativa 1: Formato exato enviado
+  var contactId = consultar(telNum);
+  if (contactId) return contactId;
 
-/**
- * Busca o contact_id do Maxbot a partir de um telefone.
- * Tenta formato exato, com/sem código 55, e busca parcial pelos últimos 8 dígitos.
- * A busca parcial resolve diferenças do 9° dígito entre formatos antigo/novo.
- */
-function _buscarContactId(telefone, mapaContatos) {
-  var tel = String(telefone).replace(/\D/g, "");
+  // Tentativa 2: Se tem 55, tenta sem o 55 (contatos salvos sem DDI no Maxbot)
+  if (telNum.indexOf("55") === 0) {
+    var semDdi = telNum.substring(2);
+    contactId = consultar(semDdi);
+    if (contactId) return contactId;
+  }
 
-  // Tentativa 1: formato exato
-  if (mapaContatos[tel]) return mapaContatos[tel];
+  // Tentativa 3 e 4: Cobertura para números salvos sem o 9º dígito
+  // Se o número tem 13 dígitos e o 5º caractere é '9' (ex: 5534'9'99998888)
+  if (telNum.length === 13 && telNum.charAt(4) === '9') {
+    // 3. Sem o 9, mas com DDI (ex: 553499998888)
+    var semNonoComDdi = telNum.substring(0, 4) + telNum.substring(5);
+    contactId = consultar(semNonoComDdi);
+    if (contactId) return contactId;
 
-  // Tentativa 2: sem código de país (55)
-  var semPais = tel.replace(/^55/, "");
-  if (mapaContatos[semPais]) return mapaContatos[semPais];
-
-  // Tentativa 3: com código de país
-  if (mapaContatos["55" + tel]) return mapaContatos["55" + tel];
-
-  // Tentativa 4: busca parcial (últimos 8 dígitos)
-  var parcial = tel.slice(-8);
-  var keys = Object.keys(mapaContatos);
-  for (var k = 0; k < keys.length; k++) {
-    if (keys[k].slice(-8) === parcial) {
-      return mapaContatos[keys[k]];
+    // 4. Sem o 9 e sem o DDI (ex: 3499998888)
+    if (telNum.indexOf("55") === 0) {
+      var semNonoSemDdi = telNum.substring(2, 4) + telNum.substring(5);
+      contactId = consultar(semNonoSemDdi);
+      if (contactId) return contactId;
     }
   }
 
@@ -232,13 +270,15 @@ function _buscarContactId(telefone, mapaContatos) {
 function _enviarMensagemWhatsApp(telefone, params) {
   var cfg = CONFIG_SISTEMA.WHATSAPP;
   var url = "https://app.maxbot.com.br/api/v1.php";
+  var _debugInfo = { telefoneInput: telefone, contactId: null, metodo: "" };
 
   // ── PASSO 1: Buscar contact_id ──
-  var mapaContatos = _getMapaContatosMaxbot();
-  var contactId = _buscarContactId(telefone, mapaContatos);
+  var contactId = _buscarContactIdNaApi(telefone);
 
-  // Se não encontrou no mapa, tenta criar o contato
-  if (!contactId) {
+  if (contactId) {
+    _debugInfo.metodo = "api_existente";
+  } else {
+    // Se não encontrou, cria o contato
     try {
       var respContato = UrlFetchApp.fetch(url, {
         method: "post",
@@ -253,14 +293,25 @@ function _enviarMensagemWhatsApp(telefone, params) {
         muteHttpExceptions: true
       });
       var bodyContato = JSON.parse(respContato.getContentText());
-      contactId = bodyContato.contact_id || bodyContato.id || null;
+
+      // Validação mais estrita do retorno de criação
+      if (bodyContato.status === 1) {
+        contactId = bodyContato.contact_id || bodyContato.id || null;
+        _debugInfo.metodo = "criado_novo";
+        console.log("WPP put_contact response: " + JSON.stringify(bodyContato));
+      } else {
+        throw new Error(bodyContato.msg || "Erro na API put_contact");
+      }
     } catch (e) {
-      // Falha silenciosa — será tratada abaixo
+      return { success: false, messageId: "", error: "Falha ao criar contato (" + e.message + ")", _debug: _debugInfo };
     }
   }
 
+  _debugInfo.contactId = contactId;
+  console.log("WPP _debugInfo: " + JSON.stringify(_debugInfo));
+
   if (!contactId) {
-    return { success: false, messageId: "", error: "Contato não encontrado no Maxbot para " + telefone };
+    return { success: false, messageId: "", error: "Contato não pôde ser criado para " + telefone, _debug: _debugInfo };
   }
 
   // ── PASSO 2: Enviar template via open_followup ──
@@ -270,10 +321,10 @@ function _enviarMensagemWhatsApp(telefone, params) {
     channel_token: cfg.CHANNEL_TOKEN,
     contact_id: contactId,
     template_id: cfg.TEMPLATE_ID,
-    sector_id: 8454,  // Recepção
+    sector_id: cfg.SECTOR_ID || 8454,  // Setor lido das configurações
     attendant_id: 0,
     scheduled: 0,
-    date_time: (function() { var d = new Date(); d.setMinutes(d.getMinutes() < 30 ? 0 : 30); d.setSeconds(0); return Utilities.formatDate(d, "GMT-3", "yyyy-MM-dd HH:mm:ss"); })(),
+    date_time: (function () { var d = new Date(); d.setMinutes(d.getMinutes() < 30 ? 0 : 30); d.setSeconds(0); return Utilities.formatDate(d, "GMT-3", "yyyy-MM-dd HH:mm:ss"); })(),
     body_values: [
       params.obrigacao,
       params.vencimento,
@@ -295,13 +346,13 @@ function _enviarMensagemWhatsApp(telefone, params) {
 
     if (code === 200 && (body.status === 1 || body.status === "success")) {
       var msgId = body.msg_id || body.id || body.followup_id || "OK";
-      return { success: true, messageId: String(msgId), error: "" };
+      return { success: true, messageId: String(msgId), error: "", _debug: _debugInfo };
     } else {
       var errMsg = body.msg || body.message || body.error || ("HTTP " + code);
-      return { success: false, messageId: "", error: String(errMsg) };
+      return { success: false, messageId: "", error: String(errMsg), _debug: _debugInfo };
     }
   } catch (e) {
-    return { success: false, messageId: "", error: e.message };
+    return { success: false, messageId: "", error: e.message, _debug: _debugInfo };
   }
 }
 
@@ -320,6 +371,21 @@ function _enviarMensagemWhatsApp(telefone, params) {
  * @returns {number} Total de mensagens enviadas com sucesso
  */
 function executarNotificacaoWhatsApp() {
+  // ── Validação de dias úteis e feriados ──
+  var hojeObj = new Date();
+  var diaSemana = hojeObj.getDay(); // 0 = Domingo, 6 = Sábado
+  if (diaSemana === 0 || diaSemana === 6) {
+    registrarLogSistema("WPP_SKIP", "Envio suspenso (Fim de semana).");
+    return 0;
+  }
+
+  var hojeFmt = Utilities.formatDate(hojeObj, "GMT-3", "dd/MM");
+  var feriados = CONFIG_SISTEMA.FERIADOS || [];
+  if (feriados.indexOf(hojeFmt) > -1) {
+    registrarLogSistema("WPP_SKIP", "Envio suspenso (Feriado: " + hojeFmt + ").");
+    return 0;
+  }
+
   // ── Validação de pré-requisitos ──
   var check = _validarPreRequisitosWpp();
   if (!check.ok) {
@@ -357,13 +423,15 @@ function executarNotificacaoWhatsApp() {
     });
 
     if (resultado.success) {
-      // Grava a data de notificação na Coluna M para controle anti-spam
-      wsProt.getRange(p.rowSheet, colNotif).setValue(agora);
+      // Grava a data de notificação na Coluna M para TODOS os protocolos desse envio agrupado
+      for (var r = 0; r < p.linhasPlanilha.length; r++) {
+        wsProt.getRange(p.linhasPlanilha[r], colNotif).setValue(agora);
+      }
       enviados++;
-      registrarLogSistema("WPP_SENT", "Prot: " + p.protocolo + " → " + p.telefone + " (MsgID: " + resultado.messageId + ")");
+      registrarLogSistema("WPP_SENT", "Prots: [" + p.listaProts + "] → " + p.telefone + " (MsgID: " + resultado.messageId + ")");
     } else {
       falhas++;
-      registrarLogSistema("WPP_FAIL", "Prot: " + p.protocolo + " → " + p.telefone + " | Erro: " + resultado.error);
+      registrarLogSistema("WPP_FAIL", "Prots: [" + p.listaProts + "] → " + p.telefone + " | Erro: " + resultado.error);
     }
 
     // Respiro entre envios para não estourar rate limit da API
@@ -399,6 +467,10 @@ function testarWhatsAppManual() {
   // ── ALTERE ESTE NÚMERO PARA O SEU NÚMERO DE TESTE ──
   var NUMERO_TESTE = "5534999721001";
 
+  // ── Debug: mostrar qual contact_id será resolvido ──
+  var contactIdResolvido = _buscarContactIdNaApi(NUMERO_TESTE);
+  console.log("WPP TESTE — Número: " + NUMERO_TESTE + " → contact_id resolvido: " + contactIdResolvido);
+
   var resultado = _enviarMensagemWhatsApp(NUMERO_TESTE, {
     obrigacao: "DCTF - Declaração de Débitos e Créditos",
     vencimento: "20/06/2026",
@@ -406,12 +478,14 @@ function testarWhatsAppManual() {
     protocolo: "PRT-TESTE-001"
   });
 
+  var debugStr = resultado._debug ? "\ncontact_id: " + resultado._debug.contactId + " (" + resultado._debug.metodo + ")" : "";
+
   if (resultado.success) {
-    SpreadsheetApp.getUi().alert("✅ Mensagem de teste enviada com sucesso!\n\nMessage ID: " + resultado.messageId + "\nNúmero: " + NUMERO_TESTE);
-    registrarLogSistema("WPP_TEST_OK", "Teste manual enviado para " + NUMERO_TESTE);
+    SpreadsheetApp.getUi().alert("✅ Mensagem de teste enviada com sucesso!\n\nMessage ID: " + resultado.messageId + "\nNúmero: " + NUMERO_TESTE + debugStr);
+    registrarLogSistema("WPP_TEST_OK", "Teste manual enviado para " + NUMERO_TESTE + " | contact_id: " + (resultado._debug ? resultado._debug.contactId : "?"));
   } else {
-    SpreadsheetApp.getUi().alert("❌ Falha no envio de teste.\n\nErro: " + resultado.error + "\n\nVerifique:\n1. API_TOKEN do Maxbot está correto?\n2. Template '" + cfg.TEMPLATE_NAME + "' está aprovado no Maxbot?");
-    registrarLogSistema("WPP_TEST_FAIL", "Erro: " + resultado.error);
+    SpreadsheetApp.getUi().alert("❌ Falha no envio de teste.\n\nErro: " + resultado.error + debugStr + "\n\nVerifique:\n1. API_TOKEN do Maxbot está correto?\n2. Template '" + cfg.TEMPLATE_NAME + "' está aprovado no Maxbot?\n3. O contato com número " + NUMERO_TESTE + " existe no Maxbot?");
+    registrarLogSistema("WPP_TEST_FAIL", "Erro: " + resultado.error + " | contact_id: " + (resultado._debug ? resultado._debug.contactId : "?"));
   }
 }
 
@@ -598,7 +672,7 @@ function diagnosticoMaxbot() {
   console.log(msg);
   try {
     SpreadsheetApp.getUi().alert(msg);
-  } catch (e) {}
+  } catch (e) { }
 }
 
 /**
