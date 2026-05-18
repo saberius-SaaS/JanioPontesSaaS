@@ -5,7 +5,7 @@
 
 var CONFIG_SISTEMA = {
   ID_PLANILHA: "1gey_Q16UVbihSRSLFvD6a7JZtwFaYzLXtTwVKySEijw",
-  VERSAO: "v131.18",
+  VERSAO: "v131.19",
   // 🌐 URLs E CONEXÕES
   URL_WEBAPP: "https://script.google.com/macros/s/AKfycby828QsUFLVmtQ1WegcdkaNVMtW4s3xQvhRFcrK0hEiw62xwE-Cqq3SwHMEw5521Euelw/exec",
 

@@ -314,23 +314,44 @@ function _enviarMensagemWhatsApp(telefone, params) {
     return { success: false, messageId: "", error: "Contato não pôde ser criado para " + telefone, _debug: _debugInfo };
   }
 
-  // ── PASSO 2: Enviar template via open_followup ──
+  // ── PASSO 2: Preencher tag_info no contato (variáveis do template) ──
+  // A API Maxbot injeta variáveis [INFO1]-[INFO6] a partir dos campos tag_info
+  // do contato. Elas devem ser populadas via set_contact ANTES do open_followup.
+  try {
+    var respSetContact = UrlFetchApp.fetch(url, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify({
+        token: cfg.API_TOKEN,
+        cmd: "set_contact",
+        for_contact_id: String(contactId),
+        tag_info1: String(params.obrigacao  || ""),
+        tag_info2: String(params.vencimento || ""),
+        tag_info3: String(params.cliente    || ""),
+        tag_info4: String(params.protocolo  || "")
+      }),
+      muteHttpExceptions: true
+    });
+    var bodySet = JSON.parse(respSetContact.getContentText());
+    if (bodySet.status !== 1) {
+      return { success: false, messageId: "", error: "set_contact falhou: " + (bodySet.msg || "Erro desconhecido"), _debug: _debugInfo };
+    }
+    console.log("WPP set_contact OK para contact_id: " + contactId);
+  } catch (e) {
+    return { success: false, messageId: "", error: "Exceção em set_contact: " + e.message, _debug: _debugInfo };
+  }
+
+  // ── PASSO 3: Enviar template via open_followup ──
   var payload = {
     token: cfg.API_TOKEN,
     cmd: "open_followup",
     channel_token: cfg.CHANNEL_TOKEN,
     contact_id: contactId,
     template_id: cfg.TEMPLATE_ID,
-    sector_id: cfg.SECTOR_ID || 8454,  // Setor lido das configurações
+    sector_id: cfg.SECTOR_ID || 8454,
     attendant_id: 0,
     scheduled: 0,
-    date_time: (function () { var d = new Date(); d.setMinutes(d.getMinutes() < 30 ? 0 : 30); d.setSeconds(0); return Utilities.formatDate(d, "GMT-3", "yyyy-MM-dd HH:mm:ss"); })(),
-    body_values: [
-      params.obrigacao,
-      params.vencimento,
-      params.cliente,
-      params.protocolo
-    ]
+    date_time: (function () { var d = new Date(); d.setMinutes(d.getMinutes() < 30 ? 0 : 30); d.setSeconds(0); return Utilities.formatDate(d, "GMT-3", "yyyy-MM-dd HH:mm:ss"); })()
   };
 
   try {
@@ -345,7 +366,7 @@ function _enviarMensagemWhatsApp(telefone, params) {
     var body = JSON.parse(response.getContentText());
 
     if (code === 200 && (body.status === 1 || body.status === "success")) {
-      var msgId = body.msg_id || body.id || body.followup_id || "OK";
+      var msgId = body.prot_id || body.protocol || body.msg_id || body.id || "OK";
       return { success: true, messageId: String(msgId), error: "", _debug: _debugInfo };
     } else {
       var errMsg = body.msg || body.message || body.error || ("HTTP " + code);
@@ -448,14 +469,13 @@ function executarNotificacaoWhatsApp() {
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
- * Envia UMA mensagem de teste para um número específico.
- * Use para validar a integração com a API antes de ativar o módulo.
+ * Envia UMA mensagem de teste usando DADOS REAIS da base.
+ * Busca o cliente associado ao número de teste em DB_CLIENTES
+ * e localiza um protocolo pendente real em DB_PROTOCOLOS.
  * 
  * COMO USAR:
- *   1. Preencha API_TOKEN e PHONE_NUMBER_ID no Config.js
- *   2. Altere o número abaixo para o seu número pessoal
- *   3. Execute esta função pelo editor (Executar → testarWhatsAppManual)
- *   4. Verifique se recebeu a mensagem no WhatsApp
+ *   1. Execute esta função pelo editor (Executar → testarWhatsAppManual)
+ *   2. Verifique se recebeu a mensagem no WhatsApp com as variáveis preenchidas
  */
 function testarWhatsAppManual() {
   var cfg = CONFIG_SISTEMA.WHATSAPP;
@@ -464,27 +484,115 @@ function testarWhatsAppManual() {
     return;
   }
 
-  // ── ALTERE ESTE NÚMERO PARA O SEU NÚMERO DE TESTE ──
   var NUMERO_TESTE = "5534999721001";
+  var ss = getSs();
 
-  // ── Debug: mostrar qual contact_id será resolvido ──
+  // ── PASSO 1: Localizar o cliente pelo telefone em DB_CLIENTES ──
+  var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
+  if (!wsCli) { SpreadsheetApp.getUi().alert("❌ Aba DB_CLIENTES não encontrada."); return; }
+
+  var dataCli = wsCli.getDataRange().getValues();
+  var nomeCliente = null;
+
+  for (var c = 1; c < dataCli.length; c++) {
+    var telefonesRaw = String(dataCli[c][5] || ""); // Coluna F = TELEFONE
+    if (telefonesRaw.indexOf(NUMERO_TESTE.replace(/^55/, "")) > -1 || telefonesRaw.indexOf(NUMERO_TESTE) > -1) {
+      nomeCliente = String(dataCli[c][1]); // Coluna B = CLIENTE
+      break;
+    }
+  }
+
+  if (!nomeCliente) {
+    SpreadsheetApp.getUi().alert("❌ Nenhum cliente encontrado com o telefone " + NUMERO_TESTE + " na aba DB_CLIENTES.");
+    return;
+  }
+
+  console.log("WPP TESTE — Cliente localizado: " + nomeCliente);
+
+  // ── PASSO 2: Buscar um protocolo pendente real para esse cliente ──
+  var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+  if (!wsProt) { SpreadsheetApp.getUi().alert("❌ Aba DB_PROTOCOLOS não encontrada."); return; }
+
+  var lastRow = wsProt.getLastRow();
+  var protocoloReal = null;
+
+  if (lastRow > 1) {
+    var numRows = Math.min(lastRow - 1, 300);
+    var startRow = lastRow - numRows + 1;
+    var dataProt = wsProt.getRange(startRow, 1, numRows, 13).getValues();
+
+    for (var i = dataProt.length - 1; i >= 0; i--) {
+      var clienteProt = String(dataProt[i][1]); // Coluna B = CLIENTE
+      if (norm(clienteProt) === norm(nomeCliente)) {
+        var statusEnvio = String(dataProt[i][8]).toUpperCase().trim();   // Coluna I
+        var confRecto = String(dataProt[i][9]).toUpperCase().trim();     // Coluna J
+        var acaoProt = String(dataProt[i][11] || "").toUpperCase().trim(); // Coluna L
+        var linkBruto = String(dataProt[i][7]).toUpperCase().trim();     // Coluna H
+
+        // Aplica as mesmas regras de "pendente" da rotina principal
+        if (acaoProt.indexOf("ENVIAR") === -1) continue;
+        if (linkBruto.indexOf("SEM_ENVIO:") === 0) continue;
+        
+        var isLido = !(statusEnvio === "ENVIADO" && (confRecto === "" || confRecto === "---" || confRecto === "AGUARDANDO"));
+        if (isLido) continue;
+
+        var vctoLegal = dataProt[i][10];
+        var vctoStr = "---";
+        if (vctoLegal) {
+          vctoStr = (vctoLegal instanceof Date) ? Utilities.formatDate(vctoLegal, "GMT-3", "dd/MM/yyyy") : String(vctoLegal);
+        }
+        protocoloReal = {
+          obrigacao:  String(dataProt[i][4]),   // Coluna E
+          vencimento: vctoStr,                  // Coluna K
+          cliente:    clienteProt,              // Coluna B
+          protocolo:  String(dataProt[i][2])    // Coluna C
+        };
+        break;
+      }
+    }
+  }
+
+  if (!protocoloReal) {
+    SpreadsheetApp.getUi().alert("⚠️ Cliente '" + nomeCliente + "' localizado, mas sem protocolo recente em DB_PROTOCOLOS.\n\nUsando dados de exemplo para o teste.");
+    protocoloReal = {
+      obrigacao:  "OBRIGACAO TESTE",
+      vencimento: Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy"),
+      cliente:    nomeCliente,
+      protocolo:  "PRT-TESTE-001"
+    };
+  }
+
+  // ── PASSO 3: Exibir dados que serão enviados e solicitar confirmação ──
+  var ui = SpreadsheetApp.getUi();
+  var confirmacao = ui.alert(
+    "📱 TESTE WHATSAPP — Dados Reais",
+    "Cliente: " + protocoloReal.cliente +
+    "\nObrigação: " + protocoloReal.obrigacao +
+    "\nVencimento: " + protocoloReal.vencimento +
+    "\nProtocolo: " + protocoloReal.protocolo +
+    "\nTelefone: " + NUMERO_TESTE +
+    "\n\nConfirma o envio do teste?",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirmacao !== ui.Button.YES) {
+    ui.alert("Teste cancelado pelo usuário.");
+    return;
+  }
+
+  // ── PASSO 4: Executar o envio ──
   var contactIdResolvido = _buscarContactIdNaApi(NUMERO_TESTE);
   console.log("WPP TESTE — Número: " + NUMERO_TESTE + " → contact_id resolvido: " + contactIdResolvido);
 
-  var resultado = _enviarMensagemWhatsApp(NUMERO_TESTE, {
-    obrigacao: "DCTF - Declaração de Débitos e Créditos",
-    vencimento: "20/06/2026",
-    cliente: "EMPRESA TESTE LTDA",
-    protocolo: "PRT-TESTE-001"
-  });
+  var resultado = _enviarMensagemWhatsApp(NUMERO_TESTE, protocoloReal);
 
   var debugStr = resultado._debug ? "\ncontact_id: " + resultado._debug.contactId + " (" + resultado._debug.metodo + ")" : "";
 
   if (resultado.success) {
-    SpreadsheetApp.getUi().alert("✅ Mensagem de teste enviada com sucesso!\n\nMessage ID: " + resultado.messageId + "\nNúmero: " + NUMERO_TESTE + debugStr);
-    registrarLogSistema("WPP_TEST_OK", "Teste manual enviado para " + NUMERO_TESTE + " | contact_id: " + (resultado._debug ? resultado._debug.contactId : "?"));
+    ui.alert("✅ Mensagem de teste enviada com sucesso!\n\nMessage ID: " + resultado.messageId + "\nCliente: " + protocoloReal.cliente + "\nNúmero: " + NUMERO_TESTE + debugStr);
+    registrarLogSistema("WPP_TEST_OK", "Teste real → " + protocoloReal.cliente + " | " + protocoloReal.obrigacao + " | Tel: " + NUMERO_TESTE + " | contact_id: " + (resultado._debug ? resultado._debug.contactId : "?"));
   } else {
-    SpreadsheetApp.getUi().alert("❌ Falha no envio de teste.\n\nErro: " + resultado.error + debugStr + "\n\nVerifique:\n1. API_TOKEN do Maxbot está correto?\n2. Template '" + cfg.TEMPLATE_NAME + "' está aprovado no Maxbot?\n3. O contato com número " + NUMERO_TESTE + " existe no Maxbot?");
+    ui.alert("❌ Falha no envio de teste.\n\nErro: " + resultado.error + debugStr + "\n\nVerifique:\n1. API_TOKEN do Maxbot está correto?\n2. Template '" + cfg.TEMPLATE_NAME + "' está aprovado no Maxbot?\n3. O contato com número " + NUMERO_TESTE + " existe no Maxbot?");
     registrarLogSistema("WPP_TEST_FAIL", "Erro: " + resultado.error + " | contact_id: " + (resultado._debug ? resultado._debug.contactId : "?"));
   }
 }
