@@ -128,8 +128,8 @@ function getListaProtocolos(apenasPendentes) {
        }
     }
     
-    // Limites de performance
-    var limit = apenasPendentes ? 200 : 500;
+    // Limites de performance: Expansão para 3000 em pendentes para evitar perder não-lidos
+    var limit = apenasPendentes ? 3000 : 500;
     var numRowsP = Math.min(lastRowP - 1, limit);
     var startRowP = lastRowP - numRowsP + 1;
     var dataP = wsProt.getRange(startRowP, 1, numRowsP, 12).getValues(); // A até L

@@ -139,12 +139,19 @@ document.addEventListener("DOMContentLoaded", function(event) {
           console.log("[Visibility] Retorno após " + minInativo + " min.");
 
           if (inatividade > GIS_TOKEN_MAX_AGE_MS) {
-             // Token certamente expirado (>45 min) — Recarrega a página
+             // Token expirado (>45 min) — Ao invés de reload (tela branca), tenta renovar suavemente
              const banner = document.createElement('div');
+             banner.id = 'reconnectBannerInatividade';
              banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1C3051,#2A4571);color:white;padding:16px 24px;text-align:center;font-family:Inter,sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;gap:12px;';
-             banner.innerHTML = '<i class="fa-solid fa-rotate fa-spin" style="font-size:16px;"></i> Sessão expirada por inatividade. Reconectando...';
+             banner.innerHTML = '<i class="fa-solid fa-rotate fa-spin" style="font-size:16px;"></i> Sessão pausada por inatividade. Reconectando dados...';
              document.body.prepend(banner);
-             setTimeout(() => window.location.reload(), 2500);
+             
+             verificarERenovarToken();
+             setTimeout(() => {
+                carregarDadosBase(true);
+                const b = document.getElementById('reconnectBannerInatividade');
+                if (b) b.remove();
+             }, 2500);
           } else if (inatividade > 300000) {
              // Inativo > 5 min — Renova token e resincroniza
              verificarERenovarToken();
@@ -165,22 +172,17 @@ function handleHeartbeatFailure() {
     console.warn("[Heartbeat] Falha #" + heartbeatFailures);
     
     if (heartbeatFailures >= 2) {
-        // Mostra aviso visual ao usuário antes de recarregar
+        // Mostra aviso visual ao usuário sem dar reload forçado (evita tela branca)
         const banner = document.createElement('div');
         banner.id = 'reconnectBanner';
         banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1C3051,#2A4571);color:white;padding:16px 24px;text-align:center;font-family:Inter,sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;gap:12px;';
-        banner.innerHTML = '<i class="fa-solid fa-rotate fa-spin" style="font-size:16px;"></i> Conexão perdida. Reconectando automaticamente...';
+        banner.innerHTML = '<i class="fa-solid fa-link-slash" style="font-size:16px;"></i> Conexão pausada. <button onclick="document.getElementById(\'reconnectBanner\').remove(); heartbeatFailures=0; verificarERenovarToken(); carregarDadosBase(true);" style="margin-left:10px; padding: 4px 12px; background: white; color: #1C3051; border-radius: 4px; font-weight: bold; cursor: pointer; border: none; font-size: 11px; text-transform: uppercase;">Reconectar Agora</button>';
         
         // Remove banner antigo se existir
         const old = document.getElementById('reconnectBanner');
         if (old) old.remove();
         
         document.body.prepend(banner);
-        
-        // Aguarda 3 segundos para o usuário ver o aviso, depois recarrega
-        setTimeout(() => {
-            window.location.reload();
-        }, 3000);
     }
 }
 
@@ -636,6 +638,7 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw, status, d
     const ehEnvio = acao.indexOf("ENVIAR") > -1;
     const ehAuditoria = acao.indexOf("AUDITAR") > -1;
     const ehComunicar = acao.indexOf("COMUNICAR") > -1;
+    const ehArquivar = acao.indexOf("ARQUIVAR") > -1;
     const isAdmin = window.userDataGlobal && (["ADMIN", "MASTER", "CONSULTOR"].indexOf(window.userDataGlobal.userLevel) > -1);
     
     let colorClass = "text-slate-600 border-slate-200 bg-slate-100";
@@ -701,6 +704,12 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw, status, d
     
     const txtCom = document.getElementById('textoComunicarWeb');
     if (txtCom) txtCom.value = '';
+    
+    // Anotação de registro (somente para ARQUIVAR)
+    const areaAnot = document.getElementById('areaAnotacaoArquivar');
+    if (areaAnot) areaAnot.style.display = (ehArquivar && !ehRevisao) ? 'block' : 'none';
+    const txtAnot = document.getElementById('textoAnotacaoArquivar');
+    if (txtAnot) txtAnot.value = '';
     
     // Reset modal state
     arquivosStagedWeb = [];
@@ -1101,6 +1110,7 @@ async function finalizarProcessoWeb() {
              feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-indigo-50 border-indigo-200 text-indigo-700 block";
              feedback.innerHTML = `<i class="fa-solid fa-cloud-arrow-up mr-2 text-indigo-500 text-lg align-middle"></i> ${forcarUpload ? 'Forçando Upload...' : 'Acessando nuvem (Motor REST)...'}`;
 
+             const anotacaoArquivar = document.getElementById('textoAnotacaoArquivar') ? document.getElementById('textoAnotacaoArquivar').value.trim() : "";
              const payload = {
                action: "uploadBatch",
                token: window.GIS_TOKEN,
@@ -1109,7 +1119,8 @@ async function finalizarProcessoWeb() {
                taskId: tarefaEmFoco.id,
                clienteNome: tarefaEmFoco.cliente,
                forcar: forcarUpload,
-                justificativaSemEnvio: ((ehEnvioAtual && arquivosStagedWeb.length === 0) || (acaoAtual.indexOf("COMUNICAR") > -1 && !textoComunicar)) ? justificativaSemEnvio : ""
+               justificativaSemEnvio: ((ehEnvioAtual && arquivosStagedWeb.length === 0) || (acaoAtual.indexOf("COMUNICAR") > -1 && !textoComunicar)) ? justificativaSemEnvio : "",
+               anotacao: anotacaoArquivar
              };
              
              const resposta = await fetch(urlWebApp, {

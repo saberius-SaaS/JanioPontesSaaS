@@ -22,10 +22,10 @@ function processarUploadViaPainel(payload) {
         }
     }
   }
-  return processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar, userLevel, payload.justificativaSemEnvio || "");
+  return processarUploadBatchInterno(payload.arquivos, payload.taskId, payload.clienteNome, payload.mensagem, !!payload.forcar, userLevel, payload.justificativaSemEnvio || "", payload.anotacao || "");
 }
 
-function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, forcar, userLevel, justificativaSemEnvio) {
+function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, forcar, userLevel, justificativaSemEnvio, anotacao) {
   var lock = LockService.getScriptLock();
   try { 
     lock.waitLock(25000); 
@@ -223,6 +223,12 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
     });
 
     var linksDriveStr = linksParaEmail.map(function(item) { return item.url; }).join(" | ");
+    
+    // Se for ARQUIVAR e houver anotação, grava na coluna H como registro interno
+    var acaoTarefaVerif = String(rowVal[7]).toUpperCase().trim();
+    if (acaoTarefaVerif.indexOf(CONFIG_SISTEMA.ACOES.ARQUIVAR) > -1 && anotacao && anotacao.trim() !== "") {
+      linksDriveStr = linksDriveStr ? linksDriveStr + " | NOTA: " + anotacao.trim() : "NOTA: " + anotacao.trim();
+    }
     
     // --- INTEGRAÇÃO BLOCO AUDITORIA ---
     var acaoTarefa = rowVal[7];

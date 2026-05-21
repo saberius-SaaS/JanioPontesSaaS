@@ -57,8 +57,8 @@ function _getProtocolosPendentesWpp() {
   var lastRow = wsProt.getLastRow();
   if (lastRow <= 1) return [];
 
-  // Lê os últimos 300 protocolos (mesmo limite do DriveActivityService)
-  var numRows = Math.min(lastRow - 1, 300);
+  // Lê os últimos 3000 protocolos para cobrir todo o histórico recente
+  var numRows = Math.min(lastRow - 1, 3000);
   var startRow = lastRow - numRows + 1;
   var dataProt = wsProt.getRange(startRow, 1, numRows, 13).getValues(); // A até M
 
@@ -124,13 +124,6 @@ function _getProtocolosPendentesWpp() {
       vctoStr = (vctoLegal instanceof Date) ? Utilities.formatDate(vctoLegal, "GMT-3", "dd/MM/yyyy") : String(vctoLegal);
     }
 
-    var protObj = {
-      rowSheet: startRow + i,
-      obrigacao: String(dataProt[i][4]),
-      vencimento: vctoStr,
-      protocolo: String(dataProt[i][2])
-    };
-
     var chaveAgrupamento = norm(clienteNome);
     if (!pendentesMap[chaveAgrupamento]) {
       pendentesMap[chaveAgrupamento] = {
@@ -139,18 +132,43 @@ function _getProtocolosPendentesWpp() {
         protocolos: []
       };
     }
-    pendentesMap[chaveAgrupamento].protocolos.push(protObj);
+
+    var obrigacaoNome = String(dataProt[i][4]);
+    var obrigacaoNorm = norm(obrigacaoNome);
+    var protocoloAtual = String(dataProt[i][2]);
+    var rowAtual = startRow + i;
+
+    // Deduplicação: Agrupa protocolos da mesma obrigação para não spammar (mesmo documento reenviado)
+    var jaExiste = false;
+    for (var p = 0; p < pendentesMap[chaveAgrupamento].protocolos.length; p++) {
+      if (norm(pendentesMap[chaveAgrupamento].protocolos[p].obrigacao) === obrigacaoNorm) {
+        jaExiste = true;
+        pendentesMap[chaveAgrupamento].protocolos[p].rowSheet.push(rowAtual);
+        pendentesMap[chaveAgrupamento].protocolos[p].listaProts.push(protocoloAtual);
+        break;
+      }
+    }
+
+    if (!jaExiste) {
+      pendentesMap[chaveAgrupamento].protocolos.push({
+        obrigacao: obrigacaoNome,
+        vencimento: vctoStr,
+        protocolo: protocoloAtual,
+        rowSheet: [rowAtual],
+        listaProts: [protocoloAtual]
+      });
+    }
   }
 
   // ── Consolidar lista agrupada ──
   var pendentes = [];
   for (var k in pendentesMap) {
     var ag = pendentesMap[k];
-    
+
     var obrigacaoTexto = "";
     var vencimentoTexto = "";
     var protocoloTexto = "";
-    
+
     if (ag.protocolos.length === 1) {
       obrigacaoTexto = ag.protocolos[0].obrigacao;
       vencimentoTexto = ag.protocolos[0].vencimento;
@@ -162,7 +180,15 @@ function _getProtocolosPendentesWpp() {
       vencimentoTexto = "Diversos";
       protocoloTexto = "Múltiplos (" + ag.protocolos.length + ")";
     }
-    
+
+    // Consolida arrays internos de linhas e IDs de protocolo
+    var linhasPlanilhaConsolidadas = [];
+    var listaProtsConsolidada = [];
+    for (var pIdx = 0; pIdx < ag.protocolos.length; pIdx++) {
+      linhasPlanilhaConsolidadas = linhasPlanilhaConsolidadas.concat(ag.protocolos[pIdx].rowSheet);
+      listaProtsConsolidada = listaProtsConsolidada.concat(ag.protocolos[pIdx].listaProts);
+    }
+
     // Se o cliente tem vários números, insere um envio agrupado para cada um
     for (var telIdx = 0; telIdx < ag.telefones.length; telIdx++) {
       pendentes.push({
@@ -171,8 +197,8 @@ function _getProtocolosPendentesWpp() {
         obrigacao: obrigacaoTexto,
         vencimento: vencimentoTexto,
         protocolo: protocoloTexto,
-        linhasPlanilha: ag.protocolos.map(function(p) { return p.rowSheet; }), // Para atualizar todos
-        listaProts: ag.protocolos.map(function(p) { return p.protocolo; }).join(", ") // Para o log
+        linhasPlanilha: linhasPlanilhaConsolidadas, // Array flat para atualizar todos de uma vez
+        listaProts: listaProtsConsolidada.join(", ") // Para o log
       });
     }
   }
@@ -325,10 +351,10 @@ function _enviarMensagemWhatsApp(telefone, params) {
         token: cfg.API_TOKEN,
         cmd: "set_contact",
         for_contact_id: String(contactId),
-        tag_info1: String(params.obrigacao  || ""),
+        tag_info1: String(params.obrigacao || ""),
         tag_info2: String(params.vencimento || ""),
-        tag_info3: String(params.cliente    || ""),
-        tag_info4: String(params.protocolo  || "")
+        tag_info3: String(params.cliente || ""),
+        tag_info4: String(params.protocolo || "")
       }),
       muteHttpExceptions: true
     });
@@ -370,6 +396,49 @@ function _enviarMensagemWhatsApp(telefone, params) {
       return { success: true, messageId: String(msgId), error: "", _debug: _debugInfo };
     } else {
       var errMsg = body.msg || body.message || body.error || ("HTTP " + code);
+      
+      // Fallback para quando já existe um protocolo em andamento para o contato
+      if (String(errMsg).toLowerCase().indexOf("already a protocol in progress") > -1 || String(errMsg).toLowerCase().indexOf("protocolo em andamento") > -1) {
+        console.log("WPP: Protocolo em andamento para " + telefone + ". Tentando fallback via send_text...");
+        try {
+          var textoMsg = "📢 *JANIO PONTES CONTABILIDADE*\n" +
+                         "Aviso de Documento Pronto\n\n" +
+                         "Prezado(a) *" + String(params.cliente).trim() + "*,\n\n" +
+                         "Informamos que o seu documento está pronto para acesso:\n\n" +
+                         "📄 *Documento:* " + String(params.obrigacao).trim() + "\n" +
+                         "📅 *Vencimento:* " + String(params.vencimento).trim() + "\n" +
+                         "🔑 *Protocolo:* " + String(params.protocolo).trim() + "\n\n" +
+                         "Por favor, acesse seu email para visualizar e realizar o download.";
+
+          var payloadText = {
+            token: cfg.API_TOKEN,
+            cmd: "send_text",
+            channel_token: cfg.CHANNEL_TOKEN,
+            ct_whatsapp: String(telefone),
+            msg: textoMsg
+          };
+
+          var respText = UrlFetchApp.fetch(url, {
+            method: "post",
+            contentType: "application/json",
+            payload: JSON.stringify(payloadText),
+            muteHttpExceptions: true
+          });
+
+          var bodyText = JSON.parse(respText.getContentText());
+          if (respText.getResponseCode() === 200 && (bodyText.status === 1 || bodyText.status === "success")) {
+            var msgIdText = bodyText.msg_id || bodyText.id || "OK_FALLBACK";
+            console.log("WPP: Fallback send_text enviado com sucesso para " + telefone + " (ID: " + msgIdText + ")");
+            return { success: true, messageId: String(msgIdText) + " (Fallback)", error: "", _debug: _debugInfo };
+          } else {
+            var errMsgText = bodyText.msg || bodyText.message || bodyText.error || ("HTTP " + respText.getResponseCode());
+            return { success: false, messageId: "", error: "open_followup falhou (Protocolo em andamento) e fallback send_text falhou: " + errMsgText, _debug: _debugInfo };
+          }
+        } catch (eText) {
+          return { success: false, messageId: "", error: "open_followup falhou (Protocolo em andamento) e fallback send_text gerou exceção: " + eText.message, _debug: _debugInfo };
+        }
+      }
+
       return { success: false, messageId: "", error: String(errMsg), _debug: _debugInfo };
     }
   } catch (e) {
@@ -532,7 +601,7 @@ function testarWhatsAppManual() {
         // Aplica as mesmas regras de "pendente" da rotina principal
         if (acaoProt.indexOf("ENVIAR") === -1) continue;
         if (linkBruto.indexOf("SEM_ENVIO:") === 0) continue;
-        
+
         var isLido = !(statusEnvio === "ENVIADO" && (confRecto === "" || confRecto === "---" || confRecto === "AGUARDANDO"));
         if (isLido) continue;
 
@@ -542,10 +611,10 @@ function testarWhatsAppManual() {
           vctoStr = (vctoLegal instanceof Date) ? Utilities.formatDate(vctoLegal, "GMT-3", "dd/MM/yyyy") : String(vctoLegal);
         }
         protocoloReal = {
-          obrigacao:  String(dataProt[i][4]),   // Coluna E
+          obrigacao: String(dataProt[i][4]),   // Coluna E
           vencimento: vctoStr,                  // Coluna K
-          cliente:    clienteProt,              // Coluna B
-          protocolo:  String(dataProt[i][2])    // Coluna C
+          cliente: clienteProt,              // Coluna B
+          protocolo: String(dataProt[i][2])    // Coluna C
         };
         break;
       }
@@ -555,10 +624,10 @@ function testarWhatsAppManual() {
   if (!protocoloReal) {
     SpreadsheetApp.getUi().alert("⚠️ Cliente '" + nomeCliente + "' localizado, mas sem protocolo recente em DB_PROTOCOLOS.\n\nUsando dados de exemplo para o teste.");
     protocoloReal = {
-      obrigacao:  "OBRIGACAO TESTE",
+      obrigacao: "OBRIGACAO TESTE",
       vencimento: Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy"),
-      cliente:    nomeCliente,
-      protocolo:  "PRT-TESTE-001"
+      cliente: nomeCliente,
+      protocolo: "PRT-TESTE-001"
     };
   }
 

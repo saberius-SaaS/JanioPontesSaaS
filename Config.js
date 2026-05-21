@@ -5,7 +5,7 @@
 
 var CONFIG_SISTEMA = {
   ID_PLANILHA: "1gey_Q16UVbihSRSLFvD6a7JZtwFaYzLXtTwVKySEijw",
-  VERSAO: "v131.19",
+  VERSAO: "v131.20",
   // 🌐 URLs E CONEXÕES
   URL_WEBAPP: "https://script.google.com/macros/s/AKfycby828QsUFLVmtQ1WegcdkaNVMtW4s3xQvhRFcrK0hEiw62xwE-Cqq3SwHMEw5521Euelw/exec",
 
@@ -72,7 +72,7 @@ var CONFIG_SISTEMA = {
     TEMPLATE_NAME: "DOCUMENTO PRONTO",                                     // Nome do template (apenas referência)
     TEMPLATE_LANG: "pt_BR",                                                // Idioma do template
     SECTOR_ID: 8454,                                                       // ID do setor de atendimento para roteamento
-    DIAS_INTERVALO_RENOTIFICACAO: 2,                                       // Mínimo de dias entre notificações do mesmo protocolo
+    DIAS_INTERVALO_RENOTIFICACAO: 1,                                       // Mínimo de dias entre notificações do mesmo protocolo
     MAX_ENVIOS_POR_CICLO: 100,                                             // Limite de mensagens por execução (controle de custo)
     COL_NOTIF_WPP: 13                                                      // Coluna M da DB_PROTOCOLOS (rastreio de envio)
   }
