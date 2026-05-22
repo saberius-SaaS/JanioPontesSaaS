@@ -1,0 +1,45 @@
+{% if clientes %}
+    {% for c in clientes %}
+    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+        <td class="py-3 px-4">
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs mr-3">
+                    {{ c.cliente[:2] | upper if c.cliente else 'CL' }}
+                </div>
+                <div>
+                    <p class="font-semibold text-slate-800 text-sm">{{ c.cliente }}</p>
+                    {% if c.nome_fantasia %}
+                    <p class="text-[10px] text-slate-400">{{ c.nome_fantasia }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </td>
+        <td class="py-3 px-4 text-sm text-slate-600">{{ c.cnpj or '-' }}</td>
+        <td class="py-3 px-4">
+            <p class="text-sm text-slate-800">{{ c.responsavel or '-' }}</p>
+            {% if c.email %}
+            <p class="text-[10px] text-indigo-500"><i class="fa-regular fa-envelope mr-1"></i>{{ c.email }}</p>
+            {% endif %}
+        </td>
+        <td class="py-3 px-4">
+            {% if c.status == 'ATIVO' %}
+            <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md tracking-wider">ATIVO</span>
+            {% else %}
+            <span class="px-2 py-1 bg-slate-200 text-slate-600 text-[10px] font-bold rounded-md tracking-wider">{{ c.status }}</span>
+            {% endif %}
+        </td>
+        <td class="py-3 px-4 text-right">
+            <button class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+        </td>
+    </tr>
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="5" class="py-8 text-center text-slate-500">
+            <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-300"></i>
+            <p>Nenhum cliente encontrado.</p>
+        </td>
+    </tr>
+{% endif %}

@@ -24,3 +24,8 @@ Thumbs.db
 *.json
 credentials.json
 key.json
+
+# Google Drive Sync Files
+*.gsheet
+*.gdoc
+*.gslides

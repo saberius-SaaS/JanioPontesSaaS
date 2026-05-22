@@ -1,0 +1,17 @@
+# Ignorar pelo Docker
+venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+node_modules/
+.env
+*.md
+scratch/
+gas/
+tests/
+test.db
+*.gsheet
+line1311.txt
+line1312.txt
+credentials.json

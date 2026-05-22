@@ -1,0 +1,37 @@
+#!/bin/bash
+# 
+# Script de provisionamento do Google Cloud Scheduler (Etapa 7.3)
+# Configura as automações e tarefas em segundo plano para chamar a API FastAPI.
+# 
+# Requisitos:
+# - gcloud CLI instalada e autenticada
+# - API do Cloud Scheduler ativada no projeto do GCP
+
+PROJECT_ID="jp-saas-producao"
+LOCATION="southamerica-east1"
+SERVICE_URL="https://app.janiopontes.com.br"
+SERVICE_ACCOUNT="saas-scheduler@jp-saas-producao.iam.gserviceaccount.com"
+
+# 1. Job Diário: Varredura de Atrasos (Roda todos os dias às 00:01)
+gcloud scheduler jobs create http job-check-overdue \
+    --schedule="1 0 * * *" \
+    --uri="${SERVICE_URL}/scheduler/check-overdue" \
+    --http-method=POST \
+    --time-zone="America/Sao_Paulo" \
+    --location="${LOCATION}" \
+    --project="${PROJECT_ID}" \
+    --oidc-service-account-email="${SERVICE_ACCOUNT}" \
+    --description="Varre os protocolos e marca tarefas vencidas como ATRASADO"
+
+# 2. Job Diário: Relatório da Gerência (Roda todos os dias úteis (Seg-Sex) às 18:00)
+gcloud scheduler jobs create http job-daily-report \
+    --schedule="0 18 * * 1-5" \
+    --uri="${SERVICE_URL}/scheduler/daily-report" \
+    --http-method=POST \
+    --time-zone="America/Sao_Paulo" \
+    --location="${LOCATION}" \
+    --project="${PROJECT_ID}" \
+    --oidc-service-account-email="${SERVICE_ACCOUNT}" \
+    --description="Gera e envia o relatório diário de operações para a gerência"
+
+echo "Jobs do Cloud Scheduler criados com sucesso."

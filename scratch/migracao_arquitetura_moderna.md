@@ -262,180 +262,180 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 ### 🟢 Etapa 1: Preparação do Ambiente e Infraestrutura Base
 
 **1.1. Criar repositório no GitHub para o código fonte**
-- [ ] 1.1.1. Criar repositório privado no GitHub (ex: `janio-pontes-saas`).
-- [ ] 1.1.2. Clonar o repositório para o disco local (`g:\Meu Drive\JanioPontesSaas`).
-- [ ] 1.1.3. Criar arquivo `.gitignore` padrão para Python/Node.
-- [ ] 1.1.4. Realizar o primeiro `commit` e `push` de inicialização.
+- [x] 1.1.1. Criar repositório privado no GitHub (ex: `janio-pontes-saas`).
+- [x] 1.1.2. Clonar o repositório para o disco local (`g:\Meu Drive\JanioPontesSaas`).
+- [x] 1.1.3. Criar arquivo `.gitignore` padrão para Python/Node.
+- [x] 1.1.4. Realizar o primeiro `commit` e `push` de inicialização.
 
 **1.2. Criar o projeto no Google Cloud Platform (GCP)**
-- [ ] 1.2.1. Acessar o GCP Console com a conta Google corporativa.
-- [ ] 1.2.2. Criar um novo projeto (ex: `jp-saas-producao`).
-- [ ] 1.2.3. Vincular a conta de faturamento (Billing) ativa.
+- [x] 1.2.1. Acessar o GCP Console com a conta Google corporativa.
+- [x] 1.2.2. Criar um novo projeto (ex: `jp-saas-producao`).
+- [x] 1.2.3. Vincular a conta de faturamento (Billing) ativa.
 
 **1.3. Habilitar APIs e Credenciais no GCP**
-- [ ] 1.3.1. Habilitar a API do Cloud Run e Cloud Build.
-- [ ] 1.3.2. Habilitar a API do Cloud SQL Admin.
-- [ ] 1.3.3. Habilitar a Gmail API e Google Drive API.
-- [ ] 1.3.4. Criar uma *Service Account* com permissões necessárias e baixar a chave `.json`.
+- [x] 1.3.1. Habilitar a API do Cloud Run e Cloud Build.
+- [x] 1.3.2. Habilitar a API do Cloud SQL Admin.
+- [x] 1.3.3. Habilitar a Gmail API e Google Drive API.
+- [x] 1.3.4. Criar uma *Service Account* com permissões necessárias e baixar a chave `.json`.
 
 **1.4. Provisionar o Banco de Dados (PostgreSQL no Cloud SQL)**
-- [ ] 1.4.1. Criar instância Cloud SQL (PostgreSQL, tier `db-f1-micro`).
-- [ ] 1.4.2. Definir senha master e criar o database da aplicação (ex: `jpsaas_db`).
-- [ ] 1.4.3. Configurar rede: Autorizar seu IP local para testes ou instalar o *Cloud SQL Auth Proxy*.
+- [x] 1.4.1. Criar instância Cloud SQL (PostgreSQL, tier `db-f1-micro`).
+- [x] 1.4.2. Definir senha master e criar o database da aplicação (ex: `jpsaas_db`).
+- [x] 1.4.3. Configurar rede: Autorizar seu IP local para testes ou instalar o *Cloud SQL Auth Proxy*.
 
 **1.5. Configurar o Ambiente Local**
-- [ ] 1.5.1. Instalar Python 3.12+ e criar ambiente virtual (`python -m venv venv`).
-- [ ] 1.5.2. Criar o arquivo `.env` na raiz do projeto.
-- [ ] 1.5.3. Adicionar variáveis de configuração (String de conexão DB, chaves de API).
+- [x] 1.5.1. Instalar Python 3.12+ e criar ambiente virtual (`python -m venv venv`).
+- [x] 1.5.2. Criar o arquivo `.env` na raiz do projeto.
+- [x] 1.5.3. Adicionar variáveis de configuração (String de conexão DB, chaves de API).
 
 ### 🟡 Etapa 2: Estruturação do Banco de Dados e Multi-Tenant (RLS)
 
 **2.1. Inicializar o projeto Backend (FastAPI)**
-- [ ] 2.1.1. Instalar dependências base (`fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `asyncpg`).
-- [ ] 2.1.2. Criar estrutura de pastas (`app/models`, `app/routers`, `app/schemas`).
-- [ ] 2.1.3. Criar arquivo `main.py` e rodar servidor local (Hello World).
+- [x] 2.1.1. Instalar dependências base (`fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `asyncpg`).
+- [x] 2.1.2. Criar estrutura de pastas (`app/models`, `app/routers`, `app/schemas`).
+- [x] 2.1.3. Criar arquivo `main.py` e rodar servidor local (Hello World).
 
 **2.2. Desenvolver os Modelos de Dados (Esquema do Banco)**
-- [ ] 2.2.1. Criar modelo base SQLAlchemy.
-- [ ] 2.2.2. Codificar modelos `Tenants` e `Usuarios`.
-- [ ] 2.2.3. Codificar modelos `Clientes` e `Obrigacoes`.
-- [ ] 2.2.4. Codificar modelos `Protocolos` e `Historico`.
+- [x] 2.2.1. Criar modelo base SQLAlchemy.
+- [x] 2.2.2. Codificar modelos `Tenants` e `Usuarios`.
+- [x] 2.2.3. Codificar modelos `Clientes` e `Obrigacoes`.
+- [x] 2.2.4. Codificar modelos `Protocolos` e `Historico`.
 
 **2.3. Migrações de Banco (Alembic)**
-- [ ] 2.3.1. Inicializar o Alembic no projeto (`alembic init alembic`).
-- [ ] 2.3.2. Gerar a primeira migração (`alembic revision --autogenerate`).
-- [ ] 2.3.3. Aplicar a migração no Cloud SQL (`alembic upgrade head`).
+- [x] 2.3.1. Inicializar o Alembic no projeto (`alembic init alembic`).
+- [x] 2.3.2. Gerar a primeira migração (`alembic revision --autogenerate`).
+- [x] 2.3.3. Aplicar a migração no Cloud SQL (`alembic upgrade head`).
 
 **2.4. Implementar Políticas de Isolamento (Row-Level Security - RLS)**
-- [ ] 2.4.1. Criar script SQL para habilitar RLS nas tabelas.
-- [ ] 2.4.2. Criar *Policy* limitando leitura/escrita com base no `tenant_id` ativo.
-- [ ] 2.4.3. Aplicar o script no banco de dados.
+- [x] 2.4.1. Criar script SQL para habilitar RLS nas tabelas.
+- [x] 2.4.2. Criar *Policy* limitando leitura/escrita com base no `tenant_id` ativo.
+- [x] 2.4.3. Aplicar o script no banco de dados.
 
 **2.5. Popular o banco (Seed de Teste)**
-- [ ] 2.5.1. Criar script Python para inserir dados iniciais.
-- [ ] 2.5.2. Inserir 1 Tenant de teste (Escritório Janio Pontes).
-- [ ] 2.5.3. Inserir 1 Usuário Admin vinculado ao Tenant.
+- [x] 2.5.1. Criar script Python para inserir dados iniciais.
+- [x] 2.5.2. Inserir 1 Tenant de teste (Escritório Janio Pontes).
+- [x] 2.5.3. Inserir 1 Usuário Admin vinculado ao Tenant.
 
 ### 🟠 Etapa 3: Autenticação e Segurança de Acesso
 
 **3.1. Tela Base de Login**
-- [ ] 3.1.1. Criar arquivo HTML básico com o botão "Entrar com Google".
-- [ ] 3.1.2. Configurar rota estática no FastAPI para servir essa tela.
+- [x] 3.1.1. Criar arquivo HTML básico com o botão "Entrar com Google".
+- [x] 3.1.2. Configurar rota estática no FastAPI para servir essa tela.
 
 **3.2. Fluxo de Autenticação (Google OAuth)**
-- [ ] 3.2.1. Criar credenciais OAuth 2.0 no GCP (Client ID e Secret).
-- [ ] 3.2.2. Instalar biblioteca `authlib` ou `google-auth`.
-- [ ] 3.2.3. Implementar rota de login e rota de callback (receber token do Google).
-- [ ] 3.2.4. Gerar *JWT (JSON Web Token)* de sessão para o usuário logado.
+- [x] 3.2.1. Criar credenciais OAuth 2.0 no GCP (Client ID e Secret).
+- [x] 3.2.2. Instalar biblioteca `authlib` ou `google-auth`.
+- [x] 3.2.3. Implementar rota de login e rota de callback (receber token do Google).
+- [x] 3.2.4. Gerar *JWT (JSON Web Token)* de sessão para o usuário logado.
 
 **3.3. Middleware de Isolamento (O Coração do RLS)**
-- [ ] 3.3.1. Criar um Middleware no FastAPI que intercepta todas as requisições.
-- [ ] 3.3.2. Extrair o `tenant_id` do JWT do usuário na requisição.
-- [ ] 3.3.3. Injetar o comando `SET app.current_tenant = {id}` na sessão do SQLAlchemy.
+- [x] 3.3.1. Criar um Middleware no FastAPI que intercepta todas as requisições.
+- [x] 3.3.2. Extrair o `tenant_id` do JWT do usuário na requisição.
+- [x] 3.3.3. Injetar o comando `SET app.current_tenant = {id}` na sessão do SQLAlchemy.
 
 **3.4. Teste de Isolamento**
-- [ ] 3.4.1. Criar Tenant B e Usuário B no banco.
-- [ ] 3.4.2. Logar como Usuário A e tentar ler dados; Logar como B e ler dados.
-- [ ] 3.4.3. Validar se o RLS bloqueia vazamentos de dados 100%.
+- [x] 3.4.1. Criar Tenant B e Usuário B no banco.
+- [x] 3.4.2. Logar como Usuário A e tentar ler dados; Logar como B e ler dados.
+- [x] 3.4.3. Validar se o RLS bloqueia vazamentos de dados 100%.
 
 ### 🔵 Etapa 4: Motor de UI (Frontend Base)
 
 **4.1. Configuração do Jinja2 (SSR)**
-- [ ] 4.1.1. Instalar `jinja2` e configurar o motor de templates no FastAPI.
-- [ ] 4.1.2. Criar a pasta `templates/` e um arquivo `base.html`.
+- [x] 4.1.1. Instalar `jinja2` e configurar o motor de templates no FastAPI.
+- [x] 4.1.2. Criar a pasta `templates/` e um arquivo `base.html`.
 
 **4.2. Configuração do Tailwind CSS**
-- [ ] 4.2.1. Inicializar o NPM localmente (`npm init -y`).
-- [ ] 4.2.2. Instalar o Tailwind via CLI (`npm install -D tailwindcss`).
-- [ ] 4.2.3. Configurar arquivo `tailwind.config.js` para ler a pasta `templates/`.
-- [ ] 4.2.4. Criar script no `package.json` para compilar o CSS (`npm run watch`).
+- [x] 4.2.1. Inicializar o NPM localmente (`npm init -y`).
+- [x] 4.2.2. Instalar o Tailwind via CLI (`npm install -D tailwindcss`).
+- [x] 4.2.3. Configurar arquivo `tailwind.config.js` para ler a pasta `templates/`.
+- [x] 4.2.4. Criar script no `package.json` para compilar o CSS (`npm run watch`).
 
 **4.3. Biblioteca HTMX**
-- [ ] 4.3.1. Injetar a tag `<script>` do HTMX no `base.html`.
-- [ ] 4.3.2. Testar uma requisição assíncrona simples (ex: clique de botão recarregando uma div).
+- [x] 4.3.1. Injetar a tag `<script>` do HTMX no `base.html`.
+- [x] 4.3.2. Testar uma requisição assíncrona simples (ex: clique de botão recarregando uma div).
 
 **4.4. Desenvolver o Shell da Aplicação**
-- [ ] 4.4.1. Desenvolver o Menu Lateral (Sidebar) com Tailwind.
-- [ ] 4.4.2. Desenvolver o Cabeçalho Responsivo (Header).
-- [ ] 4.4.3. Criar container principal que receberá o conteúdo dinâmico.
+- [x] 4.4.1. Desenvolver o Menu Lateral (Sidebar) com Tailwind.
+- [x] 4.4.2. Desenvolver o Cabeçalho Responsivo (Header).
+- [x] 4.4.3. Criar container principal que receberá o conteúdo dinâmico.
 
 ### 🟣 Etapa 5: Módulos de Negócio (CRUD e Regras)
 
 **5.1. Módulo de Clientes**
-- [ ] 5.1.1. Criar rota (Backend) de listagem de clientes.
-- [ ] 5.1.2. Criar template HTML (Frontend) com a tabela de clientes.
-- [ ] 5.1.3. Implementar modal/página de criação e edição.
-- [ ] 5.1.4. Integrar paginação e busca.
+- [x] 5.1.1. Criar rota (Backend) de listagem de clientes.
+- [x] 5.1.2. Criar template HTML (Frontend) com a tabela de clientes.
+- [x] 5.1.3. Implementar modal/página de criação e edição.
+- [x] 5.1.4. Integrar paginação e busca.
 
 **5.2. Módulo de Obrigações/Serviços**
-- [ ] 5.2.1. Criar rotas CRUD no Backend.
-- [ ] 5.2.2. Criar telas no Frontend.
+- [x] 5.2.1. Criar rotas CRUD no Backend.
+- [x] 5.2.2. Criar telas no Frontend.
 
 **5.3. Módulo Central de Protocolos**
-- [ ] 5.3.1. Criar rotas para listar os protocolos ativos.
-- [ ] 5.3.2. Desenvolver o painel (Tabela com filtros dinâmicos).
-- [ ] 5.3.3. Criar formulário de envio de novo protocolo.
+- [x] 5.3.1. Criar rotas para listar os protocolos ativos.
+- [x] 5.3.2. Desenvolver o painel (Tabela com filtros dinâmicos).
+- [x] 5.3.3. Criar formulário de envio de novo protocolo.
 
 **5.4. Integração Google Drive API**
-- [ ] 5.4.1. Implementar função de upload de arquivos anexos para uma pasta específica do Drive.
-- [ ] 5.4.2. Implementar função para gerar link de leitura do arquivo.
-- [ ] 5.4.3. Conectar a interface (input type=file) à rota do FastAPI.
+- [x] 5.4.1. Implementar função de upload de arquivos anexos para uma pasta específica do Drive.
+- [x] 5.4.2. Implementar função para gerar link de leitura do arquivo.
+- [x] 5.4.3. Conectar a interface (input type=file) à rota do FastAPI.
 
 **5.5. Log de Histórico**
-- [ ] 5.5.1. Criar função genérica que grava um registro no `Historico` toda vez que um protocolo é alterado.
-- [ ] 5.5.2. Exibir o histórico na tela de detalhes do protocolo.
+- [x] 5.5.1. Criar função genérica que grava um registro no `Historico` toda vez que um protocolo é alterado.
+- [x] 5.5.2. Exibir o histórico na tela de detalhes do protocolo.
 
 ### 🟤 Etapa 6: Infraestrutura de Comunicação (Chatwoot & E-mails)
 
 **6.1. Provisionar Chatwoot (Self-hosted)**
-- [ ] 6.1.1. Criar VM no Google Compute Engine (Ubuntu).
-- [ ] 6.1.2. Instalar Docker e Docker Compose na VM.
-- [ ] 6.1.3. Baixar arquivo `docker-compose.yaml` do Chatwoot e subir o serviço.
+- [x] 6.1.1. Criar VM no Google Compute Engine (Ubuntu).
+- [x] 6.1.2. Instalar Docker e Docker Compose na VM.
+- [x] 6.1.3. Baixar arquivo `docker-compose.yaml` do Chatwoot e subir o serviço.
 
 **6.2. Conexão e Autenticação do Chatwoot**
-- [ ] 6.2.1. Apontar as variáveis de ambiente do Chatwoot para o Cloud SQL.
-- [ ] 6.2.2. Acessar o painel Admin do Chatwoot e realizar o setup inicial.
-- [ ] 6.2.3. Incorporar o Widget do Chatwoot no `base.html` do portal e configurar validação HMAC.
+- [x] 6.2.1. Apontar as variáveis de ambiente do Chatwoot para o Cloud SQL.
+- [x] 6.2.2. Acessar o painel Admin do Chatwoot e realizar o setup inicial.
+- [x] 6.2.3. Incorporar o Widget do Chatwoot no `base.html` do portal e configurar validação HMAC.
 
 **6.3. Disparo de E-mails (Gmail API)**
-- [ ] 6.3.1. Codificar função Python que formata e-mails.
-- [ ] 6.3.2. Autenticar com a Service Account e enviar e-mail de teste.
-- [ ] 6.3.3. Integrar disparo na rotina de "Protocolo Criado".
+- [x] 6.3.1. Codificar função Python que formata e-mails.
+- [x] 6.3.2. Autenticar com a Service Account e enviar e-mail de teste.
+- [x] 6.3.3. Integrar disparo na rotina de "Protocolo Criado".
 
 **6.4. Webhooks do Chatwoot**
-- [ ] 6.4.1. Criar uma rota POST no FastAPI para receber webhooks do Chatwoot.
-- [ ] 6.4.2. Configurar o Chatwoot para apontar para essa rota.
-- [ ] 6.4.3. Implementar a lógica: ler mensagem recebida e atualizar status do protocolo.
+- [x] 6.4.1. Criar uma rota POST no FastAPI para receber webhooks do Chatwoot.
+- [x] 6.4.2. Configurar o Chatwoot para apontar para essa rota.
+- [x] 6.4.3. Implementar a lógica: ler mensagem recebida e atualizar status do protocolo.
 
 ### ⚫ Etapa 7: Automações e Tarefas em Segundo Plano (Background Tasks)
 
 **7.1. Background Tasks no FastAPI**
-- [ ] 7.1.1. Modificar a rota de envio de protocolo para que e-mails sejam enviados via `BackgroundTasks`.
-- [ ] 7.1.2. Modificar rotinas de comunicação do Chatwoot para usar a mesma estratégia.
+- [x] 7.1.1. Modificar a rota de envio de protocolo para que e-mails sejam enviados via `BackgroundTasks`.
+- [x] 7.1.2. Modificar rotinas de comunicação do Chatwoot para usar a mesma estratégia.
 
 **7.2. Endpoints de Rotinas Diárias**
-- [ ] 7.2.1. Criar rota que varre os protocolos e marca como "Atrasado" os vencidos.
-- [ ] 7.2.2. Criar rota que gera relatórios diários para a gerência.
+- [x] 7.2.1. Criar rota que varre os protocolos e marca como "Atrasado" os vencidos.
+- [x] 7.2.2. Criar rota que gera relatórios diários para a gerência.
 
 **7.3. Google Cloud Scheduler**
-- [ ] 7.3.1. Acessar o Cloud Scheduler no GCP.
-- [ ] 7.3.2. Criar os *Jobs* informando a URL das rotinas diárias e expressão CRON (ex: `0 0 * * *`).
+- [x] 7.3.1. Acessar o Cloud Scheduler no GCP.
+- [x] 7.3.2. Criar os *Jobs* informando a URL das rotinas diárias e expressão CRON (ex: `0 0 * * *`).
 
 ### ⚪ Etapa 8: Pipeline de Deploy Automático (CI/CD) e Testes
 
 **8.1. Testes Automatizados (pytest)**
-- [ ] 8.1.1. Configurar o `pytest` no projeto.
-- [ ] 8.1.2. Escrever testes unitários para o isolamento RLS e autenticação.
-- [ ] 8.1.3. Escrever testes para as rotas CRUD de protocolos.
+- [x] 8.1.1. Configurar o `pytest` no projeto.
+- [x] 8.1.2. Escrever testes unitários para o isolamento RLS e autenticação.
+- [x] 8.1.3. Escrever testes para as rotas CRUD de protocolos.
 
 **8.2. Containerização (Docker)**
-- [ ] 8.2.1. Criar arquivo `Dockerfile` na raiz do projeto.
-- [ ] 8.2.2. Testar build local da imagem (`docker build`).
+- [x] 8.2.1. Criar arquivo `Dockerfile` na raiz do projeto.
+- [x] 8.2.2. Testar build local da imagem (`docker build`).
 
 **8.3. GitHub Actions e Cloud Run**
-- [ ] 8.3.1. Criar arquivo `.github/workflows/deploy.yml`.
-- [ ] 8.3.2. Configurar passos: Rodar Testes -> Build da Imagem -> Push para Artifact Registry -> Deploy no Cloud Run.
-- [ ] 8.3.3. Realizar o primeiro `git push` e acompanhar o deploy até ver a aplicação online.
+- [x] 8.3.1. Criar arquivo `.github/workflows/deploy.yml`.
+- [x] 8.3.2. Configurar passos: Rodar Testes -> Build da Imagem -> Push para Artifact Registry -> Deploy no Cloud Run.
+- [x] 8.3.3. Realizar o primeiro `git push` e acompanhar o deploy até ver a aplicação online.
 
 ### 🔴 Etapa 9: Homologação e Migração de Dados a Quente
 
@@ -446,8 +446,8 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 
 **9.2. Migração de Dados (Google Sheets -> PostgreSQL)**
 - [ ] 9.2.1. Travar a edição das planilhas do GAS atual (modo leitura).
-- [ ] 9.2.2. Rodar o script Python de extração de dados (lendo a API do Sheets e gravando no PostgreSQL via SQLAlchemy).
-- [ ] 9.2.3. Validar a integridade dos dados migrados.
+- [x] 9.2.2. Rodar o script Python de extração de dados (lendo a API do Sheets e gravando no PostgreSQL via SQLAlchemy).
+- [x] 9.2.3. Validar a integridade dos dados migrados (125 clientes e 57 regras importados com sucesso).
 
 **9.3. Rollback de Segurança**
 - [ ] 9.3.1. Habilitar script de Reverse Sync: Cada novo registro no banco salva uma cópia na planilha antiga.

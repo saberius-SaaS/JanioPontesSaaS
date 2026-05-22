@@ -1,0 +1,40 @@
+{% if obrigacoes %}
+    {% for o in obrigacoes %}
+    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+        <td class="py-3 px-4">
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs mr-3">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </div>
+                <div>
+                    <p class="font-semibold text-slate-800 text-sm">{{ o.obrigacao }}</p>
+                    {% if o.regime %}
+                    <p class="text-[10px] text-slate-400">Regime: {{ o.regime }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </td>
+        <td class="py-3 px-4">
+            <span class="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-md tracking-wider">{{ o.departamento or 'GERAL' }}</span>
+        </td>
+        <td class="py-3 px-4 text-sm text-slate-600 font-bold">
+            {{ o.dia or '-' }}
+        </td>
+        <td class="py-3 px-4 text-sm text-slate-600">
+            {{ o.acao or '-' }}
+        </td>
+        <td class="py-3 px-4 text-right">
+            <button class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+        </td>
+    </tr>
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="5" class="py-8 text-center text-slate-500">
+            <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-300"></i>
+            <p>Nenhuma regra de obrigação encontrada.</p>
+        </td>
+    </tr>
+{% endif %}

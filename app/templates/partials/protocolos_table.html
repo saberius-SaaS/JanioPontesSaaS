@@ -1,0 +1,49 @@
+{% if protocolos %}
+    {% for p in protocolos %}
+    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+        <td class="py-3 px-4">
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs mr-3">
+                    <i class="fa-solid fa-file-signature"></i>
+                </div>
+                <div>
+                    <p class="font-bold text-jp-navy text-xs tracking-wider">{{ p.protocolo }}</p>
+                    <p class="text-[10px] text-slate-400">{{ p.data.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+            </div>
+        </td>
+        <td class="py-3 px-4 text-sm font-semibold text-slate-700">
+            {{ p.cliente }}
+        </td>
+        <td class="py-3 px-4 text-sm text-slate-600">
+            {{ p.obrigacao or '-' }}
+        </td>
+        <td class="py-3 px-4">
+            {% if p.status_envio == 'ENVIADO' %}
+            <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md tracking-wider"><i class="fa-solid fa-check mr-1"></i>ENVIADO</span>
+            {% elif p.status_envio == 'ERRO' %}
+            <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-md tracking-wider"><i class="fa-solid fa-triangle-exclamation mr-1"></i>ERRO</span>
+            {% else %}
+            <span class="px-2 py-1 bg-slate-200 text-slate-600 text-[10px] font-bold rounded-md tracking-wider">{{ p.status_envio }}</span>
+            {% endif %}
+        </td>
+        <td class="py-3 px-4 text-right">
+            {% if p.link_arquivo and p.link_arquivo != 'Não anexado' %}
+            <a href="#" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1" title="Ver Anexo">
+                <i class="fa-solid fa-paperclip"></i>
+            </a>
+            {% endif %}
+            <button class="text-slate-400 hover:text-indigo-600 transition-colors p-1 ml-2" title="Ver Detalhes/Histórico">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </button>
+        </td>
+    </tr>
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="5" class="py-8 text-center text-slate-500">
+            <i class="fa-solid fa-box-open text-3xl mb-2 text-slate-300"></i>
+            <p>Nenhum protocolo encontrado.</p>
+        </td>
+    </tr>
+{% endif %}

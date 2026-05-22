@@ -487,13 +487,13 @@ function getDadosHistoricoWeb() {
     
     // Usa 14 colunas fixas (Schema: 12 da tarefa + statusEnvio + confRecto)
     var numCols = 14;
-    var rangeSize = 100;
+    var rangeSize = 2000; // Aumentado para alcançar registros mais antigos
     var startRow = Math.max(2, lastRow - rangeSize + 1);
     var numRows = lastRow - startRow + 1;
     var dataH = wsHist.getRange(startRow, 1, numRows, numCols).getValues();
     
     var histList = [];
-    var limit = 70; 
+    var limit = 1500; // Limite expandido para suportar o motor de busca do Front
     
     // Varredura Inversa (startRow >= 2, então todas as linhas são dados, sem header)
     for (var i = dataH.length - 1; i >= 0 && limit > 0; i--) {

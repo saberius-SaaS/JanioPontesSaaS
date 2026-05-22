@@ -1,0 +1,24 @@
+**/**
+!*.js
+!*.html
+!appsscript.json
+
+# Node modules e dependencias
+node_modules/**
+tailwind.config.js
+package*.json
+
+# FastAPI e Python
+app/**
+alembic/**
+venv/**
+scripts/**
+*.py
+requirements.txt
+alembic.ini
+
+# Outros
+.env
+.git/**
+.gitignore
+scratch/**
