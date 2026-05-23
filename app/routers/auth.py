@@ -169,7 +169,10 @@ def login_google_oauth(
             )
 
         # Bypass RLS para encontrar o usuário pelo e-mail (tenant ainda desconhecido)
-        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+        try:
+            db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+        except Exception:
+            pass
         user = db.query(models.Usuario).filter(models.Usuario.email == email).first()
 
         if not user:

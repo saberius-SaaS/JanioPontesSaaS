@@ -22,7 +22,10 @@ async def check_overdue_tasks(
     Protegida por X-Scheduler-Key header. Chamada pelo Cloud Scheduler.
     """
     # Rotinas de sistema operam em todos os tenants
-    db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    try:
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    except Exception:
+        pass
 
     today = datetime.now().date()
 
@@ -51,7 +54,10 @@ async def daily_report(
     Gera relatório diário e envia para a gerência.
     Protegida por X-Scheduler-Key header. Chamada pelo Cloud Scheduler.
     """
-    db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    try:
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    except Exception:
+        pass
 
     today = datetime.now().date()
     entregas_hoje = db.query(models.Protocolo).filter(

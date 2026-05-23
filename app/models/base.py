@@ -5,7 +5,7 @@ Define a classe base, mixins de auditoria e o tenant_id para RLS.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, text
+from sqlalchemy import Column, DateTime, ForeignKey, text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, declared_attr
 
@@ -34,14 +34,14 @@ class TenantMixin:
     criado_em = Column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("NOW()"),
+        server_default=func.now(),
         comment="Data de criação do registro"
     )
 
     atualizado_em = Column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("NOW()"),
+        server_default=func.now(),
         onupdate=lambda: datetime.now(timezone.utc),
         comment="Data da última atualização"
     )
