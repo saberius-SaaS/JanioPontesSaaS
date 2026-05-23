@@ -1,11 +1,18 @@
 $ErrorActionPreference = "Stop"
 
+$ADMIN_ACCOUNT = "janiopontes@janiopontes.com.br"
+$GCP_PROJECT   = "jp-saas-producao"
+$CLOUDRUN_SVC  = "jp-saas-app"
+$CLOUDRUN_REGION = "southamerica-east1"
+
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "INICIANDO DEPLOY - Janio Pontes SaaS " -ForegroundColor Cyan
+Write-Host "INICIANDO DEPLOY - Janio Pontes SaaS"      -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
-# Ativar ambiente virtual
-Write-Host "`n[1/4] Verificando ambiente Python..." -ForegroundColor Yellow
+# ─────────────────────────────────────────
+# [1/5] Ambiente Python
+# ─────────────────────────────────────────
+Write-Host "`n[1/5] Verificando ambiente Python..." -ForegroundColor Yellow
 if (Test-Path ".\venv\Scripts\activate.ps1") {
     . .\venv\Scripts\activate.ps1
 } else {
@@ -13,46 +20,79 @@ if (Test-Path ".\venv\Scripts\activate.ps1") {
     exit 1
 }
 
-# Rodar os testes
-Write-Host "`n[2/4] Rodando bateria de testes..." -ForegroundColor Yellow
+# ─────────────────────────────────────────
+# [2/5] Testes automatizados
+# ─────────────────────────────────────────
+Write-Host "`n[2/5] Rodando bateria de testes..." -ForegroundColor Yellow
 pytest tests/ -v --tb=short
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nTESTES FALHARAM! O deploy foi cancelado para proteger a producao." -ForegroundColor Red
-    Write-Host "Verifique os erros acima e corrija o codigo antes de tentar novamente." -ForegroundColor Red
+    Write-Host "`nTESTES FALHARAM! Deploy cancelado para proteger producao." -ForegroundColor Red
+    Write-Host "Corrija os erros acima antes de tentar novamente." -ForegroundColor Red
     exit 1
 }
-Write-Host "Todos os testes passaram com sucesso!" -ForegroundColor Green
+Write-Host "Todos os testes passaram!" -ForegroundColor Green
 
-# Commit do codigo
-Write-Host "`n[3/4] Salvando alteracoes no Git..." -ForegroundColor Yellow
-$commitMessage = Read-Host "Digite a mensagem do commit (ou deixe em branco para update)"
+# ─────────────────────────────────────────
+# [3/5] Git commit e push
+# ─────────────────────────────────────────
+Write-Host "`n[3/5] Salvando alteracoes no Git..." -ForegroundColor Yellow
+$commitMessage = Read-Host "Mensagem do commit (Enter para usar mensagem padrao)"
 if ([string]::IsNullOrWhiteSpace($commitMessage)) {
     $commitMessage = "update: Deploy manual via script"
 }
-
 git add .
-git commit -m "$commitMessage"
-git push origin main
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nO codigo nao poude ser enviado ao GitHub (pode nao haver alteracoes). O deploy continuara..." -ForegroundColor Yellow
-} else {
+$gitStatus = git status --porcelain
+if ($gitStatus) {
+    git commit -m "$commitMessage"
+    git push origin main
     Write-Host "Codigo enviado ao GitHub!" -ForegroundColor Green
+} else {
+    Write-Host "Nenhuma alteracao para commitar. Continuando..." -ForegroundColor Yellow
 }
 
-# Fazer Deploy no GCP diretamente (opcional, para nao gastar tokens do GitHub Actions)
-Write-Host "`n[4/4] Publicando no Google Cloud Run..." -ForegroundColor Yellow
-Write-Host "Voce deseja enviar para o Cloud Run diretamente da sua maquina? (S/N)" -ForegroundColor Cyan
-$gcloudDeploy = Read-Host
-if ($gcloudDeploy -match "^[Ss]") {
-    Write-Host "Iniciando deploy direto no GCP..." -ForegroundColor Yellow
-    # Este comando requer o gcloud CLI instalado e autenticado
-    gcloud run deploy jp-saas-app --source . --region southamerica-east1 --allow-unauthenticated --set-env-vars ENVIRONMENT=production
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "`nDEPLOY CONCLUIDO COM SUCESSO NO CLOUD RUN!" -ForegroundColor Green
-    } else {
-        Write-Host "`nErro durante o deploy no Cloud Run." -ForegroundColor Red
+# ─────────────────────────────────────────
+# [4/5] Autenticacao no GCP
+# ─────────────────────────────────────────
+Write-Host "`n[4/5] Verificando autenticacao no Google Cloud..." -ForegroundColor Yellow
+
+$currentAccount = (gcloud config get-value account 2>$null).Trim()
+
+if ($currentAccount -ne $ADMIN_ACCOUNT) {
+    Write-Host "Conta atual: $currentAccount" -ForegroundColor Yellow
+    Write-Host "Necessario autenticar como $ADMIN_ACCOUNT" -ForegroundColor Yellow
+    Write-Host "O browser sera aberto para login. Faca login com $ADMIN_ACCOUNT" -ForegroundColor Cyan
+    gcloud auth login $ADMIN_ACCOUNT --update-adc
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Falha na autenticacao. Abortando deploy." -ForegroundColor Red
+        exit 1
     }
 } else {
-    Write-Host "`nDEPLOY ENVIADO! O GitHub Actions assumira o processo a partir daqui." -ForegroundColor Green
+    Write-Host "Ja autenticado como $ADMIN_ACCOUNT" -ForegroundColor Green
+}
+
+# Garantir projeto correto
+gcloud config set project $GCP_PROJECT --quiet
+Write-Host "Projeto GCP configurado: $GCP_PROJECT" -ForegroundColor Green
+
+# ─────────────────────────────────────────
+# [5/5] Deploy no Cloud Run
+# ─────────────────────────────────────────
+Write-Host "`n[5/5] Publicando no Google Cloud Run..." -ForegroundColor Yellow
+
+gcloud run deploy $CLOUDRUN_SVC `
+    --source . `
+    --region $CLOUDRUN_REGION `
+    --allow-unauthenticated `
+    --set-env-vars ENVIRONMENT=production `
+    --quiet
+
+if ($LASTEXITCODE -eq 0) {
+    $url = (gcloud run services describe $CLOUDRUN_SVC --region $CLOUDRUN_REGION --format="value(status.url)" 2>$null)
+    Write-Host "`n==========================================" -ForegroundColor Green
+    Write-Host "DEPLOY CONCLUIDO COM SUCESSO!"             -ForegroundColor Green
+    Write-Host "URL: $url"                                 -ForegroundColor Green
+    Write-Host "==========================================" -ForegroundColor Green
+} else {
+    Write-Host "`nErro durante o deploy no Cloud Run." -ForegroundColor Red
+    exit 1
 }
