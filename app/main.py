@@ -20,8 +20,11 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
-from fastapi import Request
+from fastapi import Request, Depends
 import os
+
+from app.api.deps import require_login
+from app import models
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -44,9 +47,10 @@ app.include_router(webhook.router, prefix="/webhook", tags=["Webhooks"])
 app.include_router(scheduler.router, prefix="/scheduler", tags=["Rotinas Agendadas"])
 
 @app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
+async def root(request: Request, current_user: models.Usuario = Depends(require_login)):
     return templates.TemplateResponse(request=request, name="base.html", context={
         "request": request,
+        "user": current_user,
         "chatwoot_token": getattr(request.state, "chatwoot_token", ""),
         "chatwoot_base_url": getattr(request.state, "chatwoot_base_url", "")
     })
