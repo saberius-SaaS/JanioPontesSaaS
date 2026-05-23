@@ -11,7 +11,7 @@ from app.api.deps import require_login
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
-PAGE_SIZE = 25
+PAGE_SIZE = 1000
 
 
 @router.get("/clientes", response_class=HTMLResponse)
@@ -63,6 +63,18 @@ async def create_cliente(
     telefone: str = Form(None),
     regime: str = Form(None),
     nome_fantasia: str = Form(None),
+    fiscal: str = Form(None),
+    contabil: str = Form(None),
+    pessoal: str = Form(None),
+    societario: str = Form(None),
+    excecoes: str = Form(None),
+    pasta_drive: str = Form(None),
+    nivel: int = Form(1),
+    perfis_ativos: str = Form(None),
+    email_fiscal: str = Form(None),
+    email_contabil: str = Form(None),
+    email_pessoal: str = Form(None),
+    email_societario: str = Form(None),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -83,7 +95,19 @@ async def create_cliente(
         email=email,
         telefone=telefone,
         regime=regime,
-        nome_fantasia=nome_fantasia
+        nome_fantasia=nome_fantasia,
+        fiscal=fiscal,
+        contabil=contabil,
+        pessoal=pessoal,
+        societario=societario,
+        excecoes=excecoes,
+        pasta_drive=pasta_drive,
+        nivel=nivel,
+        perfis_ativos=perfis_ativos,
+        email_fiscal=email_fiscal,
+        email_contabil=email_contabil,
+        email_pessoal=email_pessoal,
+        email_societario=email_societario
     )
     db.add(novo_cliente)
     db.commit()
@@ -103,6 +127,18 @@ async def update_cliente(
     telefone: str = Form(None),
     regime: str = Form(None),
     nome_fantasia: str = Form(None),
+    fiscal: str = Form(None),
+    contabil: str = Form(None),
+    pessoal: str = Form(None),
+    societario: str = Form(None),
+    excecoes: str = Form(None),
+    pasta_drive: str = Form(None),
+    nivel: int = Form(1),
+    perfis_ativos: str = Form(None),
+    email_fiscal: str = Form(None),
+    email_contabil: str = Form(None),
+    email_pessoal: str = Form(None),
+    email_societario: str = Form(None),
     status: str = Form("ATIVO"),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
@@ -118,6 +154,18 @@ async def update_cliente(
     obj.telefone = telefone
     obj.regime = regime
     obj.nome_fantasia = nome_fantasia
+    obj.fiscal = fiscal
+    obj.contabil = contabil
+    obj.pessoal = pessoal
+    obj.societario = societario
+    obj.excecoes = excecoes
+    obj.pasta_drive = pasta_drive
+    obj.nivel = nivel
+    obj.perfis_ativos = perfis_ativos
+    obj.email_fiscal = email_fiscal
+    obj.email_contabil = email_contabil
+    obj.email_pessoal = email_pessoal
+    obj.email_societario = email_societario
     obj.status = status
     db.commit()
 

@@ -84,6 +84,67 @@
                         <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Telefone / WhatsApp</label>
                         <input type="text" name="telefone" class="glass-input w-full">
                     </div>
+
+                    <h4 class="col-span-1 md:col-span-2 text-sm font-bold text-jp-navy mt-4 border-b border-slate-200 pb-2">Departamentos e Roteamento</h4>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Fiscal (Ref / E-mail)</label>
+                        <div class="flex gap-2">
+                            <input type="text" name="fiscal" placeholder="Referência" class="glass-input w-1/2">
+                            <input type="email" name="email_fiscal" placeholder="E-mail" class="glass-input w-1/2">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Contábil (Ref / E-mail)</label>
+                        <div class="flex gap-2">
+                            <input type="text" name="contabil" placeholder="Referência" class="glass-input w-1/2">
+                            <input type="email" name="email_contabil" placeholder="E-mail" class="glass-input w-1/2">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Pessoal (Ref / E-mail)</label>
+                        <div class="flex gap-2">
+                            <input type="text" name="pessoal" placeholder="Referência" class="glass-input w-1/2">
+                            <input type="email" name="email_pessoal" placeholder="E-mail" class="glass-input w-1/2">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Societário (Ref / E-mail)</label>
+                        <div class="flex gap-2">
+                            <input type="text" name="societario" placeholder="Referência" class="glass-input w-1/2">
+                            <input type="email" name="email_societario" placeholder="E-mail" class="glass-input w-1/2">
+                        </div>
+                    </div>
+
+                    <h4 class="col-span-1 md:col-span-2 text-sm font-bold text-jp-navy mt-4 border-b border-slate-200 pb-2">Configurações Avançadas</h4>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Regime Tributário</label>
+                        <input type="text" name="regime" placeholder="SIMPLES, LUCRO PRESUMIDO..." class="glass-input w-full">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nível de Prioridade</label>
+                        <input type="number" name="nivel" value="1" class="glass-input w-full">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Perfis Ativos</label>
+                        <input type="text" name="perfis_ativos" placeholder="Ex: COMERCIO, INDUSTRIA" class="glass-input w-full">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Exceções de Regras</label>
+                        <input type="text" name="excecoes" placeholder="Ex: REGRA-123" class="glass-input w-full">
+                    </div>
+                    
+                    <div class="col-span-1 md:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Pasta Google Drive</label>
+                        <input type="text" name="pasta_drive" placeholder="URL da pasta no Drive" class="glass-input w-full">
+                    </div>
                 </div>
                 
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
@@ -107,17 +168,19 @@ function abrirNovoCliente() {
     document.getElementById('modal-novo-cliente').classList.remove('hidden');
 }
 
-function abrirEdicaoCliente(id, cliente, cnpj, responsavel, email, telefone) {
+function abrirEdicaoCliente(dados) {
     const form = document.getElementById('form-cliente');
     form.removeAttribute('hx-post');
-    form.setAttribute('hx-put', '/clientes/' + id);
+    form.setAttribute('hx-put', '/clientes/' + dados.id);
     htmx.process(form);
     
-    form.elements['cliente'].value = cliente || '';
-    form.elements['cnpj'].value = cnpj || '';
-    form.elements['responsavel'].value = responsavel || '';
-    form.elements['email'].value = email || '';
-    form.elements['telefone'].value = telefone || '';
+    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'email_fiscal', 'contabil', 'email_contabil', 'pessoal', 'email_pessoal', 'societario', 'email_societario', 'regime', 'nivel', 'perfis_ativos', 'excecoes', 'pasta_drive'];
+    
+    campos.forEach(campo => {
+        if(form.elements[campo]) {
+            form.elements[campo].value = dados[campo] || '';
+        }
+    });
     
     document.getElementById('titulo-modal-cliente').innerHTML = '<i class="fa-solid fa-pen mr-2 text-indigo-400"></i> Editar Cliente';
     document.getElementById('modal-novo-cliente').classList.remove('hidden');

@@ -11,7 +11,7 @@ from app.api.deps import require_login
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
-PAGE_SIZE = 25
+PAGE_SIZE = 1000
 
 
 @router.get("/obrigacoes", response_class=HTMLResponse)
@@ -57,6 +57,13 @@ async def create_obrigacao(
     departamento: str = Form(None),
     regime: str = Form(None),
     acao: str = Form(None),
+    meses: str = Form(None),
+    tipos: str = Form(None),
+    desloca: int = Form(0),
+    vencimento_legal: str = Form(None),
+    antecipa_fds: str = Form(None),
+    grupo_regra: str = Form(None),
+    revisao: str = Form(None),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -74,7 +81,14 @@ async def create_obrigacao(
         dia=dia,
         departamento=departamento,
         regime=regime,
-        acao=acao
+        acao=acao,
+        meses=meses,
+        tipos=tipos,
+        desloca=desloca,
+        vencimento_legal=vencimento_legal,
+        antecipa_fds=antecipa_fds,
+        grupo_regra=grupo_regra,
+        revisao=revisao
     )
     db.add(nova_obrigacao)
     db.commit()
@@ -92,6 +106,13 @@ async def update_obrigacao(
     departamento: str = Form(None),
     regime: str = Form(None),
     acao: str = Form(None),
+    meses: str = Form(None),
+    tipos: str = Form(None),
+    desloca: int = Form(0),
+    vencimento_legal: str = Form(None),
+    antecipa_fds: str = Form(None),
+    grupo_regra: str = Form(None),
+    revisao: str = Form(None),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -104,6 +125,13 @@ async def update_obrigacao(
     obj.departamento = departamento
     obj.regime = regime
     obj.acao = acao
+    obj.meses = meses
+    obj.tipos = tipos
+    obj.desloca = desloca
+    obj.vencimento_legal = vencimento_legal
+    obj.antecipa_fds = antecipa_fds
+    obj.grupo_regra = grupo_regra
+    obj.revisao = revisao
     db.commit()
 
     obrigacoes = db.query(models.RegraObrigacao).order_by(models.RegraObrigacao.obrigacao).limit(PAGE_SIZE).all()
