@@ -437,34 +437,80 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 - [x] 8.3.2. Configurar passos: Rodar Testes -> Build da Imagem -> Push para Artifact Registry -> Deploy no Cloud Run.
 - [x] 8.3.3. Realizar o primeiro `git push` e acompanhar o deploy até ver a aplicação online.
 
-### 🔴 Etapa 9: Homologação e Migração de Dados a Quente
+### 🔴 Etapa 9: Hardening de Segurança e Controle de Acesso
 
-**9.1. Homologação (Staging)**
-- [ ] 9.1.1. Equipe acessa a URL gerada pelo Cloud Run.
-- [ ] 9.1.2. Equipe testa o fluxo completo de criação de protocolos e comunicação.
-- [ ] 9.1.3. Ajuste de bugs e correções visuais finais.
+> ⚠️ Esta etapa foi adicionada para corrigir as brechas de segurança identificadas durante a fase de homologação inicial (deploy em produção). **Todos os itens abaixo devem ser implementados antes do Go-Live.**
 
-**9.2. Migração de Dados (Google Sheets -> PostgreSQL)**
-- [ ] 9.2.1. Travar a edição das planilhas do GAS atual (modo leitura).
-- [x] 9.2.2. Rodar o script Python de extração de dados (lendo a API do Sheets e gravando no PostgreSQL via SQLAlchemy).
-- [x] 9.2.3. Validar a integridade dos dados migrados (125 clientes e 57 regras importados com sucesso).
+**9.1. Autenticação por Google OAuth (Substituir Login por E-mail/Senha)**
+- [x] 9.1.1. Remover o login provisório por e-mail sem senha e habilitar obrigatoriamente o Google OAuth.
+- [x] 9.1.2. Configurar as Origens Autorizadas no painel de Credenciais OAuth do GCP com a URL de produção do Cloud Run.
+- [x] 9.1.3. Validar que somente e-mails do domínio `@janiopontes.com.br` podem fazer login (restrição de Workspace).
+- [x] 9.1.4. Garantir que tokens JWT expirem em 8h (horário comercial) para sessões de trabalho seguras.
 
-**9.3. Rollback de Segurança**
-- [ ] 9.3.1. Habilitar script de Reverse Sync: Cada novo registro no banco salva uma cópia na planilha antiga.
-- [ ] 9.3.2. Manter este script rodando por 72h.
+**9.2. Permissões do Cloud Run (IAM)**
+- [x] 9.2.1. Aplicar o papel "Chamador do Cloud Run" para `allUsers` (acesso público à URL do serviço).
+- [ ] 9.2.2. Revogar acesso de administrador da Service Account `jpsaas-backend` (que atualmente possui permissões excessivas).
+- [ ] 9.2.3. Criar uma IAM Role customizada com permissões mínimas necessárias para a Service Account (princípio do menor privilégio).
+- [ ] 9.2.4. Guardar a chave da Service Account no **Secret Manager** do GCP (remover o `credentials.json` do repositório e do container Docker).
 
-### 🚀 Etapa 10: Go-Live (Lançamento em Produção)
+**9.3. Segurança do Banco de Dados (Cloud SQL)**
+- [ ] 9.3.1. Verificar que o Cloud SQL está configurado para aceitar conexões **apenas via Unix Socket** (Cloud SQL Connector), sem IP público exposto.
+- [ ] 9.3.2. Criar um usuário PostgreSQL dedicado para a aplicação (`app_user`) com privilégios mínimos (sem permissão de `CREATE TABLE`, `DROP`, etc.).
+- [ ] 9.3.3. Remover o usuário `postgres` (superusuário) do acesso remoto.
+- [ ] 9.3.4. Habilitar backups automáticos no Cloud SQL com retenção de 7 dias.
 
-**10.1. Apontamento de Domínio**
-- [ ] 10.1.1. Acessar gerenciador de DNS do domínio da empresa.
-- [ ] 10.1.2. Criar registro CNAME/A apontando para o Cloud Run (`app.janiopontes.com.br`).
-- [ ] 10.1.3. Aguardar propagação e emissão do certificado SSL (Automático pelo Google).
+**9.4. Revisão das Políticas de RLS (Row-Level Security)**
+- [x] 9.4.1. Confirmar que RLS está habilitado com `FORCE ROW LEVEL SECURITY` em todas as tabelas tenant-bound.
+- [x] 9.4.2. Confirmar que o bypass de RLS na rota `/login` usa `SET LOCAL` (escopo limitado à transação, não à conexão toda).
+- [ ] 9.4.3. Escrever teste automatizado (pytest) que valida que um usuário do Tenant A **não consegue** ver dados do Tenant B, mesmo com SQL direto.
+- [ ] 9.4.4. Verificar que o mecanismo `app.bypass_rls = 'on'` é ativado **somente** em rotas internas de sistema (scheduler, seed), nunca em rotas públicas.
 
-**10.2. Lançamento Oficial**
-- [ ] 10.2.1. Comunicar à equipe e clientes a nova URL de acesso.
-- [ ] 10.2.2. Iniciar a operação exclusiva no novo sistema.
+**9.5. Proteção das Rotas da API**
+- [ ] 9.5.1. Auditar todas as rotas FastAPI e confirmar que cada uma usa `Depends(require_login)` ou `Depends(verify_scheduler_key)`.
+- [ ] 9.5.2. Remover (ou proteger com senha) a rota `/docs` (Swagger UI) em ambiente de produção.
+- [ ] 9.5.3. Adicionar rate limiting nas rotas públicas (especialmente `/login`) para prevenir ataques de força bruta.
+- [ ] 9.5.4. Configurar headers de segurança HTTP (CSP, X-Frame-Options, Strict-Transport-Security) via middleware no FastAPI.
 
-**10.3. Monitoramento e Encerramento**
-- [ ] 10.3.1. Acompanhar os logs no *Google Cloud Logging* intensivamente por 48h.
-- [ ] 10.3.2. Fim da janela de 72h: Desligar o *Reverse Sync*.
-- [ ] 10.3.3. Arquivar os scripts antigos do Google Apps Script definitivamente.
+**9.6. Variáveis de Ambiente e Segredos**
+- [x] 9.6.1. Garantir que o arquivo `.env` está no `.gitignore` e nunca é versionado.
+- [ ] 9.6.2. Migrar os segredos do `.env` (DB_PASSWORD, SECRET_KEY, GOOGLE_CLIENT_SECRET) para o **GCP Secret Manager**.
+- [ ] 9.6.3. Configurar o Cloud Run para ler os segredos diretamente do Secret Manager via variáveis de ambiente (sem hardcode no código).
+- [ ] 9.6.4. Rodar `SECRET_KEY` com pelo menos 64 caracteres gerados aleatoriamente (verificado ✅ — já implementado).
+
+**9.7. GitHub Actions e Segredos do CI/CD**
+- [ ] 9.7.1. Adicionar o conteúdo do `credentials.json` como Secret do GitHub (`GCP_SA_KEY`) para que o GitHub Actions possa autenticar sem o arquivo físico.
+- [ ] 9.7.2. Adicionar as variáveis de banco de dados (`DB_PASSWORD`, `SECRET_KEY`) como Secrets do GitHub para injeção no deploy.
+- [ ] 9.7.3. Configurar o Cloud Run no GitHub Actions para ler segredos do Secret Manager (em vez de `--set-env-vars` com valores em texto claro).
+- [ ] 9.7.4. Verificar que o repositório GitHub está configurado como **privado**.
+
+### 🔶 Etapa 10: Homologação Final e Migração de Dados
+
+**10.1. Homologação (Staging)**
+- [x] 10.1.1. Equipe acessa a URL gerada pelo Cloud Run.
+- [ ] 10.1.2. Equipe testa o fluxo completo de criação de protocolos e comunicação.
+- [ ] 10.1.3. Ajuste de bugs e correções visuais finais.
+
+**10.2. Migração de Dados (Google Sheets -> PostgreSQL)**
+- [ ] 10.2.1. Travar a edição das planilhas do GAS atual (modo leitura).
+- [x] 10.2.2. Rodar o script Python de extração de dados (lendo a API do Sheets e gravando no PostgreSQL via SQLAlchemy).
+- [x] 10.2.3. Validar a integridade dos dados migrados (125 clientes e 57 regras importados com sucesso).
+
+**10.3. Rollback de Segurança**
+- [ ] 10.3.1. Habilitar script de Reverse Sync: Cada novo registro no banco salva uma cópia na planilha antiga.
+- [ ] 10.3.2. Manter este script rodando por 72h.
+
+### 🚀 Etapa 11: Go-Live (Lançamento em Produção)
+
+**11.1. Apontamento de Domínio**
+- [ ] 11.1.1. Acessar gerenciador de DNS do domínio da empresa.
+- [ ] 11.1.2. Criar registro CNAME/A apontando para o Cloud Run (`app.janiopontes.com.br`).
+- [ ] 11.1.3. Aguardar propagação e emissão do certificado SSL (Automático pelo Google).
+
+**11.2. Lançamento Oficial**
+- [ ] 11.2.1. Comunicar à equipe e clientes a nova URL de acesso.
+- [ ] 11.2.2. Iniciar a operação exclusiva no novo sistema.
+
+**11.3. Monitoramento e Encerramento**
+- [ ] 11.3.1. Acompanhar os logs no *Google Cloud Logging* intensivamente por 48h.
+- [ ] 11.3.2. Fim da janela de 72h: Desligar o *Reverse Sync*.
+- [ ] 11.3.3. Arquivar os scripts antigos do Google Apps Script definitivamente.

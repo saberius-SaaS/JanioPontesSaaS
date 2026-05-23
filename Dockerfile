@@ -10,7 +10,8 @@ COPY package.json package-lock.json tailwind.config.js ./
 RUN npm ci
 COPY app/templates/ ./app/templates/
 COPY app/static/ ./app/static/
-RUN npx tailwindcss -i ./app/static/src/input.css -o ./app/static/css/output.css --minify 2>/dev/null || echo "Tailwind build skipped (input.css not found, using CDN)"
+RUN mkdir -p ./app/static/css && touch ./app/static/css/.keep && \
+    (npx tailwindcss -i ./app/static/src/input.css -o ./app/static/css/output.css --minify || echo "Tailwind build skipped")
 
 # --- Estágio 2: Aplicação Python ---
 FROM python:3.12-slim
@@ -37,9 +38,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
+COPY .env* ./
+COPY credentials.json* ./
 
 # Copiar CSS compilado do estágio anterior (se existir)
-COPY --from=css-builder /build/app/static/css/ ./app/static/css/ 2>/dev/null || true
+COPY --from=css-builder /build/app/static/css/ ./app/static/css/
 
 # Expor a porta que o Cloud Run usa
 EXPOSE 8080

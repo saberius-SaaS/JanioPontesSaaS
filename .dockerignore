@@ -5,7 +5,6 @@ __pycache__/
 .git/
 .gitignore
 node_modules/
-.env
 *.md
 scratch/
 gas/
@@ -14,4 +13,3 @@ test.db
 *.gsheet
 line1311.txt
 line1312.txt
-credentials.json

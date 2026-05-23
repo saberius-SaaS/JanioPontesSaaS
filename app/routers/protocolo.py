@@ -30,8 +30,7 @@ async def list_protocolos_page(
     clientes = db.query(models.Cliente).filter(models.Cliente.status == "ATIVO").order_by(models.Cliente.cliente).all()
     total_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
 
-    return templates.TemplateResponse("protocolos.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "protocolos.html", {
         "protocolos": protocolos,
         "clientes": clientes,
         "page": page,
@@ -55,7 +54,7 @@ async def search_protocolos(
             | models.Protocolo.cliente.ilike(f"%{q}%")
         )
     protocolos = query.limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/protocolos_table.html", {"request": request, "protocolos": protocolos})
+    return templates.TemplateResponse(request, "partials/protocolos_table.html", {"protocolos": protocolos})
 
 
 @router.post("/protocolos", response_class=HTMLResponse)
@@ -71,7 +70,6 @@ async def create_protocolo(
 ):
     prt_code = f"PRT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
-    # Upload para o Google Drive (real ou mock, depende de DRIVE_MODE)
     link = "Não anexado"
     if arquivo and arquivo.filename:
         link = await drive_service.upload_file(arquivo)
@@ -89,7 +87,6 @@ async def create_protocolo(
     )
     db.add(novo_protocolo)
 
-    # Log de Histórico (transacional)
     historico = models.HistoricoTarefa(
         tenant_id=current_user.tenant_id,
         mes_ano=datetime.now().strftime("%m/%Y"),
@@ -104,10 +101,9 @@ async def create_protocolo(
     db.add(historico)
     db.commit()
 
-    # Disparar E-mail em background (real ou mock, depende de EMAIL_MODE)
     if email:
         corpo_html = f"<h2>Novo Documento Disponível</h2><p>Olá, o protocolo {prt_code} referente a {obrigacao} foi gerado e está disponível.</p><p><a href='{link}'>Acessar Documento</a></p>"
         background_tasks.add_task(email_service.enviar_email, email, f"Novo Documento: {obrigacao}", corpo_html)
 
     protocolos = db.query(models.Protocolo).order_by(models.Protocolo.data.desc()).limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/protocolos_table.html", {"request": request, "protocolos": protocolos})
+    return templates.TemplateResponse(request, "partials/protocolos_table.html", {"protocolos": protocolos})

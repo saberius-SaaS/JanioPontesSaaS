@@ -26,8 +26,7 @@ async def list_clientes_page(
     clientes = db.query(models.Cliente).order_by(models.Cliente.cliente).offset(offset).limit(PAGE_SIZE).all()
     total_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
 
-    return templates.TemplateResponse("clientes.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "clientes.html", {
         "clientes": clientes,
         "page": page,
         "total_pages": total_pages,
@@ -51,7 +50,7 @@ async def search_clientes(
             | models.Cliente.email.ilike(f"%{q}%")
         )
     clientes = query.order_by(models.Cliente.cliente).limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/clientes_table.html", {"request": request, "clientes": clientes})
+    return templates.TemplateResponse(request, "partials/clientes_table.html", {"clientes": clientes})
 
 
 @router.post("/clientes", response_class=HTMLResponse)
@@ -67,13 +66,12 @@ async def create_cliente(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
-    # Validação: CNPJ duplicado
     if cnpj:
         existente = db.query(models.Cliente).filter(models.Cliente.cnpj == cnpj).first()
         if existente:
             clientes = db.query(models.Cliente).order_by(models.Cliente.cliente).limit(PAGE_SIZE).all()
-            return templates.TemplateResponse("partials/clientes_table.html", {
-                "request": request, "clientes": clientes,
+            return templates.TemplateResponse(request, "partials/clientes_table.html", {
+                "clientes": clientes,
                 "erro": f"CNPJ {cnpj} já cadastrado para {existente.cliente}"
             })
 
@@ -91,7 +89,7 @@ async def create_cliente(
     db.commit()
 
     clientes = db.query(models.Cliente).order_by(models.Cliente.cliente).limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/clientes_table.html", {"request": request, "clientes": clientes})
+    return templates.TemplateResponse(request, "partials/clientes_table.html", {"clientes": clientes})
 
 
 @router.put("/clientes/{cliente_id}", response_class=HTMLResponse)
@@ -124,7 +122,7 @@ async def update_cliente(
     db.commit()
 
     clientes = db.query(models.Cliente).order_by(models.Cliente.cliente).limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/clientes_table.html", {"request": request, "clientes": clientes})
+    return templates.TemplateResponse(request, "partials/clientes_table.html", {"clientes": clientes})
 
 
 @router.delete("/clientes/{cliente_id}", response_class=HTMLResponse)
@@ -136,8 +134,8 @@ async def delete_cliente(
 ):
     obj = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if obj:
-        obj.status = "INATIVO"  # Soft-delete: inativa ao invés de excluir
+        obj.status = "INATIVO"
         db.commit()
 
     clientes = db.query(models.Cliente).order_by(models.Cliente.cliente).limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/clientes_table.html", {"request": request, "clientes": clientes})
+    return templates.TemplateResponse(request, "partials/clientes_table.html", {"clientes": clientes})

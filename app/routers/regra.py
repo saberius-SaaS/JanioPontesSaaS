@@ -26,8 +26,7 @@ async def list_obrigacoes_page(
     obrigacoes = db.query(models.RegraObrigacao).order_by(models.RegraObrigacao.obrigacao).offset(offset).limit(PAGE_SIZE).all()
     total_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
 
-    return templates.TemplateResponse("regras.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "regras.html", {
         "obrigacoes": obrigacoes,
         "page": page,
         "total_pages": total_pages,
@@ -47,7 +46,7 @@ async def search_obrigacoes(
     if q:
         query = query.filter(models.RegraObrigacao.obrigacao.ilike(f"%{q}%"))
     obrigacoes = query.order_by(models.RegraObrigacao.obrigacao).limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/regras_table.html", {"request": request, "obrigacoes": obrigacoes})
+    return templates.TemplateResponse(request, "partials/regras_table.html", {"obrigacoes": obrigacoes})
 
 
 @router.post("/obrigacoes", response_class=HTMLResponse)
@@ -61,12 +60,11 @@ async def create_obrigacao(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
-    # Validação: nome duplicado
     existente = db.query(models.RegraObrigacao).filter(models.RegraObrigacao.obrigacao == obrigacao).first()
     if existente:
         obrigacoes = db.query(models.RegraObrigacao).order_by(models.RegraObrigacao.obrigacao).limit(PAGE_SIZE).all()
-        return templates.TemplateResponse("partials/regras_table.html", {
-            "request": request, "obrigacoes": obrigacoes,
+        return templates.TemplateResponse(request, "partials/regras_table.html", {
+            "obrigacoes": obrigacoes,
             "erro": f"Obrigação '{obrigacao}' já cadastrada"
         })
 
@@ -82,7 +80,7 @@ async def create_obrigacao(
     db.commit()
 
     obrigacoes = db.query(models.RegraObrigacao).order_by(models.RegraObrigacao.obrigacao).limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/regras_table.html", {"request": request, "obrigacoes": obrigacoes})
+    return templates.TemplateResponse(request, "partials/regras_table.html", {"obrigacoes": obrigacoes})
 
 
 @router.put("/obrigacoes/{obrigacao_id}", response_class=HTMLResponse)
@@ -109,7 +107,7 @@ async def update_obrigacao(
     db.commit()
 
     obrigacoes = db.query(models.RegraObrigacao).order_by(models.RegraObrigacao.obrigacao).limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/regras_table.html", {"request": request, "obrigacoes": obrigacoes})
+    return templates.TemplateResponse(request, "partials/regras_table.html", {"obrigacoes": obrigacoes})
 
 
 @router.delete("/obrigacoes/{obrigacao_id}", response_class=HTMLResponse)
@@ -125,4 +123,4 @@ async def delete_obrigacao(
         db.commit()
 
     obrigacoes = db.query(models.RegraObrigacao).order_by(models.RegraObrigacao.obrigacao).limit(PAGE_SIZE).all()
-    return templates.TemplateResponse("partials/regras_table.html", {"request": request, "obrigacoes": obrigacoes})
+    return templates.TemplateResponse(request, "partials/regras_table.html", {"obrigacoes": obrigacoes})

@@ -97,6 +97,7 @@ jobs:
             --min-instances=0
             --max-instances=5
             --set-env-vars=ENVIRONMENT=production
+            --add-cloudsql-instances=jp-saas-producao:southamerica-east1:jpsaas-db
 
       - name: Exibir URL do serviço
         run: |

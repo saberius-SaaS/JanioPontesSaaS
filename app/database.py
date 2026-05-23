@@ -20,7 +20,11 @@ DB_NAME = os.getenv("DB_NAME", "postgres")
 
 # Encode password to handle special characters like @ safely
 encoded_password = quote_plus(DB_PASSWORD)
-DATABASE_URL = f"postgresql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+if DB_HOST.startswith("/cloudsql"):
+    DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{encoded_password}@/{DB_NAME}?host={DB_HOST}"
+else:
+    DATABASE_URL = f"postgresql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 

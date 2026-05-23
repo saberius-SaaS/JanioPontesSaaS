@@ -24,3 +24,7 @@ jinja2
 python-multipart
 httpx
 pytest
+python-dotenv==1.0.1
+google-api-python-client==2.160.0
+google-auth==2.38.0
+psycopg2-binary==2.9.9
