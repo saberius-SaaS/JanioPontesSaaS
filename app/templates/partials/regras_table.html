@@ -24,7 +24,7 @@
             {{ o.acao or '-' }}
         </td>
         <td class="py-3 px-4 text-right">
-            <button class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
+            <button onclick="abrirEdicaoObrigacao('{{ o.id }}', '{{ o.obrigacao | replace('\'', '\\\'') }}', '{{ o.departamento or '' }}', '{{ o.dia or '' }}', '{{ o.acao or '' }}', '{{ o.regime or '' }}')" class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
                 <i class="fa-solid fa-pen-to-square"></i>
             </button>
         </td>

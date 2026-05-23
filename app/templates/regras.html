@@ -23,7 +23,7 @@
         </div>
         
         <!-- Add Button -->
-        <button onclick="document.getElementById('modal-nova-obrigacao').classList.remove('hidden')" class="px-5 py-2.5 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-sm w-full md:w-auto flex justify-center items-center">
+        <button onclick="abrirNovaObrigacao()" class="px-5 py-2.5 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-sm w-full md:w-auto flex justify-center items-center">
             <i class="fa-solid fa-plus mr-2"></i> Nova Obrigação
         </button>
     </div>
@@ -51,7 +51,7 @@
 <div id="modal-nova-obrigacao" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h3 class="font-bold text-jp-navy text-lg"><i class="fa-solid fa-file-invoice mr-2 text-indigo-400"></i> Cadastrar Regra de Obrigação</h3>
+            <h3 id="titulo-modal-obrigacao" class="font-bold text-jp-navy text-lg"><i class="fa-solid fa-file-invoice mr-2 text-indigo-400"></i> Cadastrar Regra de Obrigação</h3>
             <button onclick="document.getElementById('modal-nova-obrigacao').classList.add('hidden')" class="text-slate-400 hover:text-red-500 transition-colors">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
@@ -104,4 +104,33 @@
         </div>
     </div>
 </div>
+
+<script>
+function abrirNovaObrigacao() {
+    const form = document.getElementById('form-obrigacao');
+    form.reset();
+    form.removeAttribute('hx-put');
+    form.setAttribute('hx-post', '/obrigacoes');
+    htmx.process(form);
+    
+    document.getElementById('titulo-modal-obrigacao').innerHTML = '<i class="fa-solid fa-file-invoice mr-2 text-indigo-400"></i> Cadastrar Regra de Obrigação';
+    document.getElementById('modal-nova-obrigacao').classList.remove('hidden');
+}
+
+function abrirEdicaoObrigacao(id, obrigacao, departamento, dia, acao, regime) {
+    const form = document.getElementById('form-obrigacao');
+    form.removeAttribute('hx-post');
+    form.setAttribute('hx-put', '/obrigacoes/' + id);
+    htmx.process(form);
+    
+    form.elements['obrigacao'].value = obrigacao || '';
+    form.elements['departamento'].value = departamento || '';
+    form.elements['dia'].value = dia || '';
+    form.elements['acao'].value = acao || '';
+    form.elements['regime'].value = regime || '';
+    
+    document.getElementById('titulo-modal-obrigacao').innerHTML = '<i class="fa-solid fa-pen mr-2 text-indigo-400"></i> Editar Obrigação';
+    document.getElementById('modal-nova-obrigacao').classList.remove('hidden');
+}
+</script>
 {% endblock %}

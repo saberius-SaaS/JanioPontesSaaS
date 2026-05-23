@@ -29,7 +29,7 @@
             {% endif %}
         </td>
         <td class="py-3 px-4 text-right">
-            <button class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
+            <button onclick="abrirEdicaoCliente('{{ c.id }}', '{{ c.cliente | replace('\'', '\\\'') }}', '{{ c.cnpj or '' }}', '{{ c.responsavel or '' }}', '{{ c.email or '' }}', '{{ c.telefone or '' }}')" class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
                 <i class="fa-solid fa-pen-to-square"></i>
             </button>
         </td>
