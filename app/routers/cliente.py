@@ -6,7 +6,7 @@ from uuid import UUID
 
 from app import models
 from app.database import get_db
-from app.api.deps import require_login
+from app.api.deps import require_admin
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -19,7 +19,7 @@ async def list_clientes_page(
     request: Request,
     page: int = Query(1, ge=1),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     offset = (page - 1) * PAGE_SIZE
     total = db.query(models.Cliente).count()
@@ -40,7 +40,7 @@ async def search_clientes(
     request: Request,
     q: str = "",
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     query = db.query(models.Cliente)
     if q:
@@ -76,7 +76,7 @@ async def create_cliente(
     email_pessoal: str = Form(None),
     email_societario: str = Form(None),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     if cnpj:
         existente = db.query(models.Cliente).filter(models.Cliente.cnpj == cnpj).first()
@@ -141,7 +141,7 @@ async def update_cliente(
     email_societario: str = Form(None),
     status: str = Form("ATIVO"),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     obj = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not obj:
@@ -178,7 +178,7 @@ async def delete_cliente(
     request: Request,
     cliente_id: UUID,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     obj = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if obj:

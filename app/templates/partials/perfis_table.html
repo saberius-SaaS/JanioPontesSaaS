@@ -1,0 +1,25 @@
+{% if erro %}
+<tr class="bg-red-50"><td colspan="4" class="px-4 py-3 text-red-600 text-sm"><i class="fa-solid fa-triangle-exclamation mr-2"></i> {{ erro }}</td></tr>
+{% endif %}
+
+{% for p in perfis %}
+<tr class="hover:bg-slate-50 transition-colors">
+    <td class="px-4 py-3 font-medium text-slate-800"><i class="fa-solid fa-tag text-indigo-400 mr-2 text-xs"></i> {{ p.nome }}</td>
+    <td class="px-4 py-3 text-slate-500">{{ p.descricao or '-' }}</td>
+    <td class="px-4 py-3">
+        {% if p.status == 'ATIVO' %}
+            <span class="text-emerald-500 text-xs font-bold uppercase"><i class="fa-solid fa-circle text-[8px] mr-1"></i> Ativo</span>
+        {% else %}
+            <span class="text-red-500 text-xs font-bold uppercase"><i class="fa-solid fa-circle text-[8px] mr-1"></i> Inativo</span>
+        {% endif %}
+    </td>
+    <td class="px-4 py-3 text-right space-x-2">
+        <button class="text-indigo-500 hover:text-indigo-700 transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>
+        <button class="text-red-400 hover:text-red-600 transition-colors ml-2" hx-delete="/perfis/{{ p.id }}" hx-target="#perfis-tbody" hx-confirm="Desativar este perfil?"><i class="fa-solid fa-trash-can"></i></button>
+    </td>
+</tr>
+{% else %}
+<tr>
+    <td colspan="4" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhum perfil cadastrado.</td>
+</tr>
+{% endfor %}

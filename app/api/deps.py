@@ -110,6 +110,19 @@ def require_login(request: Request, db: Session = Depends(get_db)) -> models.Usu
     return user
 
 
+def require_admin(current_user: models.Usuario = Depends(require_login)) -> models.Usuario:
+    """
+    Dependency para rotas SSR que exigem nível ADMIN.
+    """
+    if current_user.nivel != "ADMIN" and current_user.nivel != "MASTER":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito apenas a administradores."
+        )
+    return current_user
+
+
+
 def verify_scheduler_key(x_scheduler_key: str = Header(None)) -> bool:
     """
     Protege as rotas de CRON/Scheduler com uma chave secreta.

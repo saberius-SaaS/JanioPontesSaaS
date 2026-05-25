@@ -9,6 +9,7 @@ from app.models.cliente import Cliente
 from app.models.regra import RegraObrigacao
 from app.models.tarefa import Tarefa, Protocolo, HistoricoTarefa, Solicitacao
 from app.models.operacional import Workflow, LogSistema, FrequenciaAcesso, Configuracao
+from app.models.perfil import Perfil
 
 __all__ = [
     "Base",
@@ -26,4 +27,5 @@ __all__ = [
     "LogSistema",
     "FrequenciaAcesso",
     "Configuracao",
+    "Perfil",
 ]

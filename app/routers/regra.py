@@ -6,7 +6,7 @@ from uuid import UUID
 
 from app import models
 from app.database import get_db
-from app.api.deps import require_login
+from app.api.deps import require_admin
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -19,7 +19,7 @@ async def list_obrigacoes_page(
     request: Request,
     page: int = Query(1, ge=1),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     offset = (page - 1) * PAGE_SIZE
     total = db.query(models.RegraObrigacao).count()
@@ -40,7 +40,7 @@ async def search_obrigacoes(
     request: Request,
     q: str = "",
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     query = db.query(models.RegraObrigacao)
     if q:
@@ -65,7 +65,7 @@ async def create_obrigacao(
     grupo_regra: str = Form(None),
     revisao: str = Form(None),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     existente = db.query(models.RegraObrigacao).filter(models.RegraObrigacao.obrigacao == obrigacao).first()
     if existente:
@@ -114,7 +114,7 @@ async def update_obrigacao(
     grupo_regra: str = Form(None),
     revisao: str = Form(None),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     obj = db.query(models.RegraObrigacao).filter(models.RegraObrigacao.id == obrigacao_id).first()
     if not obj:
@@ -143,7 +143,7 @@ async def delete_obrigacao(
     request: Request,
     obrigacao_id: UUID,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    current_user: models.Usuario = Depends(require_admin)
 ):
     obj = db.query(models.RegraObrigacao).filter(models.RegraObrigacao.id == obrigacao_id).first()
     if obj:

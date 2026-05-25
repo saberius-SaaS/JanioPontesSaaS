@@ -221,6 +221,14 @@ A tabela `tenants` armazena configurações visuais por escritório:
 
 O custo de servir 10 escritórios é **idêntico** ao de servir 1. A infraestrutura só precisa de upgrade quando o volume combinado de dados e acessos simultâneos justificar. Isso significa que **cada novo cliente é receita pura** até atingir o teto da instância atual.
 
+### 7.6 Controle de Acesso Baseado em Perfis (RBAC)
+
+O sistema distinguirá as permissões de acesso com base no papel (role) atribuído a cada usuário no banco de dados (`usuarios.papel`):
+- **ADMIN:** Acesso total à plataforma, incluindo CRUD de Clientes, Obrigações (Regras), Perfis de Clientes, Workflows e gestão de outros Usuários.
+- **USER (Operacional):** Acesso restrito. Não visualiza nem edita cadastros estruturais (Clientes, Regras, Perfis, Workflows). O foco deste perfil é a operação de protocolos, atendimento (Chatwoot) e resolução de tarefas designadas.
+
+Isso será implementado no FastAPI através de *Dependências* (ex: `Depends(require_admin)`), garantindo que um `USER` seja bloqueado no backend caso tente acessar rotas restritas. No frontend (Jinja2), os menus de administração serão ocultados para o perfil `USER`.
+
 ---
 
 ## 8. Integração Omnichannel com Chatwoot (Decisão: Self-Hosted)
@@ -385,6 +393,16 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 - [x] 5.5.1. Criar função genérica que grava um registro no `Historico` toda vez que um protocolo é alterado.
 - [x] 5.5.2. Exibir o histórico na tela de detalhes do protocolo.
 
+**5.6. Módulo de Usuários e Controle de Acesso**
+- [x] 5.6.1. Criar rotas CRUD de usuários (Cadastro, Edição, Inativação).
+- [x] 5.6.2. Implementar a tela de Gestão de Usuários (acessível apenas para ADMIN).
+- [x] 5.6.3. Implementar Middlewares/Dependências no FastAPI para bloquear rotas estruturais (Clientes, Regras, Perfis, Workflows) para o perfil USER.
+- [x] 5.6.4. Ocultar menus e botões no Frontend (Jinja2) baseados no papel do usuário logado.
+
+**5.7. Módulo de Perfis (Vinculação a Clientes e Regras)**
+- [x] 5.7.1. Criar rotas CRUD para Perfis.
+- [x] 5.7.2. Criar interface para vincular Perfis aos Clientes e às Regras.
+
 ### 🟤 Etapa 6: Infraestrutura de Comunicação (Chatwoot & E-mails)
 
 **6.1. Provisionar Chatwoot (Self-hosted)**
@@ -494,6 +512,8 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 - [ ] 10.2.1. Travar a edição das planilhas do GAS atual (modo leitura).
 - [x] 10.2.2. Rodar o script Python de extração de dados (lendo a API do Sheets e gravando no PostgreSQL via SQLAlchemy).
 - [x] 10.2.3. Validar a integridade dos dados migrados (125 clientes e 57 regras importados com sucesso).
+- [ ] 10.2.4. Desenvolver e rodar script de extração/importação para os **Perfis**, mapeando as vinculações com Clientes e Regras.
+- [ ] 10.2.5. Desenvolver e rodar script de extração/importação dos **Usuários**, garantindo a atribuição correta dos níveis ADMIN e USER.
 
 **10.3. Rollback de Segurança**
 - [ ] 10.3.1. Habilitar script de Reverse Sync: Cada novo registro no banco salva uma cópia na planilha antiga.

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Gestão de Usuários - Janio Pontes SaaS{% endblock %}
+{% block page_title %}Gestão de Equipe{% endblock %}
+{% block hero_title %}Equipe e Acessos{% endblock %}
+{% block hero_subtitle %}Gerencie os operadores do sistema e seus respectivos níveis de permissão.{% endblock %}
+
+{% block content %}
+<div class="card-premium p-6">
+    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-users-gear mr-2 text-indigo-400"></i> Lista de Usuários</h3>
+        <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow transition-all">
+            + Novo Usuário
+        </button>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-4 py-3 rounded-tl-lg">Nome</th>
+                    <th class="px-4 py-3">Email</th>
+                    <th class="px-4 py-3">Nível</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3 text-right rounded-tr-lg">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="usuarios-tbody">
+                {% include "partials/usuarios_table.html" %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

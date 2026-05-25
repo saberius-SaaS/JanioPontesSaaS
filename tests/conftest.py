@@ -50,7 +50,8 @@ def client(db):
             tenant_id=uuid.uuid4(),
             email="test@janiopontes.com.br",
             nome="Test User",
-            ativo=True
+            ativo=True,
+            nivel="ADMIN"
         )
         
     def override_verify_scheduler_key():
