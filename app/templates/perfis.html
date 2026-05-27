@@ -9,7 +9,7 @@
 <div class="card-premium p-6">
     <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
         <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-tags mr-2 text-indigo-400"></i> Lista de Perfis</h3>
-        <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow transition-all">
+        <button onclick="abrirNovoPerfil()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow transition-all">
             + Novo Perfil
         </button>
     </div>
@@ -19,7 +19,6 @@
             <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
                 <tr>
                     <th class="px-4 py-3 rounded-tl-lg">Nome do Perfil</th>
-                    <th class="px-4 py-3">Descrição</th>
                     <th class="px-4 py-3">Status</th>
                     <th class="px-4 py-3 text-right rounded-tr-lg">Ações</th>
                 </tr>
@@ -30,4 +29,64 @@
         </table>
     </div>
 </div>
+
+<!-- Modal Novo Perfil -->
+<div id="modal-perfil" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h3 id="titulo-modal-perfil" class="font-bold text-jp-navy text-lg"><i class="fa-solid fa-tag mr-2 text-indigo-400"></i> Cadastrar Perfil</h3>
+            <button onclick="document.getElementById('modal-perfil').classList.add('hidden')" class="text-slate-400 hover:text-red-500 transition-colors">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <form id="form-perfil" hx-post="/perfis" hx-target="#perfis-tbody" hx-on::after-request="document.getElementById('modal-perfil').classList.add('hidden'); this.reset();">
+                <div class="mb-5">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nome do Perfil *</label>
+                    <input type="text" name="nome" required class="glass-input w-full" placeholder="Ex: SIMPLES NACIONAL">
+                </div>
+                
+                <div class="mb-5">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Status</label>
+                    <select name="status" class="glass-input w-full">
+                        <option value="ATIVO">Ativo</option>
+                        <option value="INATIVO">Inativo</option>
+                    </select>
+                </div>
+                
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="document.getElementById('modal-perfil').classList.add('hidden')" class="px-5 py-2 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all">Salvar Perfil</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirNovoPerfil() {
+    const form = document.getElementById('form-perfil');
+    form.reset();
+    form.removeAttribute('hx-put');
+    form.setAttribute('hx-post', '/perfis');
+    htmx.process(form);
+    
+    document.getElementById('titulo-modal-perfil').innerHTML = '<i class="fa-solid fa-tag mr-2 text-indigo-400"></i> Cadastrar Perfil';
+    document.getElementById('modal-perfil').classList.remove('hidden');
+}
+
+function abrirEdicaoPerfil(id, nome, status) {
+    const form = document.getElementById('form-perfil');
+    form.removeAttribute('hx-post');
+    form.setAttribute('hx-put', '/perfis/' + id);
+    htmx.process(form);
+    
+    form.elements['nome'].value = nome;
+    form.elements['status'].value = status;
+    
+    document.getElementById('titulo-modal-perfil').innerHTML = '<i class="fa-solid fa-pen mr-2 text-indigo-400"></i> Editar Perfil';
+    document.getElementById('modal-perfil').classList.remove('hidden');
+}
+</script>
 {% endblock %}

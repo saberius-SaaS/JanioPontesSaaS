@@ -36,10 +36,7 @@ Write-Host "Todos os testes passaram!" -ForegroundColor Green
 # [3/5] Git commit e push
 # ─────────────────────────────────────────
 Write-Host "`n[3/5] Salvando alteracoes no Git..." -ForegroundColor Yellow
-$commitMessage = Read-Host "Mensagem do commit (Enter para usar mensagem padrao)"
-if ([string]::IsNullOrWhiteSpace($commitMessage)) {
-    $commitMessage = "update: Deploy manual via script"
-}
+$commitMessage = "update: Deploy automatico via script - $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')"
 git add .
 $gitStatus = git status --porcelain
 if ($gitStatus) {
