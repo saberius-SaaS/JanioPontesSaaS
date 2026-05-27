@@ -34,6 +34,7 @@ from app.api.deps import require_login
 from app import models
 from app.database import get_db
 from sqlalchemy.orm import Session
+from sqlalchemy import func, case
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -73,6 +74,40 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
     entregues = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id, models.Tarefa.status == 'ENTREGUE').count()
     atrasadas = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id, models.Tarefa.status == 'ATRASADO').count()
 
+    # Desempenho Setorial
+    setores_raw = db.query(
+        models.Tarefa.departamento,
+        func.count(models.Tarefa.id).label('total'),
+        func.sum(case((models.Tarefa.status == 'ENTREGUE', 1), else_=0)).label('entregues')
+    ).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id
+    ).group_by(models.Tarefa.departamento).all()
+    
+    desempenho_setorial = []
+    for s in setores_raw:
+        if not s.departamento: continue
+        total = s.total or 0
+        entregues = s.entregues or 0
+        percentual = int((entregues / total * 100)) if total > 0 else 0
+        desempenho_setorial.append({
+            "departamento": s.departamento,
+            "total": total,
+            "entregues": entregues,
+            "percentual": percentual
+        })
+    desempenho_setorial.sort(key=lambda x: x['percentual'], reverse=True)
+
+    # Ranking Equipe (Entregues)
+    ranking_raw = db.query(
+        models.Tarefa.responsavel,
+        func.count(models.Tarefa.id).label('entregues')
+    ).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status == 'ENTREGUE'
+    ).group_by(models.Tarefa.responsavel).order_by(func.count(models.Tarefa.id).desc()).limit(5).all()
+
+    ranking_equipe = [{"responsavel": r.responsavel or "Nao atribuido", "entregues": r.entregues} for r in ranking_raw]
+
     return templates.TemplateResponse(request=request, name="base.html", context={
         "request": request,
         "user": current_user,
@@ -80,7 +115,9 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         "chatwoot_base_url": getattr(request.state, "chatwoot_base_url", ""),
         "pendentes": pendentes,
         "entregues": entregues,
-        "atrasadas": atrasadas
+        "atrasadas": atrasadas,
+        "desempenho_setorial": desempenho_setorial,
+        "ranking_equipe": ranking_equipe
     })
 
 @app.get("/htmx-test", response_class=HTMLResponse)

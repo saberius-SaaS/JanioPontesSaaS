@@ -24,6 +24,7 @@ if (Test-Path ".\venv\Scripts\activate.ps1") {
 # [2/5] Testes automatizados
 # ─────────────────────────────────────────
 Write-Host "`n[2/5] Rodando bateria de testes..." -ForegroundColor Yellow
+Remove-Item test.db -ErrorAction SilentlyContinue
 pytest tests/ -v --tb=short
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`nTESTES FALHARAM! Deploy cancelado para proteger producao." -ForegroundColor Red
