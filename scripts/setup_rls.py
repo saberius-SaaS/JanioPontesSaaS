@@ -17,6 +17,7 @@ TENANT_TABLES = [
     "regras_obrigacoes",
     "solicitacoes",
     "tarefas",
+    "tipos_tarefa_avulsa",
     "usuarios",
     "workflows"
 ]

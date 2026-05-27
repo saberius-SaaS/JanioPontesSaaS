@@ -20,7 +20,7 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
     ).order_by(models.Tarefa.vencimento.asc()).limit(200).all()
     
     clientes = db.query(models.Cliente).filter(models.Cliente.tenant_id == current_user.tenant_id, models.Cliente.status == 'ATIVO').order_by(models.Cliente.cliente).all()
-    usuarios = db.query(models.Usuario).filter(models.Usuario.tenant_id == current_user.tenant_id, models.Usuario.status == 'ATIVO').all()
+    usuarios = db.query(models.Usuario).filter(models.Usuario.tenant_id == current_user.tenant_id, models.Usuario.ativo == True).all()
     
     # Tipos de tarefas avulsas (tabela dedicada)
     tipos_raw = db.query(models.TipoTarefaAvulsa).filter(

@@ -313,6 +313,7 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 - [x] 2.3.1. Inicializar o Alembic no projeto (`alembic init alembic`).
 - [x] 2.3.2. Gerar a primeira migração (`alembic revision --autogenerate`).
 - [x] 2.3.3. Aplicar a migração no Cloud SQL (`alembic upgrade head`).
+- [x] 2.3.4. (Atualização) Aplicar migration da nova tabela avulsa (`tipos_tarefa_avulsa`) e injetar RLS obrigatório pelo `setup_rls.py` (Concluído e validado).
 
 **2.4. Implementar Políticas de Isolamento (Row-Level Security - RLS)**
 - [x] 2.4.1. Criar script SQL para habilitar RLS nas tabelas.
@@ -474,7 +475,7 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 **9.3. Segurança do Banco de Dados (Cloud SQL)**
 - [ ] 9.3.1. Verificar que o Cloud SQL está configurado para aceitar conexões **apenas via Unix Socket** (Cloud SQL Connector), sem IP público exposto.
 - [ ] 9.3.2. Criar um usuário PostgreSQL dedicado para a aplicação (`app_user`) com privilégios mínimos (sem permissão de `CREATE TABLE`, `DROP`, etc.).
-- [ ] 9.3.3. Remover o usuário `postgres` (superusuário) do acesso remoto.
+- [x] 9.3.3. Remover o usuário `postgres` (superusuário) do acesso remoto. *(Concluído: O Google Cloud impede a deleção física do usuário `postgres` pois ele é proprietário nativo do banco. Como alternativa de compliance, sua senha foi alterada para um UUID randômico inacessível para garantir o isolamento total).*
 - [ ] 9.3.4. Habilitar backups automáticos no Cloud SQL com retenção de 7 dias.
 
 **9.4. Revisão das Políticas de RLS (Row-Level Security)**
