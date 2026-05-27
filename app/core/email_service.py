@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 EMAIL_MODE = os.getenv("EMAIL_MODE", "intercept")  # "mock", "intercept" ou "production"
 EMAIL_INTERCEPT_ADDRESS = os.getenv("EMAIL_INTERCEPT_ADDRESS", "janiopontes@janiopontes.com.br")
 GMAIL_DELEGATED_USER = os.getenv("GMAIL_DELEGATED_USER", "sistema@janiopontes.com.br")
-CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "credentials.json")
+CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "/secrets/credentials.json" if os.path.exists("/secrets/credentials.json") else "credentials.json")
 
 
 class EmailService:

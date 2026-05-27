@@ -17,7 +17,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 DRIVE_MODE = os.getenv("DRIVE_MODE", "mock")  # "mock" ou "production"
-CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "credentials.json")
+CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "/secrets/credentials.json" if os.path.exists("/secrets/credentials.json") else "credentials.json")
 DRIVE_ROOT_FOLDER = os.getenv("DRIVE_ROOT_FOLDER", "")  # ID da pasta raiz no Drive
 
 
