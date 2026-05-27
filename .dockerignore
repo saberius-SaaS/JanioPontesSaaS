@@ -13,3 +13,5 @@ test.db
 *.gsheet
 line1311.txt
 line1312.txt
+credentials.json
+.env

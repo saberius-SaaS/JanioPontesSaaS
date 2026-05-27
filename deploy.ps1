@@ -82,7 +82,7 @@ gcloud run deploy $CLOUDRUN_SVC `
     --region $CLOUDRUN_REGION `
     --allow-unauthenticated `
     --set-env-vars="ENVIRONMENT=production,DB_USER=app_user,DB_NAME=postgres,DB_HOST=/cloudsql/jp-saas-producao:southamerica-east1:jpsaas-db" `
-    --set-secrets="DB_PASSWORD=JPSAAS_DB_PASSWORD:latest,SECRET_KEY=JPSAAS_SECRET_KEY:latest,GOOGLE_CLIENT_SECRET=JPSAAS_GOOGLE_CLIENT_SECRET:latest" `
+    --set-secrets="DB_PASSWORD=JPSAAS_DB_PASSWORD:latest,SECRET_KEY=JPSAAS_SECRET_KEY:latest,GOOGLE_CLIENT_SECRET=JPSAAS_GOOGLE_CLIENT_SECRET:latest,/app/credentials.json=JPSAAS_GCP_CREDENTIALS:latest" `
     --add-cloudsql-instances="jp-saas-producao:southamerica-east1:jpsaas-db" `
     --quiet
 

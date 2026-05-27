@@ -468,9 +468,9 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 
 **9.2. Permissões do Cloud Run (IAM)**
 - [x] 9.2.1. Aplicar o papel "Chamador do Cloud Run" para `allUsers` (acesso público à URL do serviço).
-- [ ] 9.2.2. Revogar acesso de administrador da Service Account `jpsaas-backend` (que atualmente possui permissões excessivas).
-- [ ] 9.2.3. Criar uma IAM Role customizada com permissões mínimas necessárias para a Service Account (princípio do menor privilégio).
-- [ ] 9.2.4. Guardar a chave da Service Account no **Secret Manager** do GCP (remover o `credentials.json` do repositório e do container Docker).
+- [x] 9.2.2. Revogar acesso de administrador da Service Account `jpsaas-backend` (que atualmente possui permissões excessivas).
+- [x] 9.2.3. Criar uma IAM Role customizada com permissões mínimas necessárias para a Service Account (princípio do menor privilégio).
+- [x] 9.2.4. Guardar a chave da Service Account no **Secret Manager** do GCP (remover o `credentials.json` do repositório e do container Docker).
 
 **9.3. Segurança do Banco de Dados (Cloud SQL)**
 - [ ] 9.3.1. Verificar que o Cloud SQL está configurado para aceitar conexões **apenas via Unix Socket** (Cloud SQL Connector), sem IP público exposto.
