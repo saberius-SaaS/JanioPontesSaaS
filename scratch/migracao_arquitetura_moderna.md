@@ -485,14 +485,14 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 
 **9.5. Proteção das Rotas da API**
 - [ ] 9.5.1. Auditar todas as rotas FastAPI e confirmar que cada uma usa `Depends(require_login)` ou `Depends(verify_scheduler_key)`.
-- [ ] 9.5.2. Remover (ou proteger com senha) a rota `/docs` (Swagger UI) em ambiente de produção.
+- [x] 9.5.2. Remover (ou proteger com senha) a rota `/docs` (Swagger UI) em ambiente de produção.
 - [ ] 9.5.3. Adicionar rate limiting nas rotas públicas (especialmente `/login`) para prevenir ataques de força bruta.
-- [ ] 9.5.4. Configurar headers de segurança HTTP (CSP, X-Frame-Options, Strict-Transport-Security) via middleware no FastAPI.
+- [x] 9.5.4. Configurar headers de segurança HTTP (CSP, X-Frame-Options, Strict-Transport-Security) via middleware no FastAPI.
 
 **9.6. Variáveis de Ambiente e Segredos**
 - [x] 9.6.1. Garantir que o arquivo `.env` está no `.gitignore` e nunca é versionado.
-- [ ] 9.6.2. Migrar os segredos do `.env` (DB_PASSWORD, SECRET_KEY, GOOGLE_CLIENT_SECRET) para o **GCP Secret Manager**.
-- [ ] 9.6.3. Configurar o Cloud Run para ler os segredos diretamente do Secret Manager via variáveis de ambiente (sem hardcode no código).
+- [x] 9.6.2. Migrar os segredos do `.env` (DB_PASSWORD, SECRET_KEY, GOOGLE_CLIENT_SECRET) para o **GCP Secret Manager**.
+- [x] 9.6.3. Configurar o Cloud Run para ler os segredos diretamente do Secret Manager via variáveis de ambiente (sem hardcode no código).
 - [ ] 9.6.4. Rodar `SECRET_KEY` com pelo menos 64 caracteres gerados aleatoriamente (verificado ✅ — já implementado).
 
 **9.7. GitHub Actions e Segredos do CI/CD**
@@ -512,8 +512,8 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 - [ ] 10.2.1. Travar a edição das planilhas do GAS atual (modo leitura).
 - [x] 10.2.2. Rodar o script Python de extração de dados (lendo a API do Sheets e gravando no PostgreSQL via SQLAlchemy).
 - [x] 10.2.3. Validar a integridade dos dados migrados (125 clientes e 57 regras importados com sucesso).
-- [ ] 10.2.4. Desenvolver e rodar script de extração/importação para os **Perfis**, mapeando as vinculações com Clientes e Regras.
-- [ ] 10.2.5. Desenvolver e rodar script de extração/importação dos **Usuários**, garantindo a atribuição correta dos níveis ADMIN e USER.
+- [x] 10.2.4. Desenvolver e rodar script de extração/importação para os **Perfis**, mapeando as vinculações com Clientes e Regras.
+- [x] 10.2.5. Desenvolver e rodar script de extração/importação dos **Usuários**, garantindo a atribuição correta dos níveis ADMIN e USER.
 
 **10.3. Rollback de Segurança**
 - [ ] 10.3.1. Habilitar script de Reverse Sync: Cada novo registro no banco salva uma cópia na planilha antiga.

@@ -20,7 +20,7 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 
 from app.database import SessionLocal
-from app.models import Tenant, Cliente, RegraObrigacao, Protocolo, HistoricoTarefa
+from app.models import Tenant, Cliente, RegraObrigacao, Protocolo, HistoricoTarefa, Perfil, Usuario
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -87,9 +87,28 @@ def migrar_clientes(db: Session, tenant_id: str, clientes_sheet: List[Dict]):
             
         cnpj = row.get('CNPJ', '').strip()
         
-        # Verifica se já existe para não duplicar na homologação
+        # Verifica se já existe
         existente = db.query(Cliente).filter(Cliente.cliente == nome_cliente).first()
         if existente:
+            existente.cnpj = cnpj
+            existente.responsavel = row.get('RESPONSAVEL', '')
+            existente.email = row.get('EMAIL', '')
+            existente.telefone = row.get('TELEFONE', '')
+            existente.regime = row.get('REGIME', '')
+            existente.fiscal = row.get('FISCAL', '')
+            existente.contabil = row.get('CONTABIL', '')
+            existente.pessoal = row.get('PESSOAL', '')
+            existente.societario = row.get('SOCIETARIO', '')
+            existente.excecoes = row.get('EXCECOES', '')
+            existente.pasta_drive = row.get('PASTA_DRIVE', '')
+            existente.nivel = int(row.get('NIVEL', 1)) if str(row.get('NIVEL', '')).strip().isdigit() else 1
+            existente.perfis_ativos = row.get('PERFIS_ATIVOS', '')
+            existente.status = row.get('STATUS', 'ATIVO')
+            existente.email_fiscal = row.get('EMAIL_FISCAL', '')
+            existente.email_contabil = row.get('EMAIL_CONTABIL', '')
+            existente.email_pessoal = row.get('EMAIL_PESSOAL', '')
+            existente.email_societario = row.get('EMAIL_SOCIETARIO', '')
+            existente.nome_fantasia = row.get('FANTASIA', '')
             count_pulados += 1
             continue
             
@@ -101,14 +120,26 @@ def migrar_clientes(db: Session, tenant_id: str, clientes_sheet: List[Dict]):
             email=row.get('EMAIL', ''),
             telefone=row.get('TELEFONE', ''),
             regime=row.get('REGIME', ''),
-            nome_fantasia=row.get('FANTASIA', ''),
-            status="ATIVO"
+            fiscal=row.get('FISCAL', ''),
+            contabil=row.get('CONTABIL', ''),
+            pessoal=row.get('PESSOAL', ''),
+            societario=row.get('SOCIETARIO', ''),
+            excecoes=row.get('EXCECOES', ''),
+            pasta_drive=row.get('PASTA_DRIVE', ''),
+            nivel=int(row.get('NIVEL', 1)) if str(row.get('NIVEL', '')).strip().isdigit() else 1,
+            perfis_ativos=row.get('PERFIS_ATIVOS', ''),
+            status=row.get('STATUS', 'ATIVO'),
+            email_fiscal=row.get('EMAIL_FISCAL', ''),
+            email_contabil=row.get('EMAIL_CONTABIL', ''),
+            email_pessoal=row.get('EMAIL_PESSOAL', ''),
+            email_societario=row.get('EMAIL_SOCIETARIO', ''),
+            nome_fantasia=row.get('FANTASIA', '')
         )
         db.add(novo_cliente)
         count_inseridos += 1
         
     db.commit()
-    logging.info(f"Clientes: {count_inseridos} inseridos, {count_pulados} ignorados (já existiam).")
+    logging.info(f"Clientes: {count_inseridos} novos inseridos, {count_pulados} atualizados (já existiam).")
 
 def migrar_regras(db: Session, tenant_id: str, regras_sheet: List[Dict]):
     """Migra os dados da aba DB_REGRAS."""
@@ -123,6 +154,18 @@ def migrar_regras(db: Session, tenant_id: str, regras_sheet: List[Dict]):
             
         existente = db.query(RegraObrigacao).filter(RegraObrigacao.obrigacao == nome_regra).first()
         if existente:
+            existente.dia = row.get('DIA', '')
+            existente.departamento = row.get('DEPARTAMENTO', '')
+            existente.regime = row.get('REGIME', '')
+            existente.acao = row.get('ACAO', '')
+            existente.meses = row.get('MESES', '')
+            existente.tipos = row.get('TIPOS', '')
+            existente.desloca = int(row.get('DESLOCA', 0)) if str(row.get('DESLOCA', '')).strip().lstrip('-').isdigit() else 0
+            existente.vencimento_legal = row.get('VENCIMENTO_LEGAL', '')
+            existente.antecipa_fds = row.get('ANTECIPA_FDS', '')
+            existente.grupo_regra = row.get('GRUPO_REGRA', '')
+            existente.revisao = row.get('REVISAO?', row.get('REVISAO', ''))
+            count_inseridos += 1 # usando como contador de processados
             continue
             
         nova_regra = RegraObrigacao(
@@ -131,13 +174,89 @@ def migrar_regras(db: Session, tenant_id: str, regras_sheet: List[Dict]):
             dia=row.get('DIA', ''),
             departamento=row.get('DEPARTAMENTO', ''),
             regime=row.get('REGIME', ''),
-            acao=row.get('ACAO', '')
+            acao=row.get('ACAO', ''),
+            meses=row.get('MESES', ''),
+            tipos=row.get('TIPOS', ''),
+            desloca=int(row.get('DESLOCA', 0)) if str(row.get('DESLOCA', '')).strip().lstrip('-').isdigit() else 0,
+            vencimento_legal=row.get('VENCIMENTO_LEGAL', ''),
+            antecipa_fds=row.get('ANTECIPA_FDS', ''),
+            grupo_regra=row.get('GRUPO_REGRA', ''),
+            revisao=row.get('REVISAO?', row.get('REVISAO', ''))
         )
         db.add(nova_regra)
         count_inseridos += 1
         
     db.commit()
-    logging.info(f"Regras: {count_inseridos} novas regras inseridas.")
+    logging.info(f"Regras: {count_inseridos} regras processadas (novas ou atualizadas).")
+
+def migrar_perfis(db: Session, tenant_id: str, regras_sheet: List[Dict]):
+    """Migra os perfis baseados na coluna GRUPO_REGRA da aba DB_REGRAS."""
+    logging.info(f"Extraindo perfis de {len(regras_sheet)} regras...")
+    
+    count_inseridos = 0
+    count_atualizados = 0
+    
+    # Extrair grupos únicos
+    grupos_unicos = set()
+    for row in regras_sheet:
+        grupo = row.get('GRUPO_REGRA', '').strip()
+        if grupo:
+            grupos_unicos.add(grupo)
+            
+    for nome_perfil in grupos_unicos:
+        existente = db.query(Perfil).filter(Perfil.nome == nome_perfil).first()
+        if existente:
+            existente.status = 'ATIVO'
+            count_atualizados += 1
+            continue
+            
+        novo_perfil = Perfil(
+            tenant_id=tenant_id,
+            nome=nome_perfil,
+            descricao=f"Perfil importado automaticamente do grupo {nome_perfil}",
+            status='ATIVO'
+        )
+        db.add(novo_perfil)
+        count_inseridos += 1
+        
+    db.commit()
+    logging.info(f"Perfis: {count_inseridos} novos inseridos, {count_atualizados} atualizados (de {len(grupos_unicos)} encontrados).")
+
+def migrar_usuarios(db: Session, tenant_id: str, usuarios_sheet: List[Dict]):
+    """Migra os dados da aba DB_USUARIOS."""
+    logging.info(f"Migrando {len(usuarios_sheet)} usuários...")
+    
+    count_inseridos = 0
+    count_atualizados = 0
+    
+    for row in usuarios_sheet:
+        email = row.get('EMAIL', '').strip()
+        if not email:
+            continue
+            
+        ativo_str = str(row.get('ATIVO', row.get('STATUS', 'SIM'))).strip().upper()
+        is_ativo = ativo_str in ['SIM', 'TRUE', '1', 'ATIVO', 'YES']
+            
+        existente = db.query(Usuario).filter(Usuario.email == email).first()
+        if existente:
+            existente.nome = row.get('NOME', '')
+            existente.nivel = row.get('NIVEL', 'USER')
+            existente.ativo = is_ativo
+            count_atualizados += 1
+            continue
+            
+        novo_usuario = Usuario(
+            tenant_id=tenant_id,
+            email=email,
+            nome=row.get('NOME', ''),
+            nivel=row.get('NIVEL', 'USER'),
+            ativo=is_ativo
+        )
+        db.add(novo_usuario)
+        count_inseridos += 1
+        
+    db.commit()
+    logging.info(f"Usuários: {count_inseridos} novos inseridos, {count_atualizados} atualizados.")
 
 def iniciar_migracao():
     logging.info("🚀 Iniciando script de migração (Google Sheets -> PostgreSQL)")
@@ -170,10 +289,14 @@ def iniciar_migracao():
         # Altere se a sua planilha usar nomes diferentes (ex: 'Clientes!A:Z')
         clientes_dados = ler_aba_planilha(service, SPREADSHEET_ID, "DB_CLIENTES!A:Z")
         regras_dados = ler_aba_planilha(service, SPREADSHEET_ID, "DB_REGRAS!A:Z")
+        usuarios_dados = ler_aba_planilha(service, SPREADSHEET_ID, "DB_USUARIOS!A:Z")
         
         # 4. Migra para o banco de dados
         migrar_clientes(db, tenant_id, clientes_dados)
         migrar_regras(db, tenant_id, regras_dados)
+        migrar_perfis(db, tenant_id, regras_dados)
+        if usuarios_dados:
+            migrar_usuarios(db, tenant_id, usuarios_dados)
         
         logging.info("✅ Migração Carga Inicial concluída com sucesso!")
         

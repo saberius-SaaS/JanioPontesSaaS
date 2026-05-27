@@ -42,11 +42,15 @@ function getDashboardData(filtroPeriodo) {
 
     var stats = { total: 0, pendentes: 0, entregues: 0, departamentos: {}, usuarios: {} };
     var countProcessados = 0;
-    function processarLinhas(values) {
+    function processarLinhas(values, apenasEntregues) {
       if (values.length <= 1) return;
       for (var i = 1; i < values.length; i++) {
         var status = String(values[i][5] || "").toUpperCase().trim();
         if (!status) continue;
+
+        // Filtro de integridade: DB_HISTORICO só deve conter ENTREGUE.
+        // Linhas com status divergente (corrupção/edição manual) são ignoradas.
+        if (apenasEntregues && status !== CONFIG_SISTEMA.STATUS.ENTREGUE) continue;
 
         // NORMALIZAÇÃO DE DEPARTAMENTO: Mapeia aliases (ex: LEGAL -> SOCIETARIO) via getSafeDepto
         var deptoRaw = String(values[i][4] || "").toUpperCase().trim();
@@ -98,7 +102,7 @@ function getDashboardData(filtroPeriodo) {
     }
 
     processarLinhas(wsTarefas.getDataRange().getValues());
-    if (wsHist) processarLinhas(wsHist.getDataRange().getValues());
+    if (wsHist) processarLinhas(wsHist.getDataRange().getValues(), true);
 
     return stats;
   } catch (e) { 

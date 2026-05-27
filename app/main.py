@@ -1,8 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-# from app.routers import auth
+import os
 
-app = FastAPI(title="Janio Pontes SaaS", description="API para a plataforma Janio Pontes SaaS")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+app = FastAPI(
+    title="Janio Pontes SaaS", 
+    description="API para a plataforma Janio Pontes SaaS",
+    docs_url="/docs" if ENVIRONMENT != "production" else None,
+    redoc_url="/redoc" if ENVIRONMENT != "production" else None,
+    openapi_url="/openapi.json" if ENVIRONMENT != "production" else None
+)
 
 # Configuração de CORS (necessário para o frontend interagir com a API)
 app.add_middleware(
@@ -21,20 +29,27 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request, Depends
-import os
 
 from app.api.deps import require_login
 from app import models
 
 templates = Jinja2Templates(directory="app/templates")
 
-# Middleware para injetar variáveis globais nos templates
+# Middleware para injetar variáveis globais nos templates e Headers de Segurança
 @app.middleware("http")
-async def add_global_template_context(request: Request, call_next):
-    # Pode não estar presente para rotas que não usam templates, mas não atrapalha
+async def add_global_template_context_and_security(request: Request, call_next):
+    # Contexto para o template
     request.state.chatwoot_token = os.getenv("CHATWOOT_TOKEN", "")
     request.state.chatwoot_base_url = os.getenv("CHATWOOT_BASE_URL", "https://chat.janiopontes.com.br")
+    
     response = await call_next(request)
+    
+    # Headers de Segurança (9.5.4)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    
     return response
 
 # Inclusão de Rotas
