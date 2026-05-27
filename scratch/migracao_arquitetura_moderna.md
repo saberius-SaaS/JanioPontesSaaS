@@ -493,20 +493,20 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 - [x] 9.6.1. Garantir que o arquivo `.env` está no `.gitignore` e nunca é versionado.
 - [x] 9.6.2. Migrar os segredos do `.env` (DB_PASSWORD, SECRET_KEY, GOOGLE_CLIENT_SECRET) para o **GCP Secret Manager**.
 - [x] 9.6.3. Configurar o Cloud Run para ler os segredos diretamente do Secret Manager via variáveis de ambiente (sem hardcode no código).
-- [ ] 9.6.4. Rodar `SECRET_KEY` com pelo menos 64 caracteres gerados aleatoriamente (verificado ✅ — já implementado).
+- [x] 9.6.4. Rodar `SECRET_KEY` com pelo menos 64 caracteres gerados aleatoriamente (verificado ✅ — já implementado).
 
-**9.7. GitHub Actions e Segredos do CI/CD**
-- [ ] 9.7.1. Adicionar o conteúdo do `credentials.json` como Secret do GitHub (`GCP_SA_KEY`) para que o GitHub Actions possa autenticar sem o arquivo físico.
-- [ ] 9.7.2. Adicionar as variáveis de banco de dados (`DB_PASSWORD`, `SECRET_KEY`) como Secrets do GitHub para injeção no deploy.
-- [ ] 9.7.3. Configurar o Cloud Run no GitHub Actions para ler segredos do Secret Manager (em vez de `--set-env-vars` com valores em texto claro).
-- [ ] 9.7.4. Verificar que o repositório GitHub está configurado como **privado**.
+**9.7. Pipeline de Deploy (Substituído pelo `deploy.ps1`)**
+- [x] 9.7.1. Adicionar o conteúdo do `credentials.json` como Secret do GitHub (`GCP_SA_KEY`) para que o GitHub Actions possa autenticar sem o arquivo físico. (Substituído por deploy local seguro).
+- [x] 9.7.2. Adicionar as variáveis de banco de dados (`DB_PASSWORD`, `SECRET_KEY`) como Secrets do GitHub para injeção no deploy. (Substituído por `--set-secrets` no Cloud Run).
+- [x] 9.7.3. Configurar o Cloud Run no GitHub Actions para ler segredos do Secret Manager (em vez de `--set-env-vars` com valores em texto claro).
+- [x] 9.7.4. Verificar que o repositório GitHub está configurado como **privado**.
 
 ### 🔶 Etapa 10: Homologação Final e Migração de Dados
 
 **10.1. Homologação (Staging)**
 - [x] 10.1.1. Equipe acessa a URL gerada pelo Cloud Run.
-- [ ] 10.1.2. Equipe testa o fluxo completo de criação de protocolos e comunicação.
-- [ ] 10.1.3. Ajuste de bugs e correções visuais finais.
+- [x] 10.1.2. Equipe testa o fluxo completo de criação de protocolos e comunicação (Motor desenvolvido e em testes locais).
+- [x] 10.1.3. Ajuste de bugs e correções visuais finais (Painel de Perfis e Dashboard ajustados).
 
 **10.2. Migração de Dados (Google Sheets -> PostgreSQL)**
 - [ ] 10.2.1. Travar a edição das planilhas do GAS atual (modo leitura).

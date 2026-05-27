@@ -32,6 +32,8 @@ from fastapi import Request, Depends
 
 from app.api.deps import require_login
 from app import models
+from app.database import get_db
+from sqlalchemy.orm import Session
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -64,12 +66,19 @@ app.include_router(webhook.router, prefix="/webhook", tags=["Webhooks"])
 app.include_router(scheduler.router, prefix="/scheduler", tags=["Rotinas Agendadas"])
 
 @app.get("/", response_class=HTMLResponse)
-async def root(request: Request, current_user: models.Usuario = Depends(require_login)):
+async def root(request: Request, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
+    pendentes = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id, models.Tarefa.status == 'PENDENTE').count()
+    entregues = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id, models.Tarefa.status == 'ENTREGUE').count()
+    atrasadas = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id, models.Tarefa.status == 'ATRASADO').count()
+
     return templates.TemplateResponse(request=request, name="base.html", context={
         "request": request,
         "user": current_user,
         "chatwoot_token": getattr(request.state, "chatwoot_token", ""),
-        "chatwoot_base_url": getattr(request.state, "chatwoot_base_url", "")
+        "chatwoot_base_url": getattr(request.state, "chatwoot_base_url", ""),
+        "pendentes": pendentes,
+        "entregues": entregues,
+        "atrasadas": atrasadas
     })
 
 @app.get("/htmx-test", response_class=HTMLResponse)

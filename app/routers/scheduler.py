@@ -7,6 +7,7 @@ from app import models
 from app.database import get_db
 from app.core.email_service import email_service
 from app.api.deps import verify_scheduler_key
+from app.core.task_engine import run_task_engine
 
 router = APIRouter()
 
@@ -70,3 +71,25 @@ async def daily_report(
     background_tasks.add_task(email_service.enviar_email, admin_email, f"Relatório Diário — {today.strftime('%d/%m/%Y')}", corpo_html)
 
     return {"status": "success", "report_sent_to": admin_email, "entregas_hoje": entregas_hoje}
+
+
+@router.post("/run-engine")
+async def trigger_task_engine(
+    db: Session = Depends(get_db),
+    _auth: bool = Depends(verify_scheduler_key)
+):
+    """
+    Gatilho para rodar o motor de tarefas (Restrito e sem ações de disparo externo).
+    """
+    try:
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    except Exception:
+        pass
+        
+    cliente = db.query(models.Cliente).first()
+    if not cliente:
+        return {"status": "error", "message": "Sem dados base"}
+        
+    resultado = run_task_engine(db, cliente.tenant_id)
+    return resultado
+

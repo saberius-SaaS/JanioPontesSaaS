@@ -411,7 +411,7 @@
             <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Obrigações Pendentes</h3>
             <div class="bg-orange-100 text-orange-500 p-2.5 rounded-xl"><i class="fa-solid fa-clock"></i></div>
           </div>
-          <p class="text-3xl font-extrabold text-slate-800 kpi-value"><span class="skeleton inline-block w-16 h-8"></span></p>
+          <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ pendentes }}</p>
         </div>
 
         <div class="card-premium p-6">
@@ -419,7 +419,7 @@
             <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Entregas Realizadas</h3>
             <div class="bg-emerald-100 text-emerald-500 p-2.5 rounded-xl"><i class="fa-solid fa-check"></i></div>
           </div>
-          <p class="text-3xl font-extrabold text-slate-800 kpi-value"><span class="skeleton inline-block w-16 h-8"></span></p>
+          <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ entregues }}</p>
         </div>
 
         <div class="card-premium p-6 border-l-4 border-l-red-500">
@@ -427,7 +427,7 @@
             <h3 class="text-red-500 font-semibold text-xs uppercase tracking-wider">Risco Legal (Atrasos)</h3>
             <div class="bg-red-50 text-red-500 p-2.5 rounded-xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
           </div>
-          <p class="text-3xl font-extrabold text-slate-800 kpi-value"><span class="skeleton inline-block w-16 h-8"></span></p>
+          <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ atrasadas }}</p>
         </div>
       </div>
 
