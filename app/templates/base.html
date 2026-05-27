@@ -296,6 +296,11 @@
         <span class="ml-1">Dashboard</span>
       </a>
 
+      <a href="/tarefas" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
+        <i class="fa-solid fa-list-check w-6 text-center text-indigo-400"></i>
+        <span class="ml-1 text-indigo-200">Fila de Tarefas</span>
+      </a>
+
       {% if user and user.nivel in ['ADMIN', 'MASTER'] %}
       <a href="/clientes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
         <i class="fa-solid fa-building w-6 text-center"></i>

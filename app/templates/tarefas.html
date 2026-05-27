@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block page_title %}Quadro de Tarefas{% endblock %}
+
+{% block hero_title %}Fila de Tarefas Operacionais{% endblock %}
+{% block hero_subtitle %}Acompanhe e gerencie as obrigações e tarefas pendentes geradas pelo sistema para este mês.{% endblock %}
+
+{% block content %}
+<div class="card-premium p-6">
+    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-layer-group mr-2 text-indigo-400"></i> Fila de Trabalho (Top 200)</h3>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-4 py-3 rounded-tl-lg">Vencimento</th>
+                    <th class="px-4 py-3">Cliente</th>
+                    <th class="px-4 py-3">Obrigação</th>
+                    <th class="px-4 py-3">Departamento</th>
+                    <th class="px-4 py-3">Responsável</th>
+                    <th class="px-4 py-3 text-right rounded-tr-lg">Ação</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for t in tarefas %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-4 py-3 font-semibold {% if t.status == 'ATRASADO' %}text-red-500{% else %}text-slate-800{% endif %}">
+                        <i class="fa-regular fa-calendar mr-1"></i> {{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}
+                    </td>
+                    <td class="px-4 py-3 font-medium text-jp-navy">{{ t.cliente }}</td>
+                    <td class="px-4 py-3 text-slate-500">{{ t.obrigacao }}</td>
+                    <td class="px-4 py-3 text-xs"><span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md">{{ t.departamento }}</span></td>
+                    <td class="px-4 py-3 text-slate-500">{{ t.responsavel }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <button class="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider" onclick="window.location.href='/protocolos'">
+                            Entregar
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhuma tarefa pendente no momento. Parabéns!</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
