@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from uuid import UUID
+from typing import List
 
 from app import models
 from app.database import get_db
@@ -25,9 +26,11 @@ async def list_clientes_page(
     total = db.query(models.Cliente).count()
     clientes = db.query(models.Cliente).order_by(models.Cliente.cliente).offset(offset).limit(PAGE_SIZE).all()
     total_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
+    perfis = db.query(models.Perfil).filter(models.Perfil.status == "ATIVO").order_by(models.Perfil.nome).all()
 
     return templates.TemplateResponse(request, "clientes.html", {
         "clientes": clientes,
+        "perfis": perfis,
         "page": page,
         "total_pages": total_pages,
         "total": total,
@@ -70,7 +73,7 @@ async def create_cliente(
     excecoes: str = Form(None),
     pasta_drive: str = Form(None),
     nivel: int = Form(1),
-    perfis_ativos: str = Form(None),
+    perfis_ativos: List[str] = Form(default=[]),
     email_fiscal: str = Form(None),
     email_contabil: str = Form(None),
     email_pessoal: str = Form(None),
@@ -103,7 +106,7 @@ async def create_cliente(
         excecoes=excecoes,
         pasta_drive=pasta_drive,
         nivel=nivel,
-        perfis_ativos=perfis_ativos,
+        perfis_ativos=", ".join(perfis_ativos) if perfis_ativos else "",
         email_fiscal=email_fiscal,
         email_contabil=email_contabil,
         email_pessoal=email_pessoal,
@@ -134,7 +137,7 @@ async def update_cliente(
     excecoes: str = Form(None),
     pasta_drive: str = Form(None),
     nivel: int = Form(1),
-    perfis_ativos: str = Form(None),
+    perfis_ativos: List[str] = Form(default=[]),
     email_fiscal: str = Form(None),
     email_contabil: str = Form(None),
     email_pessoal: str = Form(None),
@@ -161,7 +164,7 @@ async def update_cliente(
     obj.excecoes = excecoes
     obj.pasta_drive = pasta_drive
     obj.nivel = nivel
-    obj.perfis_ativos = perfis_ativos
+    obj.perfis_ativos = ", ".join(perfis_ativos) if perfis_ativos else ""
     obj.email_fiscal = email_fiscal
     obj.email_contabil = email_contabil
     obj.email_pessoal = email_pessoal

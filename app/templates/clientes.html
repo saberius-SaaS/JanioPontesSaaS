@@ -131,9 +131,19 @@
                         <input type="number" name="nivel" value="1" class="glass-input w-full">
                     </div>
                     
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Perfis Ativos</label>
-                        <input type="text" name="perfis_ativos" placeholder="Ex: COMERCIO, INDUSTRIA" class="glass-input w-full">
+                    <div class="col-span-1 md:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Perfis Ativos</label>
+                        <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar p-2 bg-slate-50/50 border border-slate-100 rounded-xl">
+                            {% for perfil in perfis %}
+                            <label class="flex items-center space-x-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all shadow-sm">
+                                <input type="checkbox" name="perfis_ativos" value="{{ perfil.nome }}" class="form-checkbox h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                                <span class="text-sm font-medium text-slate-700">{{ perfil.nome }}</span>
+                            </label>
+                            {% endfor %}
+                            {% if not perfis %}
+                            <p class="text-sm text-slate-400 p-2">Nenhum perfil cadastrado no sistema.</p>
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div>
@@ -174,13 +184,24 @@ function abrirEdicaoCliente(dados) {
     form.setAttribute('hx-put', '/clientes/' + dados.id);
     htmx.process(form);
     
-    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'email_fiscal', 'contabil', 'email_contabil', 'pessoal', 'email_pessoal', 'societario', 'email_societario', 'regime', 'nivel', 'perfis_ativos', 'excecoes', 'pasta_drive'];
+    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'email_fiscal', 'contabil', 'email_contabil', 'pessoal', 'email_pessoal', 'societario', 'email_societario', 'regime', 'nivel', 'excecoes', 'pasta_drive'];
     
     campos.forEach(campo => {
         if(form.elements[campo]) {
             form.elements[campo].value = dados[campo] || '';
         }
     });
+    
+    const checkboxes = form.querySelectorAll('input[name="perfis_ativos"]');
+    checkboxes.forEach(cb => cb.checked = false);
+    if(dados.perfis_ativos) {
+        const perfisAtivosArray = dados.perfis_ativos.split(',').map(p => p.trim());
+        checkboxes.forEach(cb => {
+            if(perfisAtivosArray.includes(cb.value)) {
+                cb.checked = true;
+            }
+        });
+    }
     
     document.getElementById('titulo-modal-cliente').innerHTML = '<i class="fa-solid fa-pen mr-2 text-indigo-400"></i> Editar Cliente';
     document.getElementById('modal-novo-cliente').classList.remove('hidden');
