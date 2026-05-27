@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block page_title %}Tipos de Tarefas Avulsas{% endblock %}
+
+{% block hero_title %}Tipos de Tarefas Avulsas{% endblock %}
+{% block hero_subtitle %}Cadastre e gerencie os tipos de tarefas que podem ser criadas manualmente pela equipe operacional.{% endblock %}
+
+{% block content %}
+<!-- Formulário de Novo Tipo -->
+<div class="card-premium p-6 mb-8">
+    <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px] mb-4"><i class="fa-solid fa-plus-circle mr-2 text-indigo-400"></i> Cadastrar Novo Tipo</h3>
+    <form action="/tipos-tarefa" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nome do Tipo *</label>
+            <input type="text" name="nome" required placeholder="Ex: CERTIDÃO NEGATIVA" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Departamento Padrão</label>
+            <select name="departamento" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                <option value="">Nenhum</option>
+                <option value="FISCAL">FISCAL</option>
+                <option value="CONTABIL">CONTÁBIL</option>
+                <option value="PESSOAL">PESSOAL</option>
+                <option value="SOCIETARIO">SOCIETÁRIO</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descrição</label>
+            <input type="text" name="descricao" placeholder="Instrução breve sobre este tipo" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex justify-center items-center h-[40px]">
+                <i class="fa-solid fa-plus mr-2"></i> Cadastrar
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Lista de Tipos -->
+<div class="card-premium p-6">
+    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-tags mr-2 text-indigo-400"></i> Tipos Cadastrados ({{ tipos|length }})</h3>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-4 py-3 rounded-tl-lg">Nome</th>
+                    <th class="px-4 py-3">Departamento</th>
+                    <th class="px-4 py-3">Descrição</th>
+                    <th class="px-4 py-3 text-center">Status</th>
+                    <th class="px-4 py-3 text-right rounded-tr-lg">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for tipo in tipos %}
+                <tr class="hover:bg-slate-50 transition-colors" id="row-{{ tipo.id }}">
+                    <td class="px-4 py-3 font-bold text-jp-navy">{{ tipo.nome }}</td>
+                    <td class="px-4 py-3">
+                        {% if tipo.departamento %}
+                        <span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md text-xs font-bold">{{ tipo.departamento }}</span>
+                        {% else %}
+                        <span class="text-slate-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-slate-500 max-w-xs truncate" title="{{ tipo.descricao }}">{{ tipo.descricao or '—' }}</td>
+                    <td class="px-4 py-3 text-center">
+                        {% if tipo.status == 'ATIVO' %}
+                        <span class="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md text-xs font-bold">Ativo</span>
+                        {% else %}
+                        <span class="bg-red-50 text-red-500 px-2 py-1 rounded-md text-xs font-bold">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right space-x-2">
+                        <button class="bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white px-2 py-1.5 rounded text-xs font-bold transition-all" 
+                                onclick="abrirEdicao('{{ tipo.id }}', '{{ tipo.nome }}', '{{ tipo.departamento or '' }}', '{{ tipo.descricao or '' }}', '{{ tipo.status }}')" title="Editar">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <form action="/tipos-tarefa/{{ tipo.id }}/excluir" method="POST" class="inline" onsubmit="return confirm('Excluir o tipo {{ tipo.nome }}?')">
+                            <button type="submit" class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white px-2 py-1.5 rounded text-xs font-bold transition-all" title="Excluir">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhum tipo cadastrado ainda. Use o formulário acima para adicionar.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Edição -->
+<div id="modal-editar-tipo" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h3 class="font-bold text-jp-navy text-lg"><i class="fa-solid fa-pen mr-2 text-indigo-400"></i> Editar Tipo de Tarefa</h3>
+            <button onclick="document.getElementById('modal-editar-tipo').classList.add('hidden')" class="text-slate-400 hover:text-red-500 transition-colors">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <form id="form-editar-tipo" method="POST" class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nome *</label>
+                <input type="text" name="nome" id="edit-nome" required class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Departamento</label>
+                <select name="departamento" id="edit-departamento" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Nenhum</option>
+                    <option value="FISCAL">FISCAL</option>
+                    <option value="CONTABIL">CONTÁBIL</option>
+                    <option value="PESSOAL">PESSOAL</option>
+                    <option value="SOCIETARIO">SOCIETÁRIO</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descrição</label>
+                <input type="text" name="descricao" id="edit-descricao" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status</label>
+                <select name="status" id="edit-status" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <option value="ATIVO">ATIVO</option>
+                    <option value="INATIVO">INATIVO</option>
+                </select>
+            </div>
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button type="button" onclick="document.getElementById('modal-editar-tipo').classList.add('hidden')" class="px-5 py-2 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
+                <button type="submit" class="px-6 py-2 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirEdicao(id, nome, departamento, descricao, status) {
+    document.getElementById('form-editar-tipo').action = '/tipos-tarefa/' + id + '/editar';
+    document.getElementById('edit-nome').value = nome;
+    document.getElementById('edit-departamento').value = departamento;
+    document.getElementById('edit-descricao').value = descricao;
+    document.getElementById('edit-status').value = status;
+    document.getElementById('modal-editar-tipo').classList.remove('hidden');
+}
+</script>
+{% endblock %}

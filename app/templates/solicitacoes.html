@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block page_title %}Comunicação (CRM){% endblock %}
+
+{% block hero_title %}Comunicação e Solicitações{% endblock %}
+{% block hero_subtitle %}Gerencie os pedidos de documentos e acompanhe o retorno dos clientes em tempo real.{% endblock %}
+
+{% block content %}
+<div class="card-premium p-6 mb-8">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-plus mr-2 text-indigo-400"></i> Nova Solicitação</h3>
+    </div>
+    <form action="/solicitacoes" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="md:col-span-1">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cliente</label>
+            <select name="cliente" required class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                <option value="">Selecione...</option>
+                {% for c in clientes %}
+                <option value="{{ c.cliente }}">{{ c.cliente }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pedido / Documento</label>
+            <input type="text" name="pedido" required placeholder="Ex: Extrato bancário de Maio/2026" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+        </div>
+        <div class="md:col-span-1 flex items-end">
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex justify-center items-center h-[40px]">
+                <i class="fa-solid fa-paper-plane mr-2"></i> Solicitar
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="card-premium p-6">
+    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-clipboard-list mr-2 text-indigo-400"></i> Fila de Comunicação</h3>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-4 py-3 rounded-tl-lg">Data</th>
+                    <th class="px-4 py-3">Cliente</th>
+                    <th class="px-4 py-3">Pedido</th>
+                    <th class="px-4 py-3 text-center">Status</th>
+                    <th class="px-4 py-3 text-center">Avisos</th>
+                    <th class="px-4 py-3 text-right rounded-tr-lg">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for s in solicitacoes %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-4 py-3 font-semibold text-slate-800">
+                        {{ s.data.strftime('%d/%m/%Y') if s.data else '-' }}
+                    </td>
+                    <td class="px-4 py-3 font-medium text-jp-navy">{{ s.cliente }}</td>
+                    <td class="px-4 py-3 text-slate-500 max-w-xs truncate" title="{{ s.pedido }}">{{ s.pedido }}</td>
+                    <td class="px-4 py-3 text-center">
+                        {% if s.status == 'ENTREGUE' %}
+                            <span class="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md text-xs font-bold">Concluído</span>
+                        {% else %}
+                            <span class="bg-amber-50 text-amber-600 px-2 py-1 rounded-md text-xs font-bold">Pendente</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-center text-xs text-slate-500">
+                        {{ s.qtd_avisos }} 
+                        {% if s.ultima_cobranca %}
+                        <br><span class="text-[9px]">Últ. {{ s.ultima_cobranca.strftime('%d/%m') }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right space-x-2">
+                        {% if s.status != 'ENTREGUE' %}
+                        <form action="/solicitacoes/{{ s.id }}/cobrar" method="POST" class="inline">
+                            <button type="submit" class="bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white px-2 py-1.5 rounded text-xs font-bold transition-all" title="Enviar cobrança / lembrete">
+                                <i class="fa-solid fa-bell"></i>
+                            </button>
+                        </form>
+                        <form action="/solicitacoes/{{ s.id }}/concluir" method="POST" class="inline">
+                            <button type="submit" class="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider">
+                                Recebido
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-check"></i> OK</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhuma solicitação no momento.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

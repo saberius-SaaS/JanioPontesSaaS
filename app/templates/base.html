@@ -301,17 +301,10 @@
         <span class="ml-1 text-indigo-200">Fila de Tarefas</span>
       </a>
 
-      {% if user and user.nivel in ['ADMIN', 'MASTER'] %}
-      <a href="/clientes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-building w-6 text-center"></i>
-        <span class="ml-1">Clientes</span>
+      <a href="/solicitacoes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
+        <i class="fa-solid fa-comments w-6 text-center text-indigo-400"></i>
+        <span class="ml-1 text-indigo-200">Comunicação (CRM)</span>
       </a>
-
-      <a href="/obrigacoes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-list-check w-6 text-center"></i>
-        <span class="ml-1">Obrigações/Serviços</span>
-      </a>
-      {% endif %}
 
       <a href="#" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
         <i class="fa-solid fa-shield-halved w-6 text-center"></i>
@@ -328,13 +321,18 @@
         <span class="ml-1">Protocolos</span>
       </a>
 
-      <a href="#" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-clipboard-list w-6 text-center"></i>
-        <span class="ml-1">Solicitações</span>
-      </a>
-
       {% if user and user.nivel in ['ADMIN', 'MASTER'] %}
       <div class="px-4 py-2 mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-t border-white/5 pt-4">Administração</div>
+
+      <a href="/clientes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
+        <i class="fa-solid fa-building w-6 text-center"></i>
+        <span class="ml-1">Clientes</span>
+      </a>
+
+      <a href="/obrigacoes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
+        <i class="fa-solid fa-list-check w-6 text-center"></i>
+        <span class="ml-1">Obrigações/Serviços</span>
+      </a>
 
       <a href="/perfis" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
         <i class="fa-solid fa-tags w-6 text-center"></i>
@@ -345,12 +343,12 @@
         <i class="fa-solid fa-users-gear w-6 text-center"></i>
         <span class="ml-1">Gestão de Equipe</span>
       </a>
-      {% endif %}
 
-      <a href="#" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 mt-4 border-t border-indigo-900 pt-4 no-underline text-white">
-        <i class="fa-solid fa-comments w-6 text-center text-indigo-400"></i>
-        <span class="ml-1">Comunicação (CRM)</span>
+      <a href="/tipos-tarefa" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
+        <i class="fa-solid fa-clipboard-list w-6 text-center"></i>
+        <span class="ml-1">Tipos de Tarefa</span>
       </a>
+      {% endif %}
     </nav>
 
     <!-- Sync Rodapé -->

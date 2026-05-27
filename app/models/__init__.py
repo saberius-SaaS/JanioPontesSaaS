@@ -10,6 +10,7 @@ from app.models.regra import RegraObrigacao
 from app.models.tarefa import Tarefa, Protocolo, HistoricoTarefa, Solicitacao
 from app.models.operacional import Workflow, LogSistema, FrequenciaAcesso, Configuracao
 from app.models.perfil import Perfil
+from app.models.tipo_tarefa import TipoTarefaAvulsa
 
 __all__ = [
     "Base",
@@ -28,4 +29,5 @@ __all__ = [
     "FrequenciaAcesso",
     "Configuracao",
     "Perfil",
+    "TipoTarefaAvulsa",
 ]
