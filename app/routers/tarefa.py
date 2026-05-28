@@ -10,7 +10,7 @@ from app import models
 from app.database import get_db
 from app.api.deps import require_login
 from app.core.email_service import email_service
-from app.core.storage_service import storage_service
+from app.core.drive_service import drive_service
 from typing import List, Optional
 
 router = APIRouter()
@@ -77,10 +77,10 @@ async def enviar_notificacao_entrega(tarefa, protocolo: str, email_destino: str,
     assunto = f"[Protocolo {protocolo}] {tarefa.obrigacao} - {tarefa.cliente}"
     
     corpo = f"""
-    <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #1C3051, #312e81); color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-            <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">JANIO PONTES ASSESSORIA</h1>
-            <p style="margin: 8px 0 0; opacity: 0.8; font-size: 12px;">Notificação de Entrega</p>
+    <div style="font-family: 'Inter', 'Roboto', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
+        <div style="background: #1C3051; color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+            <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">JANIO PONTES CONTABILIDADE</h1>
+            <p style="margin: 8px 0 0; opacity: 0.8; font-size: 12px; font-weight: bold; text-transform: uppercase;">Notificação de Entrega</p>
         </div>
         <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
             <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a),</p>
@@ -114,7 +114,11 @@ async def enviar_notificacao_entrega(tarefa, protocolo: str, email_destino: str,
         """
     
     corpo += f"""
-            <p style="color: #64748b; font-size: 12px; margin: 20px 0 0; text-align: center;">Processado por {responsavel_nome} — {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+            <div style="margin-top: 30px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                <p style="color: #64748b; font-size: 12px; margin: 0; font-weight: bold;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</p>
+                <p style="color: #94a3b8; font-size: 10px; margin: 5px 0 0;">Monitoramento legal de abertura de mensagem.</p>
+                <p style="color: #cbd5e1; font-size: 9px; margin: 15px 0 0;">Processado por {responsavel_nome} — {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+            </div>
         </div>
     </div>
     """
@@ -259,7 +263,7 @@ async def finalizar_tarefa(
         for arq in lista_arquivos:
             if isinstance(arq, UploadFile) and arq.filename:
                 try:
-                    url = await storage_service.upload_file(arq, cliente_nome=tarefa.cliente)
+                    url = await drive_service.upload_file(arq)
                     if url and "ERRO" not in url:
                         links_gerados.append(url)
                 except Exception as e:

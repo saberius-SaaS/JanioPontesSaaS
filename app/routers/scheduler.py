@@ -65,7 +65,21 @@ async def daily_report(
         models.Protocolo.data >= datetime.combine(today, datetime.min.time())
     ).count()
 
-    corpo_html = f"<h2>Relatório Diário — {today.strftime('%d/%m/%Y')}</h2><p>Foram realizados <strong>{entregas_hoje}</strong> protocolos na plataforma hoje.</p>"
+    corpo_html = f"""
+    <div style="font-family: 'Inter', 'Roboto', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
+        <div style="background: #1C3051; color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+            <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">JANIO PONTES CONTABILIDADE</h1>
+            <p style="margin: 8px 0 0; opacity: 0.8; font-size: 12px; font-weight: bold; text-transform: uppercase;">RELATÓRIO DIÁRIO DE OPERAÇÃO</p>
+        </div>
+        <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
+            <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Foram realizados <strong>{entregas_hoje}</strong> protocolos na plataforma hoje.</p>
+            <div style="margin-top: 30px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                <p style="color: #64748b; font-size: 12px; margin: 0; font-weight: bold;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</p>
+                <p style="color: #94a3b8; font-size: 10px; margin: 5px 0 0;">Monitoramento legal de abertura de mensagem.</p>
+            </div>
+        </div>
+    </div>
+    """
 
     admin_email = "gerencia@janiopontes.com.br"
     background_tasks.add_task(email_service.enviar_email, admin_email, f"Relatório Diário — {today.strftime('%d/%m/%Y')}", corpo_html)

@@ -55,12 +55,16 @@ function acionarWorkflowFaseSeguinte(idTarefaAnterior, rowIdxTarefaAnterior) {
         faseSeguinte = regra;
         complementoExtraido = "";
         break;
-      } else if (obrigacaoAtualNorm.indexOf(baseNorm + " - ") === 0) {
-        faseSeguinte = regra;
-        var sobra = obrigacaoOriginal.substring(regra.faseAtual.length).trim();
-        if (sobra.indexOf("-") === 0) sobra = sobra.substring(1).trim();
-        complementoExtraido = sobra;
-        break;
+      } else if (obrigacaoAtualNorm.indexOf(baseNorm) === 0) {
+        // Verifica se logo após a base há um separador (espaço, hífen, underline)
+        var charAfter = obrigacaoAtualNorm.charAt(baseNorm.length);
+        if (charAfter === ' ' || charAfter === '-') {
+            faseSeguinte = regra;
+            var sobra = obrigacaoOriginal.substring(regra.faseAtual.length).trim();
+            if (sobra.indexOf("-") === 0) sobra = sobra.substring(1).trim();
+            complementoExtraido = sobra;
+            break;
+        }
       }
     }
 

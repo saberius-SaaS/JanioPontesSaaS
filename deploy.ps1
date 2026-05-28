@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $ADMIN_ACCOUNT = "janiopontes@janiopontes.com.br"
-$GCP_PROJECT   = "jp-saas-producao"
-$CLOUDRUN_SVC  = "jp-saas-app"
+$GCP_PROJECT = "jp-saas-producao"
+$CLOUDRUN_SVC = "jp-saas-app"
 $CLOUDRUN_REGION = "southamerica-east1"
 
 Write-Host "==========================================" -ForegroundColor Cyan
@@ -15,7 +15,8 @@ Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "`n[1/5] Verificando ambiente Python..." -ForegroundColor Yellow
 if (Test-Path ".\venv\Scripts\activate.ps1") {
     . .\venv\Scripts\activate.ps1
-} else {
+}
+else {
     Write-Host "Ambiente virtual nao encontrado. Execute 'python -m venv venv' primeiro." -ForegroundColor Red
     exit 1
 }
@@ -44,7 +45,8 @@ if ($gitStatus) {
     git commit -m "$commitMessage"
     git push origin main
     Write-Host "Codigo enviado ao GitHub!" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "Nenhuma alteracao para commitar. Continuando..." -ForegroundColor Yellow
 }
 
@@ -54,26 +56,19 @@ if ($gitStatus) {
 Write-Host "`n[4/5] Verificando autenticacao no Google Cloud..." -ForegroundColor Yellow
 
 $currentAccount = (gcloud config get-value account 2>$null).Trim()
-$tokenValid = $false
 
-if ($currentAccount -eq $ADMIN_ACCOUNT) {
-    # Testa se o token atual ainda é válido
-    gcloud auth print-access-token 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        $tokenValid = $true
-        Write-Host "Autenticacao ativa confirmada para $ADMIN_ACCOUNT" -ForegroundColor Green
-    } else {
-        Write-Host "Token expirado para $ADMIN_ACCOUNT. Sera necessario logar novamente." -ForegroundColor Yellow
-    }
-}
-
-if (-not $tokenValid) {
+if ($currentAccount -ne $ADMIN_ACCOUNT) {
+    Write-Host "Conta atual: $currentAccount" -ForegroundColor Yellow
+    Write-Host "Necessario autenticar como $ADMIN_ACCOUNT" -ForegroundColor Yellow
     Write-Host "O browser sera aberto para login. Faca login com $ADMIN_ACCOUNT" -ForegroundColor Cyan
     gcloud auth login $ADMIN_ACCOUNT --update-adc
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Falha na autenticacao. Abortando deploy." -ForegroundColor Red
         exit 1
     }
+}
+else {
+    Write-Host "Ja autenticado como $ADMIN_ACCOUNT" -ForegroundColor Green
 }
 
 # Garantir projeto correto
@@ -89,7 +84,7 @@ gcloud run deploy $CLOUDRUN_SVC `
     --source . `
     --region $CLOUDRUN_REGION `
     --allow-unauthenticated `
-    --set-env-vars="ENVIRONMENT=production,DB_USER=app_user,DB_NAME=postgres,DB_HOST=/cloudsql/jp-saas-producao:southamerica-east1:jpsaas-db,GOOGLE_CLIENT_ID=471313311249-sda2g2e9m40l6ui02m1vut9i3glgu40m.apps.googleusercontent.com,EMAIL_MODE=intercept,EMAIL_INTERCEPT_ADDRESS=janiopontes@janiopontes.com.br,DRIVE_MODE=production,GCS_BUCKET_NAME=janio-pontes-saas-docs" `
+    --set-env-vars="ENVIRONMENT=production,DB_USER=app_user,DB_NAME=postgres,DB_HOST=/cloudsql/jp-saas-producao:southamerica-east1:jpsaas-db" `
     --set-secrets="DB_PASSWORD=JPSAAS_DB_PASSWORD:latest,SECRET_KEY=JPSAAS_SECRET_KEY:latest,GOOGLE_CLIENT_SECRET=JPSAAS_GOOGLE_CLIENT_SECRET:latest,/secrets/credentials.json=JPSAAS_GCP_CREDENTIALS:latest" `
     --add-cloudsql-instances="jp-saas-producao:southamerica-east1:jpsaas-db" `
     --quiet
@@ -100,7 +95,8 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "DEPLOY CONCLUIDO COM SUCESSO!"             -ForegroundColor Green
     Write-Host "URL: $url"                                 -ForegroundColor Green
     Write-Host "==========================================" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "`nErro durante o deploy no Cloud Run." -ForegroundColor Red
     exit 1
 }

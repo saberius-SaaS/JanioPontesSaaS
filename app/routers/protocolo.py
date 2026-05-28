@@ -102,7 +102,33 @@ async def create_protocolo(
     db.commit()
 
     if email:
-        corpo_html = f"<h2>Novo Documento Disponível</h2><p>Olá, o protocolo {prt_code} referente a {obrigacao} foi gerado e está disponível.</p><p><a href='{link}'>Acessar Documento</a></p>"
+        corpo_html = f"""
+        <div style="font-family: 'Inter', 'Roboto', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
+            <div style="background: #1C3051; color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">JANIO PONTES CONTABILIDADE</h1>
+                <p style="margin: 8px 0 0; opacity: 0.8; font-size: 12px; font-weight: bold; text-transform: uppercase;">ENVIO DE DOCUMENTOS</p>
+            </div>
+            <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
+                <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a),</p>
+                <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Informamos que o documento abaixo foi gerado e está disponível:</p>
+                <table style="width: 100%; border-collapse: collapse; margin: 0 0 20px;">
+                    <tr>
+                        <td style="padding: 10px; background: #f1f5f9; border-radius: 8px 0 0 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Obrigação / Referência</td>
+                        <td style="padding: 10px; background: #f1f5f9; border-radius: 0 8px 0 0; font-size: 14px; font-weight: bold; color: #1C3051;">{obrigacao}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Protocolo</td>
+                        <td style="padding: 10px; font-size: 14px; font-weight: bold; color: #6366f1;">{prt_code}</td>
+                    </tr>
+                </table>
+                <p style="text-align: center; margin: 30px 0;"><a href='{link}' style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 12px;">Acessar Documento</a></p>
+                <div style="margin-top: 30px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                    <p style="color: #64748b; font-size: 12px; margin: 0; font-weight: bold;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</p>
+                    <p style="color: #94a3b8; font-size: 10px; margin: 5px 0 0;">Monitoramento legal de abertura de mensagem.</p>
+                </div>
+            </div>
+        </div>
+        """
         background_tasks.add_task(email_service.enviar_email, email, f"Novo Documento: {obrigacao}", corpo_html)
 
     protocolos = db.query(models.Protocolo).order_by(models.Protocolo.data.desc()).limit(PAGE_SIZE).all()
