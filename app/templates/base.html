@@ -301,6 +301,13 @@
         <span class="ml-1 text-indigo-200">Fila de Tarefas</span>
       </a>
 
+      {% if user and user.nivel in ['ADMIN', 'MASTER'] %}
+      <a href="/revisoes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white relative">
+        <i class="fa-solid fa-stamp w-6 text-center text-purple-400"></i>
+        <span class="ml-1 text-purple-200">Aprovar Revisões</span>
+      </a>
+      {% endif %}
+
       <a href="/solicitacoes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
         <i class="fa-solid fa-comments w-6 text-center text-indigo-400"></i>
         <span class="ml-1 text-indigo-200">Comunicação (CRM)</span>
@@ -347,6 +354,11 @@
       <a href="/tipos-tarefa" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
         <i class="fa-solid fa-clipboard-list w-6 text-center"></i>
         <span class="ml-1">Tipos de Tarefa</span>
+      </a>
+
+      <a href="/workflows" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
+        <i class="fa-solid fa-code-branch w-6 text-center"></i>
+        <span class="ml-1">Workflows e Fases</span>
       </a>
       {% endif %}
     </nav>

@@ -12,6 +12,24 @@ from app.api.deps import require_login
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+@router.get("/revisoes", response_class=HTMLResponse)
+async def list_revisoes(request: Request, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
+    if current_user.nivel not in ['ADMIN', 'MASTER']:
+        return RedirectResponse(url="/", status_code=303)
+        
+    revisoes = db.query(models.Tarefa).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status == 'REVISAO'
+    ).order_by(models.Tarefa.vencimento.asc()).all()
+    
+    return templates.TemplateResponse(request=request, name="revisoes.html", context={
+        "request": request,
+        "user": current_user,
+        "revisoes": revisoes,
+        "chatwoot_token": getattr(request.state, "chatwoot_token", ""),
+        "chatwoot_base_url": getattr(request.state, "chatwoot_base_url", "")
+    })
+
 @router.get("/tarefas", response_class=HTMLResponse)
 async def list_tarefas(request: Request, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
     tarefas = db.query(models.Tarefa).filter(
@@ -93,6 +111,62 @@ async def finalizar_tarefa(
     if not tarefa:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
         
+    # Verificar se a regra de obrigação exige revisão (Coluna M = 'S')
+    regra = db.query(models.RegraObrigacao).filter(
+        models.RegraObrigacao.tenant_id == current_user.tenant_id,
+        models.RegraObrigacao.obrigacao == tarefa.obrigacao
+    ).first()
+    
+    precisa_revisao = False
+    if regra and regra.revisao and str(regra.revisao).strip().upper() == 'S':
+        precisa_revisao = True
+
+    if precisa_revisao:
+        tarefa.status = 'REVISAO'
+        db.commit()
+    else:
+        tarefa.status = 'ENTREGUE'
+        
+        historico = models.HistoricoTarefa(
+            tenant_id=current_user.tenant_id,
+            mes_ano=tarefa.mes_ano,
+            cliente=tarefa.cliente,
+            obrigacao=tarefa.obrigacao,
+            vencimento=tarefa.vencimento,
+            departamento=tarefa.departamento,
+            status="ENTREGUE",
+            protocolo=tarefa.protocolo,
+            acao=tarefa.acao,
+            responsavel=current_user.nome,
+            id_controle=str(uuid.uuid4()),
+            vencimento_legal=tarefa.vencimento_legal
+        )
+        db.add(historico)
+        db.commit()
+    
+    return ""
+
+@router.post("/tarefas/{tarefa_id}/aprovar", response_class=HTMLResponse)
+async def aprovar_revisao(
+    request: Request,
+    tarefa_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
+    from fastapi import HTTPException
+    
+    if current_user.nivel not in ['ADMIN', 'MASTER']:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem aprovar tarefas.")
+
+    tarefa = db.query(models.Tarefa).filter(
+        models.Tarefa.id == tarefa_id,
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status == 'REVISAO'
+    ).first()
+    
+    if not tarefa:
+        raise HTTPException(status_code=404, detail="Tarefa em revisão não encontrada")
+        
     tarefa.status = 'ENTREGUE'
     
     historico = models.HistoricoTarefa(
@@ -105,7 +179,7 @@ async def finalizar_tarefa(
         status="ENTREGUE",
         protocolo=tarefa.protocolo,
         acao=tarefa.acao,
-        responsavel=current_user.nome,
+        responsavel=tarefa.responsavel,
         id_controle=str(uuid.uuid4()),
         vencimento_legal=tarefa.vencimento_legal
     )
