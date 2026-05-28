@@ -74,38 +74,253 @@
                     <th class="px-4 py-3 rounded-tl-lg">Vencimento</th>
                     <th class="px-4 py-3">Cliente</th>
                     <th class="px-4 py-3">Obrigação</th>
-                    <th class="px-4 py-3">Departamento</th>
+                    <th class="px-4 py-3">Depto</th>
+                    <th class="px-4 py-3">Ação</th>
                     <th class="px-4 py-3">Responsável</th>
-                    <th class="px-4 py-3 text-right rounded-tr-lg">Ação</th>
+                    <th class="px-4 py-3 text-right rounded-tr-lg">Resolver</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
                 {% for t in tarefas %}
-                <tr class="hover:bg-slate-50 transition-colors">
+                <tr class="hover:bg-slate-50 transition-colors cursor-pointer" id="row-{{ t.id }}" onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}')">
                     <td class="px-4 py-3 font-semibold {% if t.status == 'ATRASADO' %}text-red-500{% else %}text-slate-800{% endif %}">
                         <i class="fa-regular fa-calendar mr-1"></i> {{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}
                     </td>
                     <td class="px-4 py-3 font-medium text-jp-navy">{{ t.cliente }}</td>
                     <td class="px-4 py-3 text-slate-500">{{ t.obrigacao }}</td>
                     <td class="px-4 py-3 text-xs"><span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md">{{ t.departamento }}</span></td>
-                    <td class="px-4 py-3 text-slate-500">{{ t.responsavel }}</td>
+                    <td class="px-4 py-3 text-xs">
+                        {% set acao = (t.acao or 'ENVIAR')|upper %}
+                        {% if 'ENVIAR' in acao %}
+                        <span class="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md font-bold">ENVIAR</span>
+                        {% elif 'COMUNICAR' in acao %}
+                        <span class="bg-indigo-600 text-white px-2 py-1 rounded-md font-bold">COMUNICAR</span>
+                        {% elif 'ARQUIVAR' in acao %}
+                        <span class="bg-slate-200 text-slate-600 px-2 py-1 rounded-md font-bold">ARQUIVAR</span>
+                        {% elif 'AUDITAR' in acao %}
+                        <span class="bg-amber-50 text-amber-700 px-2 py-1 rounded-md font-bold">AUDITAR</span>
+                        {% else %}
+                        <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-md font-bold">{{ acao }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-slate-500 text-xs truncate max-w-[120px]">{{ t.responsavel }}</td>
                     <td class="px-4 py-3 text-right">
-                        <button class="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider" 
-                                hx-post="/tarefas/{{ t.id }}/finalizar" 
-                                hx-target="closest tr" 
-                                hx-swap="outerHTML"
-                                hx-confirm="Tem certeza que deseja marcar '{{ t.obrigacao }}' ({{ t.cliente }}) como concluída?">
-                            Concluir
+                        <button class="bg-jp-navy hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider shadow-sm" onclick="event.stopPropagation();">
+                            <i class="fa-solid fa-arrow-right mr-1"></i> Resolver
                         </button>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhuma tarefa pendente no momento. Parabéns!</td>
+                    <td colspan="7" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhuma tarefa pendente no momento. Parabéns!</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- ==================== MODAL DE RESOLUÇÃO ==================== -->
+<div id="modalTarefa" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div id="modalContent" class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden transform scale-95 transition-transform duration-300">
+        <!-- Header -->
+        <div class="p-5 border-b border-slate-100 bg-slate-50/50">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1" id="modalCompetencia">—</p>
+                    <h3 class="font-bold text-jp-navy text-lg" id="modalCliente">—</h3>
+                    <p class="text-sm text-slate-500 mt-0.5" id="modalObrigacao">—</p>
+                </div>
+                <button onclick="fecharModal()" class="text-slate-400 hover:text-red-500 transition-colors p-1">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="flex gap-3 mt-3">
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border" id="modalVcto">—</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border" id="modalAcaoBadge">—</span>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-4" id="modalBody">
+            <!-- Área de Justificativa (ENVIAR sem arquivo / COMUNICAR sem texto) -->
+            <div id="areaJustificativa" class="hidden">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-comment-dots mr-1 text-amber-500"></i> Justificativa (finalizar sem envio de arquivo)
+                </label>
+                <textarea id="txtJustificativa" rows="3" placeholder="Ex: Documento já entregue pessoalmente, ou obrigação dispensada..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow resize-none"></textarea>
+            </div>
+            
+            <!-- Área de Mensagem (COMUNICAR) -->
+            <div id="areaComunicar" class="hidden">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-envelope mr-1 text-indigo-500"></i> Mensagem para o Cliente
+                </label>
+                <textarea id="txtComunicar" rows="4" placeholder="Digite a mensagem que será enviada ao cliente por e-mail..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow resize-none"></textarea>
+            </div>
+
+            <!-- Feedback -->
+            <div id="modalFeedback" class="hidden rounded-lg p-3 text-sm font-medium text-center"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-5 border-t border-slate-100 bg-slate-50/30 flex justify-between items-center">
+            <button onclick="fecharModal()" class="px-5 py-2 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors text-sm">
+                Cancelar
+            </button>
+            <button id="btnFinalizar" onclick="executarFinalizacao()" class="px-6 py-2.5 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-sm flex items-center gap-2">
+                <i class="fa-solid fa-check"></i> Confirmar Fechamento
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let tarefaAtual = null;
+
+function abrirModal(id, cliente, obrigacao, vencimento, acao, depto, mesAno) {
+    tarefaAtual = { id, cliente, obrigacao, vencimento, acao: acao.toUpperCase(), depto, mesAno };
+    
+    document.getElementById('modalCliente').textContent = cliente;
+    document.getElementById('modalObrigacao').textContent = obrigacao;
+    document.getElementById('modalCompetencia').textContent = 'Competência: ' + mesAno + ' | ' + depto;
+    document.getElementById('modalVcto').textContent = '📅 Vcto: ' + vencimento;
+    document.getElementById('modalVcto').className = 'text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border bg-slate-100 text-slate-600 border-slate-200';
+    
+    // Ação badge
+    const badge = document.getElementById('modalAcaoBadge');
+    let acaoLabel = acao.toUpperCase();
+    let acaoClass = 'bg-slate-100 text-slate-600 border-slate-200';
+    
+    if (acaoLabel.indexOf('ENVIAR') > -1) {
+        acaoClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        acaoLabel = 'AÇÃO: ENVIAR PARA CLIENTE';
+    } else if (acaoLabel.indexOf('COMUNICAR') > -1) {
+        acaoClass = 'bg-indigo-600 text-white border-indigo-500';
+        acaoLabel = 'AÇÃO: COMUNICAR AO CLIENTE';
+    } else if (acaoLabel.indexOf('ARQUIVAR') > -1) {
+        acaoClass = 'bg-slate-200 text-slate-700 border-slate-300';
+        acaoLabel = 'AÇÃO: ARQUIVAMENTO INTERNO';
+    } else if (acaoLabel.indexOf('AUDITAR') > -1) {
+        acaoClass = 'bg-amber-50 text-amber-700 border-amber-200';
+        acaoLabel = 'AÇÃO: AUDITAR';
+    }
+    badge.className = 'text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ' + acaoClass;
+    badge.textContent = acaoLabel;
+    
+    // Mostrar/ocultar campos conforme ação
+    const areaJust = document.getElementById('areaJustificativa');
+    const areaCom = document.getElementById('areaComunicar');
+    
+    // ENVIAR → justificativa (caso não envie arquivo)
+    // COMUNICAR → campo de mensagem
+    // ARQUIVAR → justificativa simples (nota)
+    areaJust.classList.add('hidden');
+    areaCom.classList.add('hidden');
+    
+    if (acaoLabel.indexOf('ENVIAR') > -1) {
+        areaJust.classList.remove('hidden');
+    } else if (acaoLabel.indexOf('COMUNICAR') > -1) {
+        areaCom.classList.remove('hidden');
+        areaJust.classList.remove('hidden');
+    } else if (acaoLabel.indexOf('ARQUIVAR') > -1) {
+        areaJust.classList.remove('hidden');
+        document.querySelector('#areaJustificativa label').innerHTML = '<i class="fa-solid fa-sticky-note mr-1 text-slate-500"></i> Anotação de Registro (opcional)';
+    }
+    
+    // Ajustar botão
+    const btn = document.getElementById('btnFinalizar');
+    if (acaoLabel.indexOf('COMUNICAR') > -1) {
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Comunicado';
+    } else if (acaoLabel.indexOf('ARQUIVAR') > -1) {
+        btn.innerHTML = '<i class="fa-solid fa-box-archive"></i> Arquivar Tarefa';
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar Fechamento';
+    }
+    
+    // Reset
+    document.getElementById('txtJustificativa').value = '';
+    document.getElementById('txtComunicar').value = '';
+    document.getElementById('modalFeedback').className = 'hidden';
+    btn.disabled = false;
+    
+    // Abrir com animação
+    const modal = document.getElementById('modalTarefa');
+    const content = document.getElementById('modalContent');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+    }, 10);
+}
+
+function fecharModal() {
+    const modal = document.getElementById('modalTarefa');
+    const content = document.getElementById('modalContent');
+    modal.classList.add('opacity-0');
+    content.classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+    tarefaAtual = null;
+}
+
+async function executarFinalizacao() {
+    if (!tarefaAtual) return;
+    
+    const btn = document.getElementById('btnFinalizar');
+    const feedback = document.getElementById('modalFeedback');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
+    feedback.className = 'hidden';
+    
+    const formData = new FormData();
+    formData.append('justificativa', document.getElementById('txtJustificativa').value);
+    formData.append('mensagem_comunicar', document.getElementById('txtComunicar').value);
+    
+    try {
+        const resp = await fetch('/tarefas/' + tarefaAtual.id + '/finalizar', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await resp.json();
+        
+        if (data.success) {
+            feedback.className = 'rounded-lg p-4 text-sm font-medium text-center bg-emerald-50 border border-emerald-200 text-emerald-700';
+            
+            let msg = '<i class="fa-solid fa-check-circle mr-2"></i>' + data.message;
+            msg += '<br><span class="text-[10px] text-emerald-500 uppercase tracking-wider">Protocolo: ' + data.protocolo + '</span>';
+            if (data.email_destino && data.email_destino !== 'N/A') {
+                msg += '<br><span class="text-[10px] text-emerald-500">Email → ' + data.email_destino + '</span>';
+            }
+            feedback.innerHTML = msg;
+            
+            // Remover a linha da tabela
+            const row = document.getElementById('row-' + tarefaAtual.id);
+            if (row) {
+                row.style.transition = 'opacity 0.5s, transform 0.5s';
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(50px)';
+                setTimeout(() => row.remove(), 500);
+            }
+            
+            // Fechar modal após 2s
+            setTimeout(() => fecharModal(), 2500);
+        } else {
+            feedback.className = 'rounded-lg p-3 text-sm font-medium text-center bg-red-50 border border-red-200 text-red-600';
+            feedback.innerHTML = '<i class="fa-solid fa-exclamation-circle mr-2"></i>' + (data.message || 'Erro ao processar.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Tentar Novamente';
+        }
+    } catch (err) {
+        feedback.className = 'rounded-lg p-3 text-sm font-medium text-center bg-red-50 border border-red-200 text-red-600';
+        feedback.innerHTML = '<i class="fa-solid fa-exclamation-circle mr-2"></i> Erro de conexão: ' + err.message;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Tentar Novamente';
+    }
+}
+
+// Fechar modal com ESC
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharModal(); });
+</script>
 {% endblock %}
