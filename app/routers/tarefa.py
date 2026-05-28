@@ -10,7 +10,7 @@ from app import models
 from app.database import get_db
 from app.api.deps import require_login
 from app.core.email_service import email_service
-from app.core.drive_service import drive_service
+from app.core.storage_service import storage_service
 from typing import List, Optional
 
 router = APIRouter()
@@ -257,13 +257,14 @@ async def finalizar_tarefa(
     # Determinar status final
     status_final = 'REVISAO' if precisa_revisao else 'ENTREGUE'
     
-    # Upload dos arquivos, se existirem (agora no Google Cloud Storage)
+    # Upload dos arquivos no Google Cloud Storage (GCS)
     links_gerados = []
+    
     if lista_arquivos:
         for arq in lista_arquivos:
             if isinstance(arq, UploadFile) and arq.filename:
                 try:
-                    url = await drive_service.upload_file(arq)
+                    url = await storage_service.upload_file(arq, cliente_nome=tarefa.cliente)
                     if url and "ERRO" not in url:
                         links_gerados.append(url)
                 except Exception as e:
@@ -308,7 +309,7 @@ async def finalizar_tarefa(
             if email_destino and "ARQUIVAR" not in acao:
                 msg_email = mensagem_comunicar if "COMUNICAR" in acao else justificativa
                 
-                # Se tem links_gerados e é envio, coloca os links no email
+                # Se tem links gerados, coloca os links no email
                 if links_gerados:
                     links_html = "<br>".join([f"<a href='{u}'>Acessar Documento</a>" for u in links_gerados])
                     msg_email = (msg_email + f"<br><br><b>Documentos Anexos:</b><br>{links_html}") if msg_email else f"<b>Documentos Anexos:</b><br>{links_html}"

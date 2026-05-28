@@ -44,13 +44,24 @@ class EmailService:
         self._service = build('gmail', 'v1', credentials=delegated_credentials)
         return self._service
 
-    def _build_message(self, para: str, assunto: str, corpo_html: str) -> dict:
+    def _build_message(self, para: str, assunto: str, corpo_html: str, anexos: list = None) -> dict:
         """Monta o objeto EmailMessage codificado em base64 para a Gmail API."""
         message = EmailMessage()
-        message.set_content(corpo_html, subtype='html')
         message['To'] = para
         message['From'] = GMAIL_DELEGATED_USER
         message['Subject'] = assunto
+
+        message.set_content("Por favor, ative a visualização em HTML para ler esta mensagem.")
+        message.add_alternative(corpo_html, subtype='html')
+
+        if anexos:
+            for arq in anexos:
+                mimetype = arq.get('mimetype', 'application/octet-stream')
+                if '/' in mimetype:
+                    maintype, subtype = mimetype.split('/', 1)
+                else:
+                    maintype, subtype = 'application', 'octet-stream'
+                message.add_attachment(arq['content'], maintype=maintype, subtype=subtype, filename=arq['filename'])
 
         encoded = base64.urlsafe_b64encode(message.as_bytes()).decode()
         return {'raw': encoded}
@@ -75,9 +86,9 @@ class EmailService:
 
         try:
             service = self._get_service()
-            body = self._build_message(destino_final, assunto, corpo_html)
+            body = self._build_message(destino_final, assunto, corpo_html, anexos)
             service.users().messages().send(userId='me', body=body).execute()
-            logger.info(f"[EMAIL ENVIADO] Para: {destino_final} | Assunto: {assunto}")
+            logger.info(f"[EMAIL ENVIADO] Para: {destino_final} | Assunto: {assunto} | Anexos: {len(anexos) if anexos else 0}")
             return True
         except Exception as e:
             logger.error(f"[EMAIL ERRO] Para: {para} | Erro: {str(e)}")

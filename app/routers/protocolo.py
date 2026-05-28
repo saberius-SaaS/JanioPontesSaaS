@@ -8,7 +8,7 @@ import uuid
 from app import models
 from app.database import get_db
 from app.api.deps import require_login
-from app.core.drive_service import drive_service
+from app.core.storage_service import storage_service
 from app.core.email_service import email_service
 
 router = APIRouter()
@@ -72,7 +72,7 @@ async def create_protocolo(
 
     link = "Não anexado"
     if arquivo and arquivo.filename:
-        link = await drive_service.upload_file(arquivo)
+        link = await storage_service.upload_file(arquivo)
 
     novo_protocolo = models.Protocolo(
         tenant_id=current_user.tenant_id,

@@ -20,7 +20,7 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 
 from app.database import SessionLocal
-from app.models import Tenant, Cliente, RegraObrigacao, Protocolo, HistoricoTarefa, Perfil, Usuario
+from app.models import Tenant, Cliente, RegraObrigacao, Protocolo, HistoricoTarefa, Perfil, Usuario, TipoTarefaAvulsa
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -222,6 +222,42 @@ def migrar_perfis(db: Session, tenant_id: str, regras_sheet: List[Dict]):
     db.commit()
     logging.info(f"Perfis: {count_inseridos} novos inseridos, {count_atualizados} atualizados (de {len(grupos_unicos)} encontrados).")
 
+def migrar_tipos_tarefa_avulsa(db: Session, tenant_id: str, regras_sheet: List[Dict]):
+    """Migra os tipos de tarefas avulsas baseados na coluna TIPOS da aba DB_REGRAS."""
+    logging.info(f"Extraindo tipos de tarefas de {len(regras_sheet)} regras...")
+    
+    count_inseridos = 0
+    tipos_unicos = {}
+    
+    for row in regras_sheet:
+        tipos_str = row.get('TIPOS', '').strip()
+        departamento = row.get('DEPARTAMENTO', '').strip()
+        if not tipos_str:
+            continue
+            
+        for tipo in tipos_str.split(','):
+            tipo = tipo.strip().upper()
+            if tipo and tipo not in tipos_unicos:
+                tipos_unicos[tipo] = departamento
+                
+    for nome_tipo, depto in tipos_unicos.items():
+        existente = db.query(TipoTarefaAvulsa).filter(TipoTarefaAvulsa.nome == nome_tipo, TipoTarefaAvulsa.tenant_id == tenant_id).first()
+        if existente:
+            continue
+            
+        novo_tipo = TipoTarefaAvulsa(
+            tenant_id=tenant_id,
+            nome=nome_tipo,
+            departamento=depto,
+            descricao=f"Importado automaticamente (Obrigação/Regra)",
+            status='ATIVO'
+        )
+        db.add(novo_tipo)
+        count_inseridos += 1
+        
+    db.commit()
+    logging.info(f"Tipos Tarefa Avulsa: {count_inseridos} novos inseridos.")
+
 def migrar_usuarios(db: Session, tenant_id: str, usuarios_sheet: List[Dict]):
     """Migra os dados da aba DB_USUARIOS."""
     logging.info(f"Migrando {len(usuarios_sheet)} usuários...")
@@ -295,6 +331,7 @@ def iniciar_migracao():
         migrar_clientes(db, tenant_id, clientes_dados)
         migrar_regras(db, tenant_id, regras_dados)
         migrar_perfis(db, tenant_id, regras_dados)
+        migrar_tipos_tarefa_avulsa(db, tenant_id, regras_dados)
         if usuarios_dados:
             migrar_usuarios(db, tenant_id, usuarios_dados)
         
