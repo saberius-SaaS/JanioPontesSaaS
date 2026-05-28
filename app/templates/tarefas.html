@@ -105,7 +105,7 @@
                     </td>
                     <td class="px-4 py-3 text-slate-500 text-xs truncate max-w-[120px]">{{ t.responsavel }}</td>
                     <td class="px-4 py-3 text-right">
-                        <button class="bg-jp-navy hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider shadow-sm" onclick="event.stopPropagation();">
+                        <button class="bg-jp-navy hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider shadow-sm" onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}'); event.stopPropagation();">
                             <i class="fa-solid fa-arrow-right mr-1"></i> Resolver
                         </button>
                     </td>
