@@ -10,6 +10,8 @@ from app import models
 from app.database import get_db
 from app.api.deps import require_login
 from app.core.email_service import email_service
+from app.core.storage_service import storage_service
+from typing import List, Optional
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -210,6 +212,7 @@ async def create_tarefa_avulsa(
 async def finalizar_tarefa(
     request: Request,
     tarefa_id: str,
+    arquivos: List[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -217,6 +220,11 @@ async def finalizar_tarefa(
     form = await request.form()
     justificativa = form.get("justificativa", "")
     mensagem_comunicar = form.get("mensagem_comunicar", "")
+    
+    # Tratamento para arquivos caso venham pelo form
+    # O FastAPI costuma popular `arquivos` direto pelo parâmetro, mas às vezes o formulário é lido por request.form()
+    # Vamos garantir a extração dos arquivos:
+    lista_arquivos = form.getlist("arquivos") if "arquivos" in form else (arquivos or [])
     
     tarefa = db.query(models.Tarefa).filter(
         models.Tarefa.id == tarefa_id,
@@ -245,24 +253,38 @@ async def finalizar_tarefa(
     # Determinar status final
     status_final = 'REVISAO' if precisa_revisao else 'ENTREGUE'
     
+    # Upload dos arquivos, se existirem (agora no Google Cloud Storage)
+    links_gerados = []
+    if lista_arquivos:
+        for arq in lista_arquivos:
+            if isinstance(arq, UploadFile) and arq.filename:
+                try:
+                    url = await storage_service.upload_file(arq, cliente_nome=tarefa.cliente)
+                    if url and "ERRO" not in url:
+                        links_gerados.append(url)
+                except Exception as e:
+                    logger.error(f"Falha ao subir arquivo {arq.filename}: {str(e)}")
+                    
     # Descrição do protocolo para registro
-    link_arquivo = ""
+    link_arquivo = " | ".join(links_gerados) if links_gerados else ""
+    
     if "COMUNICAR" in acao:
         if mensagem_comunicar:
-            link_arquivo = f"COMUNICADO: {mensagem_comunicar}"
+            link_arquivo += f" [COMUNICADO: {mensagem_comunicar}]"
         elif justificativa:
-            link_arquivo = f"SEM_COMUNICADO: {justificativa}"
-        else:
-            link_arquivo = "COMUNICADO_SEM_TEXTO"
+            link_arquivo += f" [SEM_COMUNICADO: {justificativa}]"
     elif "ARQUIVAR" in acao:
-        link_arquivo = f"ARQUIVADO: {justificativa}" if justificativa else "ARQUIVADO"
+        link_arquivo += f" [ARQUIVADO: {justificativa}]" if justificativa else " [ARQUIVADO]"
     elif "ENVIAR" in acao:
-        if justificativa:
-            link_arquivo = f"SEM_ENVIO: {justificativa}"
-        else:
-            link_arquivo = "ENTREGA_DIRETA"
+        if not links_gerados and justificativa:
+            link_arquivo = f"[SEM_ENVIO: {justificativa}]"
+        elif links_gerados and justificativa:
+            link_arquivo += f" [NOTA: {justificativa}]"
     else:
-        link_arquivo = justificativa or "PROCESSADO"
+        if not link_arquivo:
+            link_arquivo = justificativa or "PROCESSADO"
+            
+    link_arquivo = link_arquivo.strip()
     
     # Atualiza a tarefa
     tarefa.status = status_final
@@ -280,10 +302,17 @@ async def finalizar_tarefa(
         # Envia notificação por email conforme o tipo de ação
         try:
             if email_destino and "ARQUIVAR" not in acao:
+                msg_email = mensagem_comunicar if "COMUNICAR" in acao else justificativa
+                
+                # Se tem links_gerados e é envio, coloca os links no email
+                if links_gerados:
+                    links_html = "<br>".join([f"<a href='{u}'>Acessar Documento</a>" for u in links_gerados])
+                    msg_email = (msg_email + f"<br><br><b>Documentos Anexos:</b><br>{links_html}") if msg_email else f"<b>Documentos Anexos:</b><br>{links_html}"
+                
                 await enviar_notificacao_entrega(
                     tarefa, protocolo, email_destino, 
                     current_user.nome,
-                    justificativa=mensagem_comunicar if "COMUNICAR" in acao else justificativa
+                    justificativa=msg_email
                 )
                 logger.info(f"[ENTREGA] {tarefa.obrigacao} ({tarefa.cliente}) -> {email_destino} | Proto: {protocolo}")
         except Exception as e:

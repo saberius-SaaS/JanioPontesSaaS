@@ -143,6 +143,15 @@
 
         <!-- Body -->
         <div class="p-6 space-y-4" id="modalBody">
+            <!-- Área de Upload (ENVIAR / AUDITAR) -->
+            <div id="areaUpload" class="hidden">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-cloud-arrow-up mr-1 text-indigo-500"></i> Anexar Documento(s)
+                </label>
+                <input type="file" id="fileInput" multiple class="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all border border-slate-200 rounded-lg bg-slate-50 p-1 cursor-pointer">
+                <p class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info mr-1"></i> Apenas PDF, JPG ou PNG.</p>
+            </div>
+
             <!-- Área de Justificativa (ENVIAR sem arquivo / COMUNICAR sem texto) -->
             <div id="areaJustificativa" class="hidden">
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
@@ -211,15 +220,21 @@ function abrirModal(id, cliente, obrigacao, vencimento, acao, depto, mesAno) {
     // Mostrar/ocultar campos conforme ação
     const areaJust = document.getElementById('areaJustificativa');
     const areaCom = document.getElementById('areaComunicar');
+    const areaUp = document.getElementById('areaUpload');
     
-    // ENVIAR → justificativa (caso não envie arquivo)
+    // ENVIAR → arquivo opcional (exige justificativa se não enviar)
+    // AUDITAR → arquivo obrigatório
     // COMUNICAR → campo de mensagem
     // ARQUIVAR → justificativa simples (nota)
     areaJust.classList.add('hidden');
     areaCom.classList.add('hidden');
+    areaUp.classList.add('hidden');
     
     if (acaoLabel.indexOf('ENVIAR') > -1) {
+        areaUp.classList.remove('hidden');
         areaJust.classList.remove('hidden');
+    } else if (acaoLabel.indexOf('AUDITAR') > -1) {
+        areaUp.classList.remove('hidden');
     } else if (acaoLabel.indexOf('COMUNICAR') > -1) {
         areaCom.classList.remove('hidden');
         areaJust.classList.remove('hidden');
@@ -239,6 +254,7 @@ function abrirModal(id, cliente, obrigacao, vencimento, acao, depto, mesAno) {
     }
     
     // Reset
+    document.getElementById('fileInput').value = '';
     document.getElementById('txtJustificativa').value = '';
     document.getElementById('txtComunicar').value = '';
     document.getElementById('modalFeedback').className = 'hidden';
@@ -276,6 +292,31 @@ async function executarFinalizacao() {
     const formData = new FormData();
     formData.append('justificativa', document.getElementById('txtJustificativa').value);
     formData.append('mensagem_comunicar', document.getElementById('txtComunicar').value);
+    
+    const files = document.getElementById('fileInput').files;
+    for (let i = 0; i < files.length; i++) {
+        formData.append('arquivos', files[i]);
+    }
+    
+    // Validação básica cliente-side
+    const ehEnviar = tarefaAtual.acao.indexOf('ENVIAR') > -1;
+    const ehAuditar = tarefaAtual.acao.indexOf('AUDITAR') > -1;
+    
+    if (ehAuditar && files.length === 0) {
+        feedback.className = 'rounded-lg p-3 text-sm font-medium text-center bg-amber-50 border border-amber-200 text-amber-700 block';
+        feedback.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Você precisa anexar um arquivo para Auditoria.';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar Fechamento';
+        return;
+    }
+    
+    if (ehEnviar && files.length === 0 && !formData.get('justificativa')) {
+        feedback.className = 'rounded-lg p-3 text-sm font-medium text-center bg-red-50 border border-red-200 text-red-600 block';
+        feedback.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Anexe um arquivo OU informe uma justificativa.';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar Fechamento';
+        return;
+    }
     
     try {
         const resp = await fetch('/tarefas/' + tarefaAtual.id + '/finalizar', {
