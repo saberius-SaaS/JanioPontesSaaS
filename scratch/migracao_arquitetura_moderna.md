@@ -68,7 +68,7 @@ Focando no menor custo operacional possível, sem sacrificar a segurança empres
 *   **Google Cloud Run:** U$ 0. (A cota gratuita do GCP concede 2 milhões de requisições e 360.000 segundos de computação por mês).
 *   **Integração Gmail API:** U$ 0. (Incluído na sua assinatura do Google Workspace existente).
 *   **Google Cloud SQL (PostgreSQL):** ~ U$ 9 a U$ 14 / mês (Instância compartilhada micro + 10GB de armazenamento SSD de alta performance). Ideal para dezenas de milhares de requisições diárias de escritório.
-*   **Storage (Google Cloud Storage):** ~ U$ 0.02 / GB. (Para substituir uploads de clientes no Drive, se necessário).
+*   **Storage (Google Cloud Storage):** ~ U$ 0.02 / GB. (Bucket centralizado: `janio-pontes-saas-docs`).
 
 **Custo Total de Operação Estimado (Fixo):** **~ R$ 60,00 a R$ 80,00 por mês**.
 
@@ -469,7 +469,7 @@ Para garantir que o desenvolvimento ocorra de forma sólida, segura e sequencial
 **9.2. Permissões do Cloud Run (IAM)**
 - [x] 9.2.1. Aplicar o papel "Chamador do Cloud Run" para `allUsers` (acesso público à URL do serviço).
 - [x] 9.2.2. Revogar acesso de administrador da Service Account `jpsaas-backend` (que atualmente possui permissões excessivas).
-- [x] 9.2.3. Criar uma IAM Role customizada com permissões mínimas necessárias para a Service Account (princípio do menor privilégio).
+- [x] 9.2.3. Criar uma IAM Role customizada com permissões mínimas necessárias para a Service Account (princípio do menor privilégio). **Nota Crítica: É estritamente necessário atribuir a permissão "Administrador de Objetos do Storage" para permitir o upload de documentos para o Bucket `janio-pontes-saas-docs`.**
 - [x] 9.2.4. Guardar a chave da Service Account no **Secret Manager** do GCP (remover o `credentials.json` do repositório e do container Docker).
 
 **9.3. Segurança do Banco de Dados (Cloud SQL)**
