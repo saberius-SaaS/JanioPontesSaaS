@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block page_title %}Revisão de Tarefas{% endblock %}
+
+{% block hero_title %}Revisão de Entregas{% endblock %}
+{% block hero_subtitle %}Aprove ou rejeite as obrigações que foram concluídas e exigem revisão por um administrador.{% endblock %}
+
+{% block content %}
+<div class="card-premium p-6">
+    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-check-double mr-2 text-indigo-400"></i> Fila de Revisão</h3>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-4 py-3 rounded-tl-lg">Competência</th>
+                    <th class="px-4 py-3">Cliente</th>
+                    <th class="px-4 py-3">Obrigação</th>
+                    <th class="px-4 py-3">Protocolo</th>
+                    <th class="px-4 py-3">Ação Original</th>
+                    <th class="px-4 py-3 text-right rounded-tr-lg">Aprovar / Rejeitar</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for r in revisoes %}
+                <tr class="hover:bg-slate-50 transition-colors" id="row-{{ r.id }}">
+                    <td class="px-4 py-3 font-semibold text-slate-800">
+                        {{ r.mes_ano }}
+                    </td>
+                    <td class="px-4 py-3 font-medium text-jp-navy">{{ r.cliente }}</td>
+                    <td class="px-4 py-3 text-slate-500">{{ r.obrigacao }}</td>
+                    <td class="px-4 py-3 text-xs"><span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md">{{ r.protocolo or 'N/A' }}</span></td>
+                    <td class="px-4 py-3 text-xs font-bold text-slate-500">{{ r.acao or 'ENVIAR' }}</td>
+                    <td class="px-4 py-3 flex justify-end gap-2">
+                        <form action="/tarefas/{{ r.id }}/aprovar" method="POST" class="inline m-0">
+                            <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">
+                                <i class="fa-solid fa-check mr-1"></i> Aprovar
+                            </button>
+                        </form>
+                        <form action="/tarefas/{{ r.id }}/rejeitar" method="POST" class="inline m-0">
+                            <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">
+                                <i class="fa-solid fa-xmark mr-1"></i> Rejeitar
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhuma tarefa pendente de revisão no momento.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

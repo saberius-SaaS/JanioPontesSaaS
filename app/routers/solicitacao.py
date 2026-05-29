@@ -8,6 +8,7 @@ import uuid
 from app import models
 from app.database import get_db
 from app.api.deps import require_login
+from app.core.email_service import email_service
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -61,6 +62,26 @@ async def create_solicitacao(
     db.add(nova)
     db.commit()
     
+    if email:
+        assunto = f"Nova Solicitação: Janio Pontes Contabilidade"
+        corpo = f"""
+        <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
+            <div style="background: #1C3051; color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">JANIO PONTES CONTABILIDADE</h1>
+                <p style="margin: 8px 0 0; opacity: 0.8; font-size: 12px; font-weight: bold; text-transform: uppercase;">Nova Solicitação / Mensagem</p>
+            </div>
+            <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
+                <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a),</p>
+                <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Uma nova solicitação foi registrada para <strong>{cliente}</strong>:</p>
+                <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="margin: 0; font-size: 14px; color: #1e293b; white-space: pre-wrap;">{pedido}</p>
+                </div>
+                <p style="color: #64748b; font-size: 12px;">Responsável: {current_user.nome}</p>
+            </div>
+        </div>
+        """
+        await email_service.enviar_email(para=email, assunto=assunto, corpo_html=corpo)
+        
     return RedirectResponse(url="/solicitacoes", status_code=303)
 
 @router.post("/solicitacoes/{id}/cobrar", response_class=HTMLResponse)
@@ -79,6 +100,26 @@ async def cobrar_solicitacao(
         solic.qtd_avisos = (solic.qtd_avisos or 0) + 1
         solic.ultima_cobranca = datetime.now()
         db.commit()
+        
+        if solic.email:
+            assunto = f"Lembrete: Solicitação Janio Pontes Contabilidade"
+            corpo = f"""
+            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
+                <div style="background: #1C3051; color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                    <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">JANIO PONTES CONTABILIDADE</h1>
+                    <p style="margin: 8px 0 0; opacity: 0.8; font-size: 12px; font-weight: bold; text-transform: uppercase;">Aviso / Lembrete</p>
+                </div>
+                <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
+                    <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a),</p>
+                    <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Gostaríamos de relembrar a seguinte solicitação pendente para <strong>{solic.cliente}</strong>:</p>
+                    <div style="background: #fffbeb; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fde68a;">
+                        <p style="margin: 0; font-size: 14px; color: #92400e; white-space: pre-wrap;">{solic.pedido}</p>
+                    </div>
+                    <p style="color: #64748b; font-size: 12px;">Responsável: {current_user.nome}</p>
+                </div>
+            </div>
+            """
+            await email_service.enviar_email(para=solic.email, assunto=assunto, corpo_html=corpo)
         
     return RedirectResponse(url="/solicitacoes", status_code=303)
 

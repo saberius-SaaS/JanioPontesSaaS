@@ -454,7 +454,7 @@ async def aprovar_revisao(
     db.add(historico)
     db.commit()
     
-    return ""
+    return RedirectResponse(url="/revisoes", status_code=303)
 
 @router.post("/tarefas/{tarefa_id}/rejeitar", response_class=HTMLResponse)
 async def rejeitar_revisao(
@@ -482,4 +482,4 @@ async def rejeitar_revisao(
         tarefa.status = 'PENDENTE'
         
     db.commit()
-    return ""
+    return RedirectResponse(url="/revisoes", status_code=303)
