@@ -141,6 +141,33 @@ async def enviar_notificacao_entrega(tarefa, protocolo: str, email_destino: str,
     await email_service.enviar_email(email_destino, assunto, corpo)
 
 
+def processar_workflow(db: Session, tarefa: models.Tarefa):
+    """Verifica se a tarefa concluída é gatilho de um workflow e cria a próxima fase."""
+    regras_wf = db.query(models.Workflow).filter(
+        models.Workflow.tenant_id == tarefa.tenant_id,
+        models.Workflow.fase_atual == tarefa.obrigacao
+    ).all()
+    
+    for wf in regras_wf:
+        novo_vcto = datetime.date.today() + datetime.timedelta(days=wf.dias or 0)
+        
+        nova_tarefa = models.Tarefa(
+            tenant_id=tarefa.tenant_id,
+            mes_ano=tarefa.mes_ano,
+            cliente=tarefa.cliente,
+            obrigacao=wf.proxima_fase,
+            vencimento=novo_vcto,
+            departamento=wf.departamento or tarefa.departamento,
+            status="PENDENTE",
+            acao=wf.acao or "ENVIAR",
+            responsavel=wf.responsavel_padrao or tarefa.responsavel,
+            id_controle=f"WF-{uuid.uuid4().hex[:8]}",
+            nivel=tarefa.nivel
+        )
+        db.add(nova_tarefa)
+        logger.info(f"[WORKFLOW] Nova tarefa gerada automaticamente: {nova_tarefa.obrigacao} ({nova_tarefa.cliente})")
+
+
 # ==================== ENDPOINTS ====================
 
 @router.get("/revisoes", response_class=HTMLResponse)
@@ -389,6 +416,9 @@ async def finalizar_tarefa(
             vencimento_legal=tarefa.vencimento_legal
         )
         db.add(historico)
+        
+        # Dispara workflow, se aplicável
+        processar_workflow(db, tarefa)
     
     db.commit()
     
@@ -452,6 +482,10 @@ async def aprovar_revisao(
         vencimento_legal=tarefa.vencimento_legal
     )
     db.add(historico)
+    
+    # Dispara workflow, se aplicável
+    processar_workflow(db, tarefa)
+    
     db.commit()
     
     return RedirectResponse(url="/revisoes", status_code=303)

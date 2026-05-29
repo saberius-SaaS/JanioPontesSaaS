@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block page_title %}Workflows e Fases{% endblock %}
+
+{% block hero_title %}Motor de Automação (Workflows){% endblock %}
+{% block hero_subtitle %}Configure as regras de encadeamento entre as tarefas operacionais. Defina o que acontece automaticamente quando uma fase é concluída.{% endblock %}
+
+{% block content %}
+<div class="card-premium p-6">
+    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-code-branch mr-2 text-emerald-400"></i> Cadeia de Processos (Fluxos)</h3>
+        <button onclick="abrirModalWorkflow()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all uppercase tracking-wider shadow-sm">
+            <i class="fa-solid fa-plus mr-2"></i> Nova Regra
+        </button>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-4 py-3 rounded-tl-lg">Se concluir... (Fase Atual)</th>
+                    <th class="px-4 py-3">Então gera... (Próxima Fase)</th>
+                    <th class="px-4 py-3">Prazo</th>
+                    <th class="px-4 py-3">Departamento / Responsável</th>
+                    <th class="px-4 py-3">Ação</th>
+                    <th class="px-4 py-3 text-right rounded-tr-lg">Opções</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for wf in workflows %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-4 py-3 font-semibold text-slate-800">
+                        {{ wf.fase_atual }}
+                    </td>
+                    <td class="px-4 py-3 font-bold text-emerald-600">
+                        <i class="fa-solid fa-arrow-right mr-2 text-slate-300"></i> {{ wf.proxima_fase }}
+                    </td>
+                    <td class="px-4 py-3 font-medium text-slate-500">+{{ wf.dias or 0 }} dias</td>
+                    <td class="px-4 py-3 text-xs">
+                        <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{{ wf.departamento or 'AVULSA' }}</span>
+                        {% if wf.responsavel_padrao %}
+                        <div class="mt-1 text-[10px] text-slate-400">👤 {{ wf.responsavel_padrao }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-xs font-bold text-slate-500">{{ wf.acao or 'ENVIAR' }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="abrirModalWorkflow('{{ wf.id }}', '{{ wf.fase_atual }}', '{{ wf.proxima_fase }}', '{{ wf.dias }}', '{{ wf.departamento or '' }}', '{{ wf.acao or 'ENVIAR' }}', '{{ wf.responsavel_padrao or '' }}')" class="text-indigo-500 hover:text-indigo-700 px-2 transition-colors">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <form action="/workflows/{{ wf.id }}/excluir" method="POST" class="inline" onsubmit="return confirm('Tem certeza que deseja excluir esta regra de encadeamento?');">
+                            <button type="submit" class="text-red-500 hover:text-red-700 px-2 transition-colors">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhuma regra de fluxo de trabalho configurada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== MODAL DE WORKFLOW ==================== -->
+<div id="modalWorkflow" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div id="modalContent" class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform scale-95 transition-transform duration-300">
+        <!-- Header -->
+        <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            <h3 class="font-bold text-jp-navy text-lg" id="modalTitle">Nova Regra de Encadeamento</h3>
+            <button onclick="fecharModal()" class="text-slate-400 hover:text-red-500 transition-colors p-1">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Body / Form -->
+        <form id="formWorkflow" action="/workflows" method="POST">
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                <div class="col-span-2 border-b border-slate-100 pb-4 mb-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-indigo-500">1. Gatilho (Origem)</label>
+                    <p class="text-[11px] text-slate-400 mb-2">Nome EXATO da tarefa/obrigação que, quando finalizada, disparará o gatilho.</p>
+                    <input type="text" name="fase_atual" id="fase_atual" required placeholder="Ex: Cadastro Inicial do Cliente" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                </div>
+
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-emerald-500">2. Ação (Nova Tarefa a ser gerada)</label>
+                    <p class="text-[11px] text-slate-400 mb-2">Qual tarefa deve ser criada para o cliente automaticamente?</p>
+                    <input type="text" name="proxima_fase" id="proxima_fase" required placeholder="Ex: Emissão de Certificado Digital" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Prazo (Dias Úteis)</label>
+                    <input type="number" name="dias" id="dias" value="0" min="0" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Ação do Sistema</label>
+                    <select name="acao" id="acao" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                        <option value="ENVIAR">ENVIAR ARQUIVO AO CLIENTE</option>
+                        <option value="COMUNICAR">ENVIAR COMUNICADO DE TEXTO</option>
+                        <option value="ARQUIVAR">APENAS ARQUIVAMENTO INTERNO</option>
+                        <option value="AUDITAR">AUDITAR E FECHAR</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Departamento de Destino</label>
+                    <select name="departamento" id="departamento" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                        <option value="">Selecione... (Opcional)</option>
+                        {% for dep in departamentos %}
+                        <option value="{{ dep }}">{{ dep }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Responsável Específico (Email)</label>
+                    <input type="email" name="responsavel_padrao" id="responsavel_padrao" placeholder="Deixe em branco para seguir o cliente" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-5 border-t border-slate-100 bg-slate-50/30 flex justify-end items-center gap-3">
+                <button type="button" onclick="fecharModal()" class="px-5 py-2 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors text-sm">
+                    Cancelar
+                </button>
+                <button type="submit" class="px-6 py-2.5 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-save"></i> Salvar Regra
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirModalWorkflow(id = '', fase_atual = '', proxima_fase = '', dias = '0', departamento = '', acao = 'ENVIAR', responsavel = '') {
+    const form = document.getElementById('formWorkflow');
+    const title = document.getElementById('modalTitle');
+    
+    if (id) {
+        form.action = `/workflows/${id}/editar`;
+        title.textContent = 'Editar Regra de Encadeamento';
+    } else {
+        form.action = '/workflows';
+        title.textContent = 'Nova Regra de Encadeamento';
+    }
+    
+    document.getElementById('fase_atual').value = fase_atual;
+    document.getElementById('proxima_fase').value = proxima_fase;
+    document.getElementById('dias').value = dias;
+    document.getElementById('departamento').value = departamento;
+    document.getElementById('acao').value = acao;
+    document.getElementById('responsavel_padrao').value = responsavel;
+    
+    // Animação de abertura
+    const modal = document.getElementById('modalWorkflow');
+    const content = document.getElementById('modalContent');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+    }, 10);
+}
+
+function fecharModal() {
+    const modal = document.getElementById('modalWorkflow');
+    const content = document.getElementById('modalContent');
+    modal.classList.add('opacity-0');
+    content.classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+</script>
+{% endblock %}
