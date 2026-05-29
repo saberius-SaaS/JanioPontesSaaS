@@ -72,7 +72,8 @@ def registrar_protocolo(db: Session, tenant_id: str, tarefa, protocolo: str,
 
 
 async def enviar_notificacao_entrega(tarefa, protocolo: str, email_destino: str, 
-                                      responsavel_nome: str, justificativa: str = None):
+                                      responsavel_nome: str, justificativa: str = None,
+                                      links_documentos: list = None):
     """Envia email de notificação ao cliente sobre entrega concluída."""
     assunto = f"[Protocolo {protocolo}] {tarefa.obrigacao} - {tarefa.cliente}"
     
@@ -87,24 +88,38 @@ async def enviar_notificacao_entrega(tarefa, protocolo: str, email_destino: str,
             <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Informamos que a obrigação abaixo foi processada com sucesso:</p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 20px;">
                 <tr>
-                    <td style="padding: 10px; background: #f1f5f9; border-radius: 8px 0 0 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Obrigação</td>
-                    <td style="padding: 10px; background: #f1f5f9; border-radius: 0 8px 0 0; font-size: 14px; font-weight: bold; color: #1C3051;">{tarefa.obrigacao}</td>
+                    <td style="padding: 10px; background: #f1f5f9; border-radius: 8px 0 0 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Cliente</td>
+                    <td style="padding: 10px; background: #f1f5f9; border-radius: 0 8px 0 0; font-size: 14px; font-weight: bold; color: #1C3051;">{tarefa.cliente}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 10px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Competência</td>
-                    <td style="padding: 10px; font-size: 14px; color: #334155;">{tarefa.mes_ano}</td>
+                    <td style="padding: 10px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Obrigação</td>
+                    <td style="padding: 10px; font-size: 14px; font-weight: bold; color: #1C3051;">{tarefa.obrigacao}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 10px; background: #f1f5f9; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Protocolo</td>
-                    <td style="padding: 10px; background: #f1f5f9; font-size: 14px; font-weight: bold; color: #6366f1;">{protocolo}</td>
+                    <td style="padding: 10px; background: #f1f5f9; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Competência</td>
+                    <td style="padding: 10px; background: #f1f5f9; font-size: 14px; color: #334155;">{tarefa.mes_ano}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 10px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Vencimento Legal</td>
-                    <td style="padding: 10px; font-size: 14px; color: #334155;">{tarefa.vencimento_legal.strftime('%d/%m/%Y') if tarefa.vencimento_legal else '—'}</td>
+                    <td style="padding: 10px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Protocolo</td>
+                    <td style="padding: 10px; font-size: 14px; font-weight: bold; color: #6366f1;">{protocolo}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; background: #f1f5f9; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Vencimento Legal</td>
+                    <td style="padding: 10px; background: #f1f5f9; font-size: 14px; color: #334155;">{tarefa.vencimento_legal.strftime('%d/%m/%Y') if tarefa.vencimento_legal else '—'}</td>
                 </tr>
             </table>
     """
     
+    # Botões de acesso aos documentos anexos (destaque visual)
+    if links_documentos:
+        corpo += """<div style="text-align: center; margin: 25px 0;">"""
+        for i, link in enumerate(links_documentos):
+            label = f"Acessar Documento {i+1}" if len(links_documentos) > 1 else "Acessar Documento"
+            corpo += f"""
+                <p style="margin: 8px 0;"><a href="{link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">{label}</a></p>
+            """
+        corpo += """</div>"""
+
     if justificativa:
         corpo += f"""
             <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 15px; margin: 0 0 20px;">
@@ -307,19 +322,24 @@ async def finalizar_tarefa(
         # Envia notificação por email conforme o tipo de ação
         try:
             if email_destino and "ARQUIVAR" not in acao:
-                msg_email = mensagem_comunicar if "COMUNICAR" in acao else justificativa
+                # Para ação ENVIAR: só envia e-mail se houver documentos anexados
+                # Para ação COMUNICAR: sempre envia (é uma mensagem, não um documento)
+                deve_enviar = True
+                if "ENVIAR" in acao and not links_gerados:
+                    deve_enviar = False  # Sem arquivo = sem envio ao cliente
                 
-                # Se tem links gerados, coloca os links no email
-                if links_gerados:
-                    links_html = "<br>".join([f"<a href='{u}'>Acessar Documento</a>" for u in links_gerados])
-                    msg_email = (msg_email + f"<br><br><b>Documentos Anexos:</b><br>{links_html}") if msg_email else f"<b>Documentos Anexos:</b><br>{links_html}"
-                
-                await enviar_notificacao_entrega(
-                    tarefa, protocolo, email_destino, 
-                    current_user.nome,
-                    justificativa=msg_email
-                )
-                logger.info(f"[ENTREGA] {tarefa.obrigacao} ({tarefa.cliente}) -> {email_destino} | Proto: {protocolo}")
+                if deve_enviar:
+                    msg_texto = mensagem_comunicar if "COMUNICAR" in acao else justificativa
+                    
+                    await enviar_notificacao_entrega(
+                        tarefa, protocolo, email_destino, 
+                        current_user.nome,
+                        justificativa=msg_texto if msg_texto else None,
+                        links_documentos=links_gerados if links_gerados else None
+                    )
+                    logger.info(f"[ENTREGA] {tarefa.obrigacao} ({tarefa.cliente}) -> {email_destino} | Proto: {protocolo}")
+                else:
+                    logger.info(f"[SEM ENVIO] {tarefa.obrigacao} ({tarefa.cliente}) — Finalizada com justificativa, sem arquivo. E-mail não enviado.")
         except Exception as e:
             logger.error(f"[EMAIL ERRO] Tarefa finalizada mas email falhou: {str(e)}")
         
