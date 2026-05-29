@@ -80,11 +80,26 @@ Write-Host "Projeto GCP configurado: $GCP_PROJECT" -ForegroundColor Green
 # ─────────────────────────────────────────
 Write-Host "`n[5/5] Publicando no Google Cloud Run..." -ForegroundColor Yellow
 
+# ── Variaveis de Ambiente para Cloud Run ──
+# EMAIL_MODE: Trocar para "production" no GO-LIVE (envia para o cliente real)
+$ENV_VARS = @(
+    "ENVIRONMENT=production",
+    "DB_USER=app_user",
+    "DB_NAME=postgres",
+    "DB_HOST=/cloudsql/jp-saas-producao:southamerica-east1:jpsaas-db",
+    "EMAIL_MODE=intercept",
+    "EMAIL_INTERCEPT_ADDRESS=janiopontes@janiopontes.com.br",
+    "GMAIL_DELEGATED_USER=janiopontes@janiopontes.com.br",
+    "STORAGE_MODE=production",
+    "GCS_BUCKET_NAME=janio-pontes-saas-docs",
+    "GOOGLE_CLIENT_ID=471313311249-sda2g2e9m40l6ui02m1vut9i3glgu40m.apps.googleusercontent.com"
+) -join ","
+
 gcloud run deploy $CLOUDRUN_SVC `
     --source . `
     --region $CLOUDRUN_REGION `
     --allow-unauthenticated `
-    --set-env-vars="ENVIRONMENT=production,DB_USER=app_user,DB_NAME=postgres,DB_HOST=/cloudsql/jp-saas-producao:southamerica-east1:jpsaas-db" `
+    --set-env-vars="$ENV_VARS" `
     --set-secrets="DB_PASSWORD=JPSAAS_DB_PASSWORD:latest,SECRET_KEY=JPSAAS_SECRET_KEY:latest,GOOGLE_CLIENT_SECRET=JPSAAS_GOOGLE_CLIENT_SECRET:latest,/secrets/credentials.json=JPSAAS_GCP_CREDENTIALS:latest" `
     --add-cloudsql-instances="jp-saas-producao:southamerica-east1:jpsaas-db" `
     --quiet

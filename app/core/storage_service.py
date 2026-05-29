@@ -1,10 +1,15 @@
 """
 Integração com Google Cloud Storage (GCS).
 Responsável pelo upload e gerenciamento de permissões dos documentos dos clientes.
+
+O bucket usa Uniform Bucket-Level Access + Public Access Prevention (enforced),
+portanto não é possível usar make_public() nem ACLs por objeto.
+A estratégia de acesso é via Signed URLs com validade de 7 dias.
 """
 import os
 import uuid
 import logging
+import datetime
 from fastapi import UploadFile
 from dotenv import load_dotenv
 
@@ -16,10 +21,12 @@ logger = logging.getLogger(__name__)
 STORAGE_MODE = os.getenv("STORAGE_MODE", "mock")  # "mock" ou "production"
 GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "jpsaas-arquivos-producao")
 CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "/secrets/credentials.json" if os.path.exists("/secrets/credentials.json") else "credentials.json")
+SIGNED_URL_EXPIRATION_DAYS = int(os.getenv("SIGNED_URL_EXPIRATION_DAYS", "7"))
 
 class StorageService:
     def __init__(self):
         self._client = None
+        self._credentials = None
 
     def _get_client(self):
         """Inicializa o client do GCS."""
@@ -30,18 +37,48 @@ class StorageService:
         from google.oauth2 import service_account
         
         if os.path.exists(CREDENTIALS_FILE):
-            credentials = service_account.Credentials.from_service_account_file(CREDENTIALS_FILE)
-            self._client = storage.Client(credentials=credentials)
+            self._credentials = service_account.Credentials.from_service_account_file(CREDENTIALS_FILE)
+            self._client = storage.Client(credentials=self._credentials)
         else:
             # Fallback para credenciais padrão do ambiente GCP
             self._client = storage.Client()
             
         return self._client
 
+    def _generate_signed_url(self, blob) -> str:
+        """
+        Gera uma Signed URL com validade configurável (padrão: 7 dias).
+        Funciona mesmo com Uniform Bucket-Level Access e Public Access Prevention habilitados.
+        """
+        try:
+            expiration = datetime.timedelta(days=SIGNED_URL_EXPIRATION_DAYS)
+            
+            # Se temos credenciais de Service Account, usa diretamente
+            if self._credentials:
+                url = blob.generate_signed_url(
+                    version="v4",
+                    expiration=expiration,
+                    method="GET",
+                    credentials=self._credentials
+                )
+            else:
+                # Em ambiente Cloud Run sem arquivo de credenciais,
+                # usa as credenciais padrão do compute engine
+                url = blob.generate_signed_url(
+                    version="v4",
+                    expiration=expiration,
+                    method="GET"
+                )
+            return url
+        except Exception as e:
+            logger.error(f"[GCS] Falha ao gerar Signed URL: {str(e)}")
+            # Fallback: retorna URL pública padrão (provavelmente dará 403)
+            return blob.public_url
+
     async def upload_file(self, file: UploadFile, cliente_nome: str = "Geral") -> str:
         """
         Recebe um arquivo do FastAPI e faz o upload para o Google Cloud Storage.
-        Retorna a URL pública do arquivo gerado.
+        Retorna uma Signed URL com validade de 7 dias para acesso ao documento.
         """
         if STORAGE_MODE == "mock":
             fake_id = str(uuid.uuid4())[:8]
@@ -63,20 +100,10 @@ class StorageService:
             content = await file.read()
             blob.upload_from_string(content, content_type=file.content_type)
             
-            # Torna o arquivo público para leitura com base em URL
-            # Note: O bucket deve permitir objetos públicos (allUsers: objectViewer) ou assinar a URL
-            # Aqui vamos assumir um bucket com regras públicas de leitura ou usar Signed URLs,
-            # mas o padrão GCP para arquivos de visualização pública é public_url.
+            # Gera Signed URL (acesso temporário seguro, sem necessidade de tornar público)
+            web_link = self._generate_signed_url(blob)
             
-            try:
-                blob.make_public()
-            except Exception as e:
-                # Pode falhar se o bucket tiver "Uniform bucket-level access" com restrição
-                logger.warning(f"Não foi possível tornar público via make_public(): {e}")
-                
-            web_link = blob.public_url
-            
-            logger.info(f"[GCS] Upload real: {file.filename} → {web_link}")
+            logger.info(f"[GCS] Upload real: {file.filename} → Signed URL gerada (expira em {SIGNED_URL_EXPIRATION_DAYS} dias)")
             return web_link
 
         except Exception as e:
@@ -84,3 +111,4 @@ class StorageService:
             return f"ERRO: Upload falhou - {str(e)}"
 
 storage_service = StorageService()
+
