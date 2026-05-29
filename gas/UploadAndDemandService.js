@@ -287,26 +287,30 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
   
     // Se houve auditoria aprovada, PREPARA o Relatório IA por E-mail APENAS se cliente for VIP
     if (resAudit && resAudit.dadosAtuais) {
-      var iaConfInfo = garantirConfigIA();
-      var dConf = iaConfInfo.sheet.getDataRange().getValues();
-      var vips = "";
-      for (var idxC = 1; idxC < dConf.length; idxC++) {
-         if (dConf[idxC][0] === "CLIENTES_AUDITORIA_ATIVOS") { vips = String(dConf[idxC][1]).toUpperCase(); break; }
-      }
-      var authVips = vips.split(',').map(function(n) { return n.trim(); });
-      
-      if (authVips.indexOf(String(clienteNome).toUpperCase().trim()) > -1) {
-         dispararEmailVIP = true;
-         backgroundPayload = {
-           emailCli: emailCli,
-           nomeResp: nomeResp,
-           clienteNome: clienteNome,
-           obrig: obrig + " (" + mesRef + ")",
-           dadosAtuais: resAudit.dadosAtuais,
-           historicoDados: resAudit.historicoDados
-         };
+      if (statusFinal === getSafeStatus("REVISAO")) {
+         registrarLogSistema("AUDIT_MAIL_DEFERRED", "Relatório IA gerado, mas disparo abortado (aguardando REVISÃO do Admin).");
       } else {
-         registrarLogSistema("AUDIT_MAIL_SKIPPED", "Cliente " + clienteNome + " auditado com sucesso mas não é VIP para e-mail.");
+        var iaConfInfo = garantirConfigIA();
+        var dConf = iaConfInfo.sheet.getDataRange().getValues();
+        var vips = "";
+        for (var idxC = 1; idxC < dConf.length; idxC++) {
+           if (dConf[idxC][0] === "CLIENTES_AUDITORIA_ATIVOS") { vips = String(dConf[idxC][1]).toUpperCase(); break; }
+        }
+        var authVips = vips.split(',').map(function(n) { return n.trim(); });
+        
+        if (authVips.indexOf(String(clienteNome).toUpperCase().trim()) > -1) {
+           dispararEmailVIP = true;
+           backgroundPayload = {
+             emailCli: emailCli,
+             nomeResp: nomeResp,
+             clienteNome: clienteNome,
+             obrig: obrig + " (" + mesRef + ")",
+             dadosAtuais: resAudit.dadosAtuais,
+             historicoDados: resAudit.historicoDados
+           };
+        } else {
+           registrarLogSistema("AUDIT_MAIL_SKIPPED", "Cliente " + clienteNome + " auditado com sucesso mas não é VIP para e-mail.");
+        }
       }
     }
     // --- FIM BLOCO TRANSACIONAL DE COMUNICAÇÃO ---

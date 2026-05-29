@@ -585,10 +585,10 @@ function aprovarTarefaRevisao(taskId, userLevel) {
         for (var p = dataP.length - 1; p >= 1; p--) {
            if (String(dataP[p][2]) === String(protocolo)) {
               var linksRaw = String(dataP[p][7] || ""); // Coluna H: Arquivos/Links (Index 7)
-              if (linksRaw.indexOf("http") === 0 || linksRaw.indexOf("COMUNICADO:") === -1) {
+              if (linksRaw.indexOf("SEM_ENVIO:") === -1 && (linksRaw.indexOf("http") === 0 || linksRaw.indexOf("COMUNICADO:") === -1)) {
                  var urls = linksRaw.split(" | ");
                  urls.forEach(u => {
-                    if (u.trim()) linksParaEmail.push({ url: u.trim(), name: "Documento Enviado" });
+                    if (u.trim() && u.indexOf("http") > -1) linksParaEmail.push({ url: u.trim(), name: "Documento Enviado" });
                  });
               }
               protRowIdx = p + 1;
@@ -624,8 +624,12 @@ function aprovarTarefaRevisao(taskId, userLevel) {
                     var msgComunicado = msgProtocolo.replace("COMUNICADO: ", "");
                     enviarComunicadoCliente(clienteNome, emailCli, obrig, protocolo, msgComunicado, respTarefa);
                  }
-              } else if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR) {
-                 notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, folderUrl, protRowIdx, false, mesAno, vctoLegal, respTarefa);
+              } else if (norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.ARQUIVAR && norm(acaoTarefa) !== CONFIG_SISTEMA.ACOES.AUDITAR) {
+                 if (linksRaw && linksRaw.indexOf("SEM_ENVIO:") > -1) {
+                    registrarLogSistema("APROVA_EMAIL_SKIP", "Tarefa com justificativa sem arquivo. E-mail omitido.");
+                 } else {
+                    notificarEntregaClienteRefatorada(clienteNome, obrig, protocolo, emailCli, linksParaEmail, folderUrl, protRowIdx, false, mesAno, vctoLegal, respTarefa);
+                 }
               }
            }
         } catch(eNotif) {

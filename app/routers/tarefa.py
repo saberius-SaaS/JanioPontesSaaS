@@ -245,6 +245,17 @@ async def finalizar_tarefa(
     # Vamos garantir a extração dos arquivos:
     lista_arquivos = form.getlist("arquivos") if "arquivos" in form else (arquivos or [])
     
+    # === DEBUG: Diagnóstico de upload ===
+    logger.warning(f"[DEBUG UPLOAD] tarefa_id={tarefa_id}")
+    logger.warning(f"[DEBUG UPLOAD] form keys: {list(form.keys())}")
+    logger.warning(f"[DEBUG UPLOAD] 'arquivos' in form: {'arquivos' in form}")
+    logger.warning(f"[DEBUG UPLOAD] lista_arquivos count: {len(lista_arquivos)}")
+    for i, arq in enumerate(lista_arquivos):
+        is_upload = isinstance(arq, UploadFile)
+        fname = getattr(arq, 'filename', 'N/A')
+        fsize = getattr(arq, 'size', 'N/A')
+        logger.warning(f"[DEBUG UPLOAD] arquivo[{i}]: is_UploadFile={is_upload}, filename='{fname}', size={fsize}, type={type(arq).__name__}")
+    
     tarefa = db.query(models.Tarefa).filter(
         models.Tarefa.id == tarefa_id,
         models.Tarefa.tenant_id == current_user.tenant_id
@@ -277,14 +288,26 @@ async def finalizar_tarefa(
     
     if lista_arquivos:
         for arq in lista_arquivos:
-            if isinstance(arq, UploadFile) and arq.filename:
+            is_upload = isinstance(arq, UploadFile)
+            fname = getattr(arq, 'filename', None)
+            logger.warning(f"[DEBUG GCS] Processando: is_UploadFile={is_upload}, filename='{fname}'")
+            if is_upload and fname:
                 try:
                     url = await storage_service.upload_file(arq, cliente_nome=tarefa.cliente)
+                    logger.warning(f"[DEBUG GCS] Resultado upload: url='{url[:80] if url else 'None'}...'")
                     if url and "ERRO" not in url:
                         links_gerados.append(url)
+                    else:
+                        logger.error(f"[GCS FALHA] Upload retornou erro: {url}")
                 except Exception as e:
-                    logger.error(f"Falha ao subir arquivo {arq.filename}: {str(e)}")
+                    logger.error(f"Falha ao subir arquivo {fname}: {str(e)}")
+            else:
+                logger.warning(f"[DEBUG GCS] Arquivo ignorado: is_upload={is_upload}, fname='{fname}'")
+    else:
+        logger.warning(f"[DEBUG GCS] lista_arquivos está vazia, nenhum upload tentado")
                     
+    logger.warning(f"[DEBUG RESULTADO] links_gerados: {len(links_gerados)}")
+    
     # Descrição do protocolo para registro
     link_arquivo = " | ".join(links_gerados) if links_gerados else ""
     
@@ -320,6 +343,7 @@ async def finalizar_tarefa(
     # Só envia email e arquiva se NÃO for revisão
     if not precisa_revisao:
         # Envia notificação por email conforme o tipo de ação
+        logger.warning(f"[DEBUG EMAIL] acao={acao}, email_destino='{email_destino}', links_gerados={len(links_gerados)}")
         try:
             if email_destino and "ARQUIVAR" not in acao:
                 # Para ação ENVIAR: só envia e-mail se houver documentos anexados
@@ -327,6 +351,8 @@ async def finalizar_tarefa(
                 deve_enviar = True
                 if "ENVIAR" in acao and not links_gerados:
                     deve_enviar = False  # Sem arquivo = sem envio ao cliente
+                
+                logger.warning(f"[DEBUG EMAIL] deve_enviar={deve_enviar}")
                 
                 if deve_enviar:
                     msg_texto = mensagem_comunicar if "COMUNICAR" in acao else justificativa
@@ -337,9 +363,11 @@ async def finalizar_tarefa(
                         justificativa=msg_texto if msg_texto else None,
                         links_documentos=links_gerados if links_gerados else None
                     )
-                    logger.info(f"[ENTREGA] {tarefa.obrigacao} ({tarefa.cliente}) -> {email_destino} | Proto: {protocolo}")
+                    logger.warning(f"[ENTREGA] {tarefa.obrigacao} ({tarefa.cliente}) -> {email_destino} | Proto: {protocolo}")
                 else:
-                    logger.info(f"[SEM ENVIO] {tarefa.obrigacao} ({tarefa.cliente}) — Finalizada com justificativa, sem arquivo. E-mail não enviado.")
+                    logger.warning(f"[SEM ENVIO] {tarefa.obrigacao} ({tarefa.cliente}) — acao=ENVIAR mas links_gerados vazio. E-mail bloqueado.")
+            else:
+                logger.warning(f"[DEBUG EMAIL] Email NÃO enviado: email_destino='{email_destino}', acao contém ARQUIVAR={('ARQUIVAR' in acao)}")
         except Exception as e:
             logger.error(f"[EMAIL ERRO] Tarefa finalizada mas email falhou: {str(e)}")
         

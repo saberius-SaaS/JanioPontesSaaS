@@ -82,8 +82,8 @@ function gerarTarefasDoMes() {
     var tarefasAtualizadasCount = 0;
     var countId = 0;
 
-    // Processamos os meses da janela
-    for (var m = 0; m >= (CONFIG_SISTEMA.JANELA_RETROATIVA_MESES * -1); m--) {
+    // Processamos os meses da janela (m = 1 gera até 1 mês futuro)
+    for (var m = 1; m >= (CONFIG_SISTEMA.JANELA_RETROATIVA_MESES * -1); m--) {
       var competenciaDate = new Date(hoje.getFullYear(), hoje.getMonth() + m, 1);
       var mesAnoRef = Utilities.formatDate(competenciaDate, "GMT-3", "MM/yyyy");
       var mesInt = competenciaDate.getMonth() + 1;

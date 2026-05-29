@@ -80,6 +80,8 @@ class StorageService:
         Recebe um arquivo do FastAPI e faz o upload para o Google Cloud Storage.
         Retorna uma Signed URL com validade de 7 dias para acesso ao documento.
         """
+        logger.warning(f"[DEBUG STORAGE] STORAGE_MODE={STORAGE_MODE}, BUCKET={GCS_BUCKET_NAME}, CREDS_FILE={CREDENTIALS_FILE}, filename={file.filename}, content_type={file.content_type}")
+        
         if STORAGE_MODE == "mock":
             fake_id = str(uuid.uuid4())[:8]
             fake_url = f"https://storage.googleapis.com/mock-bucket/mock_{fake_id}_{file.filename}"
