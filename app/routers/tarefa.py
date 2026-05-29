@@ -288,10 +288,12 @@ async def finalizar_tarefa(
     
     if lista_arquivos:
         for arq in lista_arquivos:
-            is_upload = isinstance(arq, UploadFile)
+            # Duck-typing: form.getlist() retorna starlette.datastructures.UploadFile,
+            # que NÃO é isinstance de fastapi.UploadFile. Usamos hasattr para aceitar ambos.
             fname = getattr(arq, 'filename', None)
-            logger.warning(f"[DEBUG GCS] Processando: is_UploadFile={is_upload}, filename='{fname}'")
-            if is_upload and fname:
+            has_read = hasattr(arq, 'read')
+            logger.warning(f"[DEBUG GCS] Processando: has_read={has_read}, filename='{fname}', type={type(arq).__name__}")
+            if has_read and fname:
                 try:
                     url = await storage_service.upload_file(arq, cliente_nome=tarefa.cliente)
                     logger.warning(f"[DEBUG GCS] Resultado upload: url='{url[:80] if url else 'None'}...'")
@@ -302,7 +304,7 @@ async def finalizar_tarefa(
                 except Exception as e:
                     logger.error(f"Falha ao subir arquivo {fname}: {str(e)}")
             else:
-                logger.warning(f"[DEBUG GCS] Arquivo ignorado: is_upload={is_upload}, fname='{fname}'")
+                logger.warning(f"[DEBUG GCS] Arquivo ignorado: has_read={has_read}, fname='{fname}'")
     else:
         logger.warning(f"[DEBUG GCS] lista_arquivos está vazia, nenhum upload tentado")
                     
