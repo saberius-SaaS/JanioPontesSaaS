@@ -31,7 +31,7 @@ Após a alteração, rode `.\deploy.ps1` para publicar. Nenhuma outra mudança d
 - [ ] **9.4.3.** Escrever teste automatizado (pytest) para RLS (validação cruzada entre tenants).
 - [ ] **9.4.4.** Verificar se `app.bypass_rls = 'on'` existe *somente* em rotas internas (scheduler, seed).
 - [ ] **9.5.1.** Auditar todas as rotas FastAPI garantindo `Depends(require_login)` ou `Depends(verify_scheduler_key)`.
-- [ ] **9.5.3.** Adicionar *rate limiting* nas rotas públicas (especialmente `/login`).
+- [x] **9.5.3.** Adicionar *rate limiting* nas rotas públicas (especialmente `/login`).
 
 ## 🔶 Etapa 10: Homologação Final e Migração de Dados (Pendências)
 - [ ] **10.2.1.** Travar a edição das planilhas do GAS atual (modo leitura).

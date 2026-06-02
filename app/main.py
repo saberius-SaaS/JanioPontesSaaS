@@ -12,6 +12,14 @@ app = FastAPI(
     openapi_url="/openapi.json" if ENVIRONMENT != "production" else None
 )
 
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+from app.core.limiter import limiter
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 # Configuração de CORS (necessário para o frontend interagir com a API)
 app.add_middleware(
     CORSMiddleware,

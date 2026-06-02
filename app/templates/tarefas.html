@@ -6,13 +6,27 @@
 {% block hero_subtitle %}Acompanhe e gerencie as obrigações e tarefas pendentes geradas pelo sistema para este mês.{% endblock %}
 
 {% block content %}
-<!-- Formulário de Tarefa Avulsa -->
-<div class="card-premium p-6 mb-8">
-    <div class="flex justify-between items-center mb-4 cursor-pointer" onclick="document.getElementById('formAvulsa').classList.toggle('hidden')">
-        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-plus-circle mr-2 text-indigo-400"></i> Criar Tarefa Avulsa</h3>
-        <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform"></i>
+<!-- Controles de Tabela e Tarefa Avulsa -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+    <!-- Barra de Pesquisa -->
+    <div class="relative w-full md:w-96">
+        <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+        <input type="text" id="searchInputTarefas" placeholder="Pesquisar cliente, obrigação, responsável..." class="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 shadow-sm transition-shadow" onkeyup="filtrarTabela('searchInputTarefas', 'tabelaTarefas')">
     </div>
-    <form id="formAvulsa" action="/tarefas" method="POST" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+    
+    <!-- Botão Criar Tarefa -->
+    <button onclick="document.getElementById('formAvulsaContainer').classList.toggle('hidden')" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-sm whitespace-nowrap flex items-center">
+        <i class="fa-solid fa-plus-circle mr-2"></i> Criar Tarefa Avulsa
+    </button>
+</div>
+
+<!-- Formulário de Tarefa Avulsa (Escondido por padrão) -->
+<div id="formAvulsaContainer" class="card-premium p-6 mb-6 hidden border-l-4 border-l-indigo-500 transition-all">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-bolt mr-2 text-indigo-400"></i> Nova Tarefa Rápida</h3>
+        <button onclick="document.getElementById('formAvulsaContainer').classList.add('hidden')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="formAvulsa" action="/tarefas" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <div>
             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cliente</label>
             <select name="cliente" required class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
@@ -55,8 +69,8 @@
             </select>
         </div>
         <div class="flex items-end">
-            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex justify-center items-center h-[40px]">
-                <i class="fa-solid fa-plus mr-2"></i> Criar Tarefa
+            <button type="submit" class="w-full bg-jp-navy hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex justify-center items-center h-[40px]">
+                <i class="fa-solid fa-check mr-2"></i> Confirmar
             </button>
         </div>
     </form>
@@ -65,6 +79,7 @@
 <div class="card-premium p-6">
     <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
         <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-layer-group mr-2 text-indigo-400"></i> Fila de Trabalho (Top 200)</h3>
+        <span class="text-xs font-semibold bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100">{{ tarefas|length }} registros</span>
     </div>
 
     <div class="overflow-x-auto">
@@ -80,9 +95,9 @@
                     <th class="px-4 py-3 text-right rounded-tr-lg">Resolver</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-slate-100" id="tabelaTarefas">
                 {% for t in tarefas %}
-                <tr class="hover:bg-slate-50 transition-colors cursor-pointer" id="row-{{ t.id }}" onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}')">
+                <tr class="hover:bg-slate-50 transition-colors cursor-pointer" id="row-{{ t.id }}" onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}', '{{ t.precisa_revisao_flag }}')">
                     <td class="px-4 py-3 font-semibold {% if t.status == 'ATRASADO' %}text-red-500{% else %}text-slate-800{% endif %}">
                         <i class="fa-regular fa-calendar mr-1"></i> {{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}
                     </td>
@@ -105,7 +120,7 @@
                     </td>
                     <td class="px-4 py-3 text-slate-500 text-xs truncate max-w-[120px]">{{ t.responsavel }}</td>
                     <td class="px-4 py-3 text-right">
-                        <button class="bg-jp-navy hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider shadow-sm" onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}'); event.stopPropagation();">
+                        <button class="bg-jp-navy hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider shadow-sm" onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}', '{{ t.precisa_revisao_flag }}'); event.stopPropagation();">
                             <i class="fa-solid fa-arrow-right mr-1"></i> Resolver
                         </button>
                     </td>
@@ -186,9 +201,10 @@
 
 <script>
 let tarefaAtual = null;
+const nivelUsuario = "{{ user.nivel }}";
 
-function abrirModal(id, cliente, obrigacao, vencimento, acao, depto, mesAno) {
-    tarefaAtual = { id, cliente, obrigacao, vencimento, acao: acao.toUpperCase(), depto, mesAno };
+function abrirModal(id, cliente, obrigacao, vencimento, acao, depto, mesAno, revisaoFlag) {
+    tarefaAtual = { id, cliente, obrigacao, vencimento, acao: acao.toUpperCase(), depto, mesAno, revisaoFlag };
     
     document.getElementById('modalCliente').textContent = cliente;
     document.getElementById('modalObrigacao').textContent = obrigacao;
@@ -241,6 +257,14 @@ function abrirModal(id, cliente, obrigacao, vencimento, acao, depto, mesAno) {
     } else if (acaoLabel.indexOf('ARQUIVAR') > -1) {
         areaJust.classList.remove('hidden');
         document.querySelector('#areaJustificativa label').innerHTML = '<i class="fa-solid fa-sticky-note mr-1 text-slate-500"></i> Anotação de Registro (opcional)';
+    }
+    
+    // Regra de Revisão: Se estiver sujeita à revisão e usuário não for ADMIN
+    if (tarefaAtual.revisaoFlag === 'S' && nivelUsuario !== 'ADMIN' && nivelUsuario !== 'MASTER') {
+        areaUp.classList.remove('hidden');
+        document.querySelector('#areaUpload label').innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-1 text-indigo-500"></i> Anexar Documento (Obrigatório p/ Revisão)';
+    } else {
+        document.querySelector('#areaUpload label').innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-1 text-indigo-500"></i> Anexar Documento(s)';
     }
     
     // Ajustar botão
@@ -301,10 +325,11 @@ async function executarFinalizacao() {
     // Validação básica cliente-side
     const ehEnviar = tarefaAtual.acao.indexOf('ENVIAR') > -1;
     const ehAuditar = tarefaAtual.acao.indexOf('AUDITAR') > -1;
+    const ehRevisao = (tarefaAtual.revisaoFlag === 'S' && nivelUsuario !== 'ADMIN' && nivelUsuario !== 'MASTER');
     
-    if (ehAuditar && files.length === 0) {
+    if ((ehAuditar || ehRevisao) && files.length === 0) {
         feedback.className = 'rounded-lg p-3 text-sm font-medium text-center bg-amber-50 border border-amber-200 text-amber-700 block';
-        feedback.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Você precisa anexar um arquivo para Auditoria.';
+        feedback.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Você precisa anexar um arquivo/comprovante obrigatório.';
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar Fechamento';
         return;

@@ -14,10 +14,8 @@
         <div class="relative w-full md:w-96">
             <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
             <input type="text" 
-                   name="q" 
-                   hx-get="/protocolos/search" 
-                   hx-trigger="keyup changed delay:500ms" 
-                   hx-target="#tabela-protocolos" 
+                   id="searchInputProtocolos" 
+                   onkeyup="filtrarTabela('searchInputProtocolos', 'tabela-protocolos')"
                    placeholder="Buscar por protocolo, cliente..." 
                    class="glass-input w-full pl-10">
         </div>

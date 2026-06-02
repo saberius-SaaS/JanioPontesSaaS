@@ -536,6 +536,30 @@
         if (window.innerWidth <= 768) toggleSidebar();
       });
     });
+
+    // Função global para filtro de tabelas
+    function filtrarTabela(inputId, tbodyId) {
+        const input = document.getElementById(inputId);
+        const filter = input.value.toLowerCase();
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        const trs = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < trs.length; i++) {
+            // Ignorar a linha de "nenhum resultado" nativa (geralmente tem colspan)
+            if (trs[i].cells.length === 1 && trs[i].cells[0].hasAttribute('colspan')) continue;
+            
+            const tds = trs[i].getElementsByTagName('td');
+            let match = false;
+            for (let j = 0; j < tds.length; j++) {
+                if (tds[j] && tds[j].innerText.toLowerCase().indexOf(filter) > -1) {
+                    match = true;
+                    break;
+                }
+            }
+            trs[i].style.display = match ? "" : "none";
+        }
+    }
   </script>
 
   <!-- Integração Chatwoot (carrega apenas se configurado) -->

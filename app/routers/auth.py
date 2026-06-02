@@ -26,10 +26,13 @@ google_request = google_urllib3.Request(_http)
 GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID
 
 
+from app.core.limiter import limiter
+
 # ─────────────────────────────────────────────
 # GET /login — Tela de login com Google OAuth
 # ─────────────────────────────────────────────
 @router.get("/login", response_class=HTMLResponse)
+@limiter.limit("10/minute")
 def login_page(request: Request):
     html_content = f"""
     <!DOCTYPE html>
@@ -147,6 +150,7 @@ def login_page(request: Request):
 # POST /google — Valida token Google, gera cookie de sessão
 # ─────────────────────────────────────────────
 @router.post("/google")
+@limiter.limit("5/minute")
 def login_google_oauth(
     request: Request,
     credential: str = Form(...),

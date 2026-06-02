@@ -190,10 +190,21 @@ async def list_revisoes(request: Request, db: Session = Depends(get_db), current
 
 @router.get("/tarefas", response_class=HTMLResponse)
 async def list_tarefas(request: Request, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
-    tarefas = db.query(models.Tarefa).filter(
+    tarefas_raw = db.query(models.Tarefa, models.RegraObrigacao.revisao).outerjoin(
+        models.RegraObrigacao,
+        (models.RegraObrigacao.tenant_id == models.Tarefa.tenant_id) &
+        (models.RegraObrigacao.obrigacao == models.Tarefa.obrigacao)
+    ).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status.in_(['PENDENTE', 'ATRASADO'])
     ).order_by(models.Tarefa.vencimento.asc()).limit(200).all()
+    
+    tarefas = []
+    for t, rev in tarefas_raw:
+        # Mesmo flag do backend
+        is_revisao = (rev and str(rev).strip().upper() == 'S')
+        t.precisa_revisao_flag = 'S' if is_revisao else 'N'
+        tarefas.append(t)
     
     clientes = db.query(models.Cliente).filter(models.Cliente.tenant_id == current_user.tenant_id, models.Cliente.status == 'ATIVO').order_by(models.Cliente.cliente).all()
     usuarios = db.query(models.Usuario).filter(models.Usuario.tenant_id == current_user.tenant_id, models.Usuario.ativo == True).all()
@@ -337,6 +348,12 @@ async def finalizar_tarefa(
                     
     logger.warning(f"[DEBUG RESULTADO] links_gerados: {len(links_gerados)}")
     
+    if precisa_revisao and not links_gerados:
+        return JSONResponse(content={
+            "success": False, 
+            "message": "Esta tarefa exige revisão. É obrigatório anexar o arquivo/documento para o revisor."
+        })
+        
     # Descrição do protocolo para registro
     link_arquivo = " | ".join(links_gerados) if links_gerados else ""
     
@@ -483,6 +500,14 @@ async def aprovar_revisao(
     )
     db.add(historico)
     
+    # Atualizar o status do Protocolo associado
+    protocolo = db.query(models.Protocolo).filter(
+        models.Protocolo.tenant_id == current_user.tenant_id,
+        models.Protocolo.protocolo == tarefa.protocolo
+    ).first()
+    if protocolo:
+        protocolo.status_envio = "ENVIADO"
+    
     # Dispara workflow, se aplicável
     processar_workflow(db, tarefa)
     
@@ -508,12 +533,22 @@ async def rejeitar_revisao(
     
     if not tarefa:
         raise HTTPException(status_code=404, detail="Tarefa em revisão não encontrada")
+
+    # Atualizar o status do Protocolo associado para REJEITADO
+    protocolo = db.query(models.Protocolo).filter(
+        models.Protocolo.tenant_id == current_user.tenant_id,
+        models.Protocolo.protocolo == tarefa.protocolo
+    ).first()
+    if protocolo:
+        protocolo.status_envio = "REJEITADO"
         
     # Devolve a tarefa para o funcionário refazer
     if tarefa.vencimento and tarefa.vencimento < datetime.date.today():
         tarefa.status = 'ATRASADO'
     else:
         tarefa.status = 'PENDENTE'
+        
+    tarefa.protocolo = None # Limpa o protocolo para gerar um novo na próxima entrega
         
     db.commit()
     return RedirectResponse(url="/revisoes", status_code=303)
