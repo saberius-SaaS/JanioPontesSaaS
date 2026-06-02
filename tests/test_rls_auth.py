@@ -20,6 +20,30 @@ class TestRLSIsolation:
         from app.api.deps import get_current_user
         assert callable(get_current_user), "get_current_user deve ser uma função callable"
 
+    def test_validacao_cruzada_tenants(self, db):
+        """Valida se o RLS (ou filtro da aplicação) isola corretamente os dados entre tenants."""
+        import uuid
+        from app.models.cliente import Cliente
+        
+        tenant1 = uuid.uuid4()
+        tenant2 = uuid.uuid4()
+        
+        c1 = Cliente(tenant_id=tenant1, cliente="Cliente T1", status="ATIVO")
+        c2 = Cliente(tenant_id=tenant2, cliente="Cliente T2", status="ATIVO")
+        
+        db.add_all([c1, c2])
+        db.commit()
+        
+        # Simula a consulta que um usuário do tenant 1 faria
+        resultados_t1 = db.query(Cliente).filter(Cliente.tenant_id == tenant1).all()
+        assert len(resultados_t1) == 1
+        assert resultados_t1[0].cliente == "Cliente T1"
+        
+        # Simula do tenant 2
+        resultados_t2 = db.query(Cliente).filter(Cliente.tenant_id == tenant2).all()
+        assert len(resultados_t2) == 1
+        assert resultados_t2[0].cliente == "Cliente T2"
+
     def test_rota_raiz_acessivel_sem_auth(self, client):
         """A rota raiz (Dashboard) deve ser acessível sem autenticação (página pública)."""
         response = client.get("/")

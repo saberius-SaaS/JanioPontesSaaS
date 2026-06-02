@@ -56,8 +56,20 @@ else {
 Write-Host "`n[4/5] Verificando autenticacao no Google Cloud..." -ForegroundColor Yellow
 
 $currentAccount = (gcloud config get-value account 2>$null).Trim()
+$authValid = $true
 
-if ($currentAccount -ne $ADMIN_ACCOUNT) {
+if ($currentAccount -eq $ADMIN_ACCOUNT) {
+    # Verifica se o token de acesso não está expirado
+    $null = gcloud auth print-access-token 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        $authValid = $false
+        Write-Host "Token de autenticacao expirado ou invalido." -ForegroundColor Yellow
+    }
+} else {
+    $authValid = $false
+}
+
+if (-not $authValid) {
     Write-Host "Conta atual: $currentAccount" -ForegroundColor Yellow
     Write-Host "Necessario autenticar como $ADMIN_ACCOUNT" -ForegroundColor Yellow
     Write-Host "O browser sera aberto para login. Faca login com $ADMIN_ACCOUNT" -ForegroundColor Cyan
@@ -68,7 +80,7 @@ if ($currentAccount -ne $ADMIN_ACCOUNT) {
     }
 }
 else {
-    Write-Host "Ja autenticado como $ADMIN_ACCOUNT" -ForegroundColor Green
+    Write-Host "Ja autenticado como $ADMIN_ACCOUNT e com token valido." -ForegroundColor Green
 }
 
 # Garantir projeto correto

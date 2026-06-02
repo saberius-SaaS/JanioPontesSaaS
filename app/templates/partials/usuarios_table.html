@@ -19,7 +19,7 @@
         {% endif %}
     </td>
     <td class="px-4 py-3 text-right space-x-2">
-        <button class="text-indigo-500 hover:text-indigo-700 transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>
+        <button onclick="abrirEdicaoUsuario('{{ u.id }}', '{{ u.nome }}', '{{ u.email }}', '{{ u.nivel }}', '{{ u.ativo }}')" class="text-indigo-500 hover:text-indigo-700 transition-colors"><i class="fa-solid fa-pen-to-square"></i></button>
     </td>
 </tr>
 {% else %}

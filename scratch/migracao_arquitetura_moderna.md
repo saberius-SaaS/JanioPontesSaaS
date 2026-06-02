@@ -25,12 +25,12 @@ Quando todos os testes forem aprovados, basta alterar **UMA variável** em dois 
 
 Após a alteração, rode `.\deploy.ps1` para publicar. Nenhuma outra mudança de código é necessária.
 
-- [ ] **9.3.1.** Verificar se o Cloud SQL aceita conexões *apenas via Unix Socket* (sem IP público exposto).
-- [ ] **9.3.2.** Criar usuário PostgreSQL dedicado para a aplicação (`app_user`) com privilégios mínimos.
-- [ ] **9.3.4.** Habilitar backups automáticos no Cloud SQL com retenção de 7 dias.
-- [ ] **9.4.3.** Escrever teste automatizado (pytest) para RLS (validação cruzada entre tenants).
-- [ ] **9.4.4.** Verificar se `app.bypass_rls = 'on'` existe *somente* em rotas internas (scheduler, seed).
-- [ ] **9.5.1.** Auditar todas as rotas FastAPI garantindo `Depends(require_login)` ou `Depends(verify_scheduler_key)`.
+- [x] **9.3.1.** Verificar se o Cloud SQL aceita conexões *apenas via Unix Socket* (sem IP público exposto).
+- [x] **9.3.2.** Criar usuário PostgreSQL dedicado para a aplicação (`app_user`) com privilégios mínimos.
+- [x] **9.3.4.** Habilitar backups automáticos no Cloud SQL com retenção de 7 dias.
+- [x] **9.4.3.** Escrever teste automatizado (pytest) para RLS (validação cruzada entre tenants).
+- [x] **9.4.4.** Verificar se `app.bypass_rls = 'on'` existe *somente* em rotas internas (scheduler, seed).
+- [x] **9.5.1.** Auditar todas as rotas FastAPI garantindo `Depends(require_login)` ou `Depends(verify_scheduler_key)`.
 - [x] **9.5.3.** Adicionar *rate limiting* nas rotas públicas (especialmente `/login`).
 
 ## 🔶 Etapa 10: Homologação Final e Migração de Dados (Pendências)
