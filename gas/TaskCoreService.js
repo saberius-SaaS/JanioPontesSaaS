@@ -50,6 +50,20 @@ function gerarTarefasDoMes() {
       var excStr = String(dataCli[c][11] || "");
       var excecoes = excStr.split(',').map(e => norm(e)).filter(e => e !== "");
       
+      // Captura a DATA_ENTRADA (Coluna V -> índice 21)
+      var dtEntradaRaw = dataCli[c][21];
+      var dtEntrada = null;
+      if (dtEntradaRaw instanceof Date) {
+        dtEntrada = new Date(dtEntradaRaw.getFullYear(), dtEntradaRaw.getMonth(), 1);
+      } else if (typeof dtEntradaRaw === "string" && dtEntradaRaw.trim().length >= 6) {
+         var parts = dtEntradaRaw.split("/");
+         if (parts.length === 3) { // dd/mm/yyyy
+           dtEntrada = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, 1);
+         } else if (parts.length === 2) { // mm/yyyy
+           dtEntrada = new Date(parseInt(parts[1], 10), parseInt(parts[0], 10) - 1, 1);
+         }
+      }
+      
       mapaClientes[cliNorm] = {
         nomeOriginal: cliNome,
         regime: norm(dataCli[c][6]),
@@ -61,7 +75,8 @@ function gerarTarefasDoMes() {
         nivel: dataCli[c][13] || "1",
         perfis: String(dataCli[c][14] || ""),
         responsavelGeral: String(dataCli[c][3] || "SISTEMA").toLowerCase().trim(),
-        status: String(dataCli[c][15] || "ATIVO").toUpperCase().trim()
+        status: String(dataCli[c][15] || "ATIVO").toUpperCase().trim(),
+        dataEntrada: dtEntrada
       };
     }
 
@@ -93,6 +108,9 @@ function gerarTarefasDoMes() {
         
         // ⚡ REGRA MESTRA DE INATIVOS: Se o cliente está inativo, ele não gera NENHUMA tarefa nova retroativa
         if (cli.status === "INATIVO") continue;
+        
+        // ⚡ FILTRO DE ENTRADA: Se o mês processado é anterior à entrada do cliente, não gera tarefas
+        if (cli.dataEntrada && competenciaDate < cli.dataEntrada) continue;
         
         for (var r = 1; r < dataReg.length; r++) {
           var obrigOriginal = String(dataReg[r][1] || "").trim();
@@ -156,10 +174,24 @@ function gerarTarefasDoMes() {
       var cliNormBanco = norm(dataTf[i][1]);
       var cliDados = mapaClientes[cliNormBanco];
       
-      // EXCLUSÃO INCONDICIONAL: Clientes Inativos ou Removidos da base perdem suas pendências instantaneamente
-      if (statusAtual === CONFIG_SISTEMA.STATUS.PENDENTE && (!cliDados || cliDados.status === "INATIVO")) {
-        tarefasExcluidasCount++;
-        continue; // Ignora TODA E QUALQUER proteção de legado, expulsando a tarefa do vetor
+      // EXCLUSÃO INCONDICIONAL: Clientes Inativos, Removidos ou Tarefas Anteriores à Data de Entrada perdem suas pendências
+      if (statusAtual === CONFIG_SISTEMA.STATUS.PENDENTE) {
+        if (!cliDados || cliDados.status === "INATIVO") {
+          tarefasExcluidasCount++;
+          continue; // Ignora TODA E QUALQUER proteção de legado, expulsando a tarefa do vetor
+        }
+        
+        // Valida se a tarefa é de um mês anterior à data de entrada do cliente
+        var compTfStr = safeGetMesAnoStr(dataTf[i][0]);
+        var compParts = compTfStr.split("/");
+        var compMes = parseInt(compParts[0], 10);
+        var compAno = parseInt(compParts[1], 10);
+        var compDate = new Date(compAno, compMes - 1, 1);
+        
+        if (cliDados.dataEntrada && compDate < cliDados.dataEntrada) {
+          tarefasExcluidasCount++;
+          continue; // Expulsa a tarefa retroativa gerada indevidamente
+        }
       }
 
       var h = norm(safeGetMesAnoStr(dataTf[i][0])) + "|" + cliNormBanco + "|" + norm(dataTf[i][2]);

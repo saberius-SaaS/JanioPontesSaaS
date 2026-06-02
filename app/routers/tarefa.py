@@ -175,10 +175,28 @@ async def list_revisoes(request: Request, db: Session = Depends(get_db), current
     if current_user.nivel not in ['ADMIN', 'MASTER']:
         return RedirectResponse(url="/", status_code=303)
         
-    revisoes = db.query(models.Tarefa).filter(
+    import re
+    revisoes_query = db.query(models.Tarefa, models.Protocolo.link_arquivo).outerjoin(
+        models.Protocolo,
+        (models.Protocolo.tenant_id == models.Tarefa.tenant_id) &
+        (models.Protocolo.protocolo == models.Tarefa.protocolo)
+    ).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status == 'REVISAO'
     ).order_by(models.Tarefa.vencimento.asc()).all()
+    
+    revisoes = []
+    for t, link in revisoes_query:
+        link = link or ""
+        # Extrair observações/justificativas entre colchetes
+        obs_match = re.search(r'\[(.*?)\]', link)
+        t.justificativa = obs_match.group(1) if obs_match else ""
+        
+        # Extrair URLs
+        base_link = re.sub(r'\[.*?\]', '', link).strip()
+        t.arquivos_anexos = [l.strip() for l in base_link.split(' | ') if l.strip().startswith('http')]
+        
+        revisoes.append(t)
     
     return templates.TemplateResponse(request=request, name="revisoes.html", context={
         "request": request,
