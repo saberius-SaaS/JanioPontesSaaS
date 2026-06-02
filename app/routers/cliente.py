@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List
+import datetime
 
 from app import models
 from app.database import get_db
@@ -78,6 +79,7 @@ async def create_cliente(
     email_contabil: str = Form(None),
     email_pessoal: str = Form(None),
     email_societario: str = Form(None),
+    data_entrada: str = Form(None),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_admin)
 ):
@@ -89,6 +91,14 @@ async def create_cliente(
                 "clientes": clientes,
                 "erro": f"CNPJ {cnpj} já cadastrado para {existente.cliente}"
             })
+
+    # Parse data_entrada: se não informada, usa a data de hoje
+    dt_entrada = datetime.date.today()
+    if data_entrada:
+        try:
+            dt_entrada = datetime.datetime.strptime(data_entrada, '%Y-%m-%d').date()
+        except ValueError:
+            pass
 
     novo_cliente = models.Cliente(
         tenant_id=current_user.tenant_id,
@@ -110,7 +120,8 @@ async def create_cliente(
         email_fiscal=email_fiscal,
         email_contabil=email_contabil,
         email_pessoal=email_pessoal,
-        email_societario=email_societario
+        email_societario=email_societario,
+        data_entrada=dt_entrada
     )
     db.add(novo_cliente)
     db.commit()
@@ -142,6 +153,7 @@ async def update_cliente(
     email_contabil: str = Form(None),
     email_pessoal: str = Form(None),
     email_societario: str = Form(None),
+    data_entrada: str = Form(None),
     status: str = Form("ATIVO"),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_admin)
@@ -170,6 +182,11 @@ async def update_cliente(
     obj.email_pessoal = email_pessoal
     obj.email_societario = email_societario
     obj.status = status
+    if data_entrada:
+        try:
+            obj.data_entrada = datetime.datetime.strptime(data_entrada, '%Y-%m-%d').date()
+        except ValueError:
+            pass
     db.commit()
 
     clientes = db.query(models.Cliente).order_by(models.Cliente.cliente).limit(PAGE_SIZE).all()

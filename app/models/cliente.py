@@ -2,8 +2,9 @@
 Modelo: Clientes (Empresas atendidas pelo escritório)
 Mapeamento: DB_CLIENTES (21 colunas)
 """
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, Date
 from sqlalchemy.dialects.postgresql import UUID
+import datetime
 
 from app.models.base import Base, TenantMixin, gerar_uuid
 
@@ -43,3 +44,6 @@ class Cliente(TenantMixin, Base):
 
     # --- Coluna U ---
     nome_fantasia = Column(String(255), nullable=True, comment="Nome fantasia da empresa")
+
+    # --- Controle de Entrada ---
+    data_entrada = Column(Date, nullable=True, default=datetime.date.today, comment="Data de entrada do cliente na carteira. Tarefas não serão geradas para competências anteriores a este mês.")

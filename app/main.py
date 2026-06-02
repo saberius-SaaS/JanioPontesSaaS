@@ -46,6 +46,25 @@ from sqlalchemy import func, case
 
 templates = Jinja2Templates(directory="app/templates")
 
+# Evento de startup para migrações incrementais de schema
+@app.on_event("startup")
+def ensure_schema_updates():
+    """Garante que colunas novas existam no banco (migrações leves)."""
+    from app.database import engine
+    from sqlalchemy import text, inspect
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        insp = inspect(engine)
+        colunas = [c["name"] for c in insp.get_columns("clientes")]
+        if "data_entrada" not in colunas:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE clientes ADD COLUMN data_entrada DATE"))
+                conn.commit()
+                logger.info("[SCHEMA] Coluna 'data_entrada' adicionada à tabela 'clientes'.")
+    except Exception as e:
+        logger.warning(f"[SCHEMA] Não foi possível verificar/criar coluna data_entrada: {e}")
+
 # Middleware para injetar variáveis globais nos templates e Headers de Segurança
 @app.middleware("http")
 async def add_global_template_context_and_security(request: Request, call_next):

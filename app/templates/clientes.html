@@ -125,6 +125,12 @@
                         <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Regime Tributário</label>
                         <input type="text" name="regime" placeholder="SIMPLES, LUCRO PRESUMIDO..." class="glass-input w-full">
                     </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Data de Entrada na Carteira</label>
+                        <input type="date" name="data_entrada" class="glass-input w-full">
+                        <p class="text-[10px] text-slate-400 mt-1">Tarefas não serão geradas para meses anteriores a esta data.</p>
+                    </div>
                     
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nível de Prioridade</label>
@@ -184,7 +190,7 @@ function abrirEdicaoCliente(dados) {
     form.setAttribute('hx-put', '/clientes/' + dados.id);
     htmx.process(form);
     
-    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'email_fiscal', 'contabil', 'email_contabil', 'pessoal', 'email_pessoal', 'societario', 'email_societario', 'regime', 'nivel', 'excecoes', 'pasta_drive'];
+    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'email_fiscal', 'contabil', 'email_contabil', 'pessoal', 'email_pessoal', 'societario', 'email_societario', 'regime', 'nivel', 'excecoes', 'pasta_drive', 'data_entrada'];
     
     campos.forEach(campo => {
         if(form.elements[campo]) {

@@ -88,6 +88,12 @@ def run_task_engine(db: Session, tenant_id: str, force_competencia=None):
         lista_excecoes = [x.strip() for x in exc_str.split(',') if x.strip()]
         cli_regime = normalize(cli.regime)
         
+        # Filtro de data de entrada: não gera tarefas para competências anteriores ao mês de entrada
+        if cli.data_entrada:
+            entrada_inicio = datetime.date(cli.data_entrada.year, cli.data_entrada.month, 1)
+            if inicio_mes < entrada_inicio:
+                continue  # Pula este cliente para esta competência
+        
         for reg in regras:
             obrig_norm = normalize(reg.obrigacao)
             
