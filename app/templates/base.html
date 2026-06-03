@@ -371,16 +371,21 @@
 
     <!-- Usuário Rodapé -->
     <div class="p-4 border-t border-white/5 bg-black/15">
-      <div class="flex items-center">
-         <div class="w-9 h-9 rounded-full avatar-initials flex items-center justify-center font-bold text-white text-xs tracking-wider shadow-lg">
-            JP
-         </div>
-         <div class="ml-3">
-           <p class="text-xs font-semibold">{{ user.nome if user else 'Usuário' }}</p>
-           <p class="text-[10px] font-bold text-rose-400/80 uppercase tracking-tighter mt-0.5">{{ user.nivel if user else 'ADMIN' }}</p>
-           <p class="text-[10px] text-indigo-300/70">{{ user.email if user else 'email@exemplo.com' }}</p>
-           <p class="text-[9px] text-indigo-300/40 mt-0.5">v2.0 — FastAPI</p>
-         </div>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+           <div class="w-9 h-9 rounded-full avatar-initials flex items-center justify-center font-bold text-white text-xs tracking-wider shadow-lg">
+              JP
+           </div>
+           <div class="ml-3">
+             <p class="text-xs font-semibold">{{ user.nome if user else 'Usuário' }}</p>
+             <p class="text-[10px] font-bold text-rose-400/80 uppercase tracking-tighter mt-0.5">{{ user.nivel if user else 'ADMIN' }}</p>
+             <p class="text-[10px] text-indigo-300/70">{{ user.email if user else 'email@exemplo.com' }}</p>
+             <p class="text-[9px] text-indigo-300/40 mt-0.5">v2.0 — FastAPI</p>
+           </div>
+        </div>
+        <a href="/logout" onclick="localStorage.clear(); sessionStorage.clear();" class="text-indigo-400/50 hover:text-red-400 transition-colors ml-2" title="Sair do sistema">
+           <i class="fa-solid fa-power-off text-lg"></i>
+        </a>
       </div>
     </div>
   </aside>
