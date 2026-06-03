@@ -83,12 +83,13 @@ async def add_global_template_context_and_security(request: Request, call_next):
     return response
 
 # Inclusão de Rotas
-from app.routers import auth, cliente, regra, protocolo, webhook, scheduler, usuario, perfil, tarefa, historico, solicitacao, tipo_tarefa, workflow
+from app.routers import auth, cliente, regra, protocolo, webhook, scheduler, usuario, perfil, tarefa, historico, solicitacao, tipo_tarefa, workflow, compliance
 app.include_router(auth.router, tags=["Autenticação"])
 app.include_router(workflow.router, tags=["Workflows"])
 app.include_router(tarefa.router, tags=["Tarefas"])
 app.include_router(historico.router, tags=["Histórico"])
 app.include_router(solicitacao.router, tags=["Solicitações"])
+app.include_router(compliance.router, tags=["Compliance"])
 app.include_router(cliente.router, tags=["Clientes"])
 app.include_router(regra.router, tags=["Regras e Obrigações"])
 app.include_router(usuario.router, tags=["Usuários"])
@@ -127,16 +128,30 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         })
     desempenho_setorial.sort(key=lambda x: x['percentual'], reverse=True)
 
-    # Ranking Equipe (Entregues)
+    # Ranking Equipe
     ranking_raw = db.query(
         models.Tarefa.responsavel,
-        func.count(models.Tarefa.id).label('entregues')
+        func.count(models.Tarefa.id).label('total'),
+        func.sum(case((models.Tarefa.status == 'ENTREGUE', 1), else_=0)).label('entregues')
     ).filter(
-        models.Tarefa.tenant_id == current_user.tenant_id,
-        models.Tarefa.status == 'ENTREGUE'
-    ).group_by(models.Tarefa.responsavel).order_by(func.count(models.Tarefa.id).desc()).limit(5).all()
+        models.Tarefa.tenant_id == current_user.tenant_id
+    ).group_by(models.Tarefa.responsavel).all()
 
-    ranking_equipe = [{"responsavel": r.responsavel or "Nao atribuido", "entregues": r.entregues} for r in ranking_raw]
+    ranking_equipe = []
+    for r in ranking_raw:
+        if not r.responsavel: continue
+        total = r.total or 0
+        entregues = r.entregues or 0
+        if total == 0: continue
+        percentual = int((entregues / total * 100))
+        ranking_equipe.append({
+            "responsavel": r.responsavel,
+            "total": total,
+            "entregues": entregues,
+            "percentual": percentual
+        })
+    ranking_equipe.sort(key=lambda x: x['total'], reverse=True)
+    ranking_equipe = ranking_equipe[:5]
 
     return templates.TemplateResponse(request=request, name="base.html", context={
         "request": request,

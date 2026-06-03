@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responder Solicitação — Janio Pontes SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+        <div class="bg-indigo-900 p-6 text-center text-white">
+            <h1 class="text-xl font-bold tracking-wider">JANIO PONTES CONTABILIDADE</h1>
+            <p class="text-indigo-200 text-xs mt-1 uppercase font-semibold">Portal do Cliente</p>
+        </div>
+        
+        <div class="p-8">
+            {% if sucesso %}
+            <div class="text-center py-8">
+                <div class="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-check text-3xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800 mb-2">Resposta Enviada!</h2>
+                <p class="text-slate-500 text-sm">Sua resposta e anexos foram encaminhados com sucesso ao responsável. Agradecemos a colaboração.</p>
+            </div>
+            {% else %}
+            
+            <div class="mb-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-2">Detalhes da Solicitação</h2>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-700 whitespace-pre-wrap">{{ solicitacao.pedido }}</div>
+            </div>
+            
+            <form action="/s/{{ solicitacao.id_legado }}" method="post" enctype="multipart/form-data" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Sua Resposta / Mensagem (Opcional)</label>
+                    <textarea name="mensagem" rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" placeholder="Digite aqui sua resposta..."></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Anexar Arquivo</label>
+                    <input type="file" name="arquivo" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-xl">
+                </div>
+                
+                <div class="pt-4">
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-200 transition-all text-sm uppercase tracking-wider">
+                        <i class="fa-solid fa-paper-plane mr-2"></i> Enviar Resposta
+                    </button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
