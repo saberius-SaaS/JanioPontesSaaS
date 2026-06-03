@@ -64,6 +64,18 @@ async def create_solicitacao(
     db.add(nova)
     db.commit()
     
+    # Se o email não veio no form, busca no cadastro do cliente
+    if not email:
+        cli = db.query(models.Cliente).filter(
+            models.Cliente.tenant_id == current_user.tenant_id,
+            models.Cliente.cliente == cliente
+        ).first()
+        if cli and cli.email:
+            email = cli.email
+            # Também salva o email na solicitação para futuros lembretes
+            nova.email = email
+            db.commit()
+    
     if email:
         assunto = f"Nova Solicitação: Janio Pontes Contabilidade"
         corpo = f"""
