@@ -80,62 +80,55 @@
     </form>
 </div>
 
-<div class="card-premium p-6">
-    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-layer-group mr-2 text-indigo-400"></i> Fila de Trabalho (Top 200)</h3>
+<div class="card-premium flex flex-col overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-layer-group mr-2 text-indigo-400"></i> Fila de Trabalho</h3>
         <span class="text-xs font-semibold bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100">{{ tarefas|length }} registros</span>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
-                <tr>
-                    <th class="px-4 py-3 rounded-tl-lg">Vencimento</th>
-                    <th class="px-4 py-3">Cliente</th>
-                    <th class="px-4 py-3">Obrigação</th>
-                    <th class="px-4 py-3">Depto</th>
-                    <th class="px-4 py-3">Ação</th>
-                    <th class="px-4 py-3">Responsável</th>
-                    <th class="px-4 py-3 text-right rounded-tr-lg">Resolver</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100" id="tabelaTarefas">
-                {% for t in tarefas %}
-                <tr class="hover:bg-slate-50 transition-colors cursor-pointer" id="row-{{ t.id }}" onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}', '{{ t.precisa_revisao_flag }}')">
-                    <td class="px-4 py-3 font-semibold {% if t.status == 'ATRASADO' %}text-red-500{% else %}text-slate-800{% endif %}">
-                        <i class="fa-regular fa-calendar mr-1"></i> {{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}
-                    </td>
-                    <td class="px-4 py-3 font-medium text-jp-navy">{{ t.cliente }}</td>
-                    <td class="px-4 py-3 text-slate-500">{{ t.obrigacao }}</td>
-                    <td class="px-4 py-3 text-xs"><span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md">{{ t.departamento }}</span></td>
-                    <td class="px-4 py-3 text-xs">
-                        {% set acao = (t.acao or 'ENVIAR')|upper %}
-                        {% if 'ENVIAR' in acao %}
-                        <span class="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md font-bold">ENVIAR</span>
-                        {% elif 'COMUNICAR' in acao %}
-                        <span class="bg-indigo-600 text-white px-2 py-1 rounded-md font-bold">COMUNICAR</span>
-                        {% elif 'ARQUIVAR' in acao %}
-                        <span class="bg-slate-200 text-slate-600 px-2 py-1 rounded-md font-bold">ARQUIVAR</span>
-                        {% elif 'AUDITAR' in acao %}
-                        <span class="bg-amber-50 text-amber-700 px-2 py-1 rounded-md font-bold">AUDITAR</span>
-                        {% else %}
-                        <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-md font-bold">{{ acao }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-4 py-3 text-slate-500 text-xs truncate max-w-[120px]">{{ t.responsavel }}</td>
-                    <td class="px-4 py-3 text-right">
-                        <button class="bg-jp-navy hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider shadow-sm" onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}', '{{ t.precisa_revisao_flag }}'); event.stopPropagation();">
-                            <i class="fa-solid fa-arrow-right mr-1"></i> Resolver
-                        </button>
-                    </td>
-                </tr>
+    <div class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-2" id="tabelaTarefas">
+        {% for t in tarefas %}
+        {% set acao = (t.acao or 'ENVIAR')|upper %}
+        <div class="task-card flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group cursor-pointer border-l-4 {% if t.status == 'ATRASADO' %}border-l-red-500{% elif 'COMUNICAR' in acao %}border-l-indigo-500{% elif 'ARQUIVAR' in acao %}border-l-slate-400{% elif 'AUDITAR' in acao %}border-l-amber-400{% else %}border-l-emerald-500{% endif %}"
+             id="row-{{ t.id }}"
+             onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}', '{{ t.precisa_revisao_flag }}')">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-indigo-100 uppercase">{{ t.departamento }}</span>
+                    <span class="bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}</span>
+                    {% if 'ENVIAR' in acao %}
+                    <span class="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-emerald-100">ENVIAR</span>
+                    {% elif 'COMUNICAR' in acao %}
+                    <span class="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest">COMUNICAR</span>
+                    {% elif 'ARQUIVAR' in acao %}
+                    <span class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest">ARQUIVAR</span>
+                    {% elif 'AUDITAR' in acao %}
+                    <span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-amber-100">AUDITAR</span>
+                    {% else %}
+                    <span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest">{{ acao }}</span>
+                    {% endif %}
+                </div>
+                <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider">{{ t.cliente }}</div>
+                <div class="text-xs text-slate-600 truncate">{{ t.obrigacao }}</div>
+                <div class="mt-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-user-shield mr-1 text-slate-300"></i>{{ t.responsavel or 'N/A' }}</div>
+            </div>
+            <div class="ml-3 flex-shrink-0">
+                {% if t.status == 'ATRASADO' %}
+                <span class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-red-100 text-red-700 border-red-200">Atrasado</span>
                 {% else %}
-                <tr>
-                    <td colspan="7" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhuma tarefa pendente no momento. Parabéns!</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                <button class="bg-jp-navy hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase tracking-wider shadow-sm opacity-70 group-hover:opacity-100" onclick="event.stopPropagation();">
+                    <i class="fa-solid fa-arrow-right mr-1"></i>Resolver
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-emerald-500">
+            <i class="fa-solid fa-circle-check text-4xl mb-3 text-emerald-300"></i>
+            <h2 class="text-sm font-bold">Nenhuma tarefa pendente!</h2>
+            <p class="text-[10px] mt-1 text-slate-400 uppercase tracking-widest font-bold">Parabéns pela produtividade.</p>
+        </div>
+        {% endfor %}
     </div>
 </div>
 
