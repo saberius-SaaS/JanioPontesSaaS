@@ -19,29 +19,27 @@ async def compliance_dashboard(
 ):
     hoje = date.today()
     
-    # Tarefas atrasadas (risco imediato)
-    atrasadas = db.query(models.Tarefa).filter(
+    # Todas as tarefas ativas que não estão entregues ou arquivadas
+    tarefas_ativas = db.query(models.Tarefa).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
-        models.Tarefa.status == 'ATRASADO'
-    ).order_by(models.Tarefa.vencimento_legal.asc()).all()
-    
-    # Tarefas pendentes com vencimento_legal próximo (próximos 5 dias)
-    # ou já vencidas mas que o status não foi atualizado (por segurança)
-    pendentes_risco = db.query(models.Tarefa).filter(
-        models.Tarefa.tenant_id == current_user.tenant_id,
-        models.Tarefa.status == 'PENDENTE',
+        models.Tarefa.status.notin_(['ENTREGUE', 'ARQUIVADO', 'IGNORADO']),
         models.Tarefa.vencimento_legal != None
     ).all()
     
+    atrasadas = []
     em_risco = []
-    for t in pendentes_risco:
+    
+    for t in tarefas_ativas:
         if t.vencimento_legal:
             dias_restantes = (t.vencimento_legal - hoje).days
-            if dias_restantes <= 5:
-                # Adiciona campo virtual temporário para o template
-                t.dias_restantes = dias_restantes
+            t.dias_restantes = dias_restantes
+            
+            if dias_restantes < 0 or t.status == 'ATRASADO':
+                atrasadas.append(t)
+            elif dias_restantes <= 5:
                 em_risco.append(t)
                 
+    atrasadas.sort(key=lambda x: x.vencimento_legal)
     em_risco.sort(key=lambda x: x.vencimento_legal)
     
     return templates.TemplateResponse(request=request, name="compliance.html", context={
