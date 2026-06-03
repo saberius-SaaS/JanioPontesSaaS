@@ -262,14 +262,20 @@ async def create_tarefa_avulsa(
     vencimento: str = Form(...),
     departamento: str = Form("AVULSA"),
     responsavel: str = Form(...),
+    complemento: str = Form(""),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
+    if complemento:
+        obrigacao_final = f"{obrigacao} - {complemento}"
+    else:
+        obrigacao_final = obrigacao
+
     nova_tarefa = models.Tarefa(
         tenant_id=current_user.tenant_id,
         mes_ano=datetime.datetime.strptime(vencimento, '%Y-%m-%d').strftime('%m/%Y'),
         cliente=cliente,
-        obrigacao=obrigacao,
+        obrigacao=obrigacao_final,
         vencimento=datetime.datetime.strptime(vencimento, '%Y-%m-%d').date(),
         departamento=departamento,
         status="PENDENTE",
