@@ -30,8 +30,13 @@ async def list_protocolos_page(
     clientes = db.query(models.Cliente).filter(models.Cliente.status == "ATIVO").order_by(models.Cliente.cliente).all()
     total_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
 
+    protocolos_nao_lidos = db.query(models.Protocolo).filter(
+        models.Protocolo.conf_recto == None
+    ).order_by(models.Protocolo.data.desc()).all()
+
     return templates.TemplateResponse(request, "protocolos.html", {
         "protocolos": protocolos,
+        "protocolos_nao_lidos": protocolos_nao_lidos,
         "clientes": clientes,
         "page": page,
         "total_pages": total_pages,

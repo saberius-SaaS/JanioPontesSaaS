@@ -39,9 +39,9 @@ Após a alteração, rode `.\deploy.ps1` para publicar. Nenhuma outra mudança d
 - [ ] **10.3.2.** Manter este script rodando por 72h em produção.
 
 ## 🚀 Etapa 11: Go-Live (Lançamento em Produção)
-- [ ] **11.1.1.** Acessar gerenciador de DNS do domínio da empresa.
-- [ ] **11.1.2.** Criar registro CNAME/A apontando para o Cloud Run (`app.janiopontes.com.br`).
-- [ ] **11.1.3.** Aguardar propagação e emissão do certificado SSL (Automático pelo Google).
+- [x] **11.1.1.** Acessar gerenciador de DNS do domínio da empresa.
+- [x] **11.1.2.** Criar registro CNAME/A apontando para o Cloud Run (`app.janiopontes.com.br`).
+- [x] **11.1.3.** Aguardar propagação e emissão do certificado SSL (Automático pelo Google).
 - [ ] **11.2.1.** Comunicar à equipe e clientes a nova URL de acesso.
 - [ ] **11.2.2.** Iniciar a operação exclusiva no novo sistema.
 - [ ] **11.3.1.** Acompanhar os logs no *Google Cloud Logging* intensivamente por 48h.
