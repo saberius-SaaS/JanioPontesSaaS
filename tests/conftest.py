@@ -1,27 +1,30 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 import uuid
 
 from app.main import app
 from app.database import get_db
 from app.models.base import Base
 
-# Utiliza banco em memória do SQLite para rodar os testes rapidamente
-# Nota: SQLite não suporta RLS nativamente da mesma forma que o PostgreSQL,
-# mas podemos mockar o comportamento ou usar um PostgreSQL de teste (Testcontainers).
-# Para este mock de ambiente, usaremos SQLite apenas para validação de rotas.
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+# Utiliza banco em memória do SQLite para rodar os testes rapidamente.
+# StaticPool + check_same_thread=False garante que todas as conexões
+# compartilhem o mesmo banco em memória (evita problema de tabelas não encontradas).
+SQLALCHEMY_DATABASE_URL = "sqlite://"
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_database():
-    import app.models # Ensure all models are registered in Base.metadata
+    import app.models  # Ensure all models are registered in Base.metadata
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
