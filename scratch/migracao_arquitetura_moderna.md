@@ -39,10 +39,11 @@ Após a alteração, rode `.\deploy.ps1` para publicar. Nenhuma outra mudança d
 - [ ] **10.3.2.** Manter este script rodando por 72h em produção.
 
 ## 🚀 Etapa 11: Go-Live (Lançamento em Produção)
-- [x] **11.1.1.** Acessar gerenciador de DNS do domínio da empresa.
-- [x] **11.1.2.** Criar registro CNAME/A apontando para o Cloud Run (`app.janiopontes.com.br`).
-- [x] **11.1.3.** Aguardar propagação e emissão do certificado SSL (Automático pelo Google).
-- [ ] **11.2.1.** Comunicar à equipe e clientes a nova URL de acesso.
+- [x] 11.1.1. Apontar CNAME/A no Registro.br para app.janiopontes.com.br (Via Firebase Hosting proxy)
+- [x] 11.1.2. Mapear Domínio no Firebase (bridge para Cloud Run em southamerica-east1)
+- [x] 11.1.3. Aguardar emissão do SSL (15-60 minutos)
+- [ ] 11.1.4. Mudar variável `EMAIL_MODE` para `production` (Atualmente: `intercept`)
+- [ ] 11.1.5. Realizar testes de ponta a ponta em ambiente real nova URL de acesso.
 - [ ] **11.2.2.** Iniciar a operação exclusiva no novo sistema.
 - [ ] **11.3.1.** Acompanhar os logs no *Google Cloud Logging* intensivamente por 48h.
 - [ ] **11.3.2.** Fim da janela de 72h: Desligar o *Reverse Sync*.

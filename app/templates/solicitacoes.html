@@ -63,7 +63,9 @@
                     <button type="submit" class="bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white p-1.5 rounded-lg text-xs font-bold transition-all" title="Enviar cobrança"><i class="fa-solid fa-bell"></i></button>
                 </form>
                 <form action="/solicitacoes/{{ s.id }}/concluir" method="POST" class="inline">
-                    <button type="submit" class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white transition-all">Recebido</button>
+                    <button type="submit" class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-slate-100 text-slate-600 border-slate-200 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-all" title="Confirmar recebimento do documento">
+                        <i class="fa-solid fa-check-double mr-1"></i>Dar Baixa
+                    </button>
                 </form>
                 {% endif %}
             </div>
