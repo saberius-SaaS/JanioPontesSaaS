@@ -68,10 +68,8 @@ def login_page(request: Request):
         <div class="glass-card rounded-2xl shadow-2xl p-10 w-full max-w-md relative z-10">
 
             <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-4 logo-glow">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+                <div class="inline-flex items-center justify-center mb-4">
+                    <img src="/static/logo.jpg" class="h-24 w-auto object-contain drop-shadow-xl rounded-lg logo-glow" alt="Jânio Pontes Logo">
                 </div>
                 <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Janio Pontes SaaS</h1>
                 <p class="text-gray-500 text-sm mt-1">Plataforma de Gestão Contábil</p>

@@ -49,9 +49,20 @@ async def create_solicitacao(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
+    # Se o email não veio no form, busca no cadastro do cliente ANTES de instanciar a Solicitação
+    if not email:
+        cli = db.query(models.Cliente).filter(
+            models.Cliente.tenant_id == current_user.tenant_id,
+            models.Cliente.cliente == cliente
+        ).first()
+        if cli and cli.email:
+            email = cli.email
+
+    id_legado_gerado = f"SOL-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4]}"
+    
     nova = models.Solicitacao(
         tenant_id=current_user.tenant_id,
-        id_legado=f"SOL-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4]}",
+        id_legado=id_legado_gerado,
         data=datetime.now(),
         cliente=cliente,
         email=email,
@@ -63,18 +74,6 @@ async def create_solicitacao(
     )
     db.add(nova)
     db.commit()
-    
-    # Se o email não veio no form, busca no cadastro do cliente
-    if not email:
-        cli = db.query(models.Cliente).filter(
-            models.Cliente.tenant_id == current_user.tenant_id,
-            models.Cliente.cliente == cliente
-        ).first()
-        if cli and cli.email:
-            email = cli.email
-            # Também salva o email na solicitação para futuros lembretes
-            nova.email = email
-            db.commit()
     
     if email:
         assunto = f"Nova Solicitação: Janio Pontes Contabilidade"
@@ -91,7 +90,7 @@ async def create_solicitacao(
                     <p style="margin: 0; font-size: 14px; color: #1e293b; white-space: pre-wrap;">{pedido}</p>
                 </div>
                 <p style="text-align: center; margin: 30px 0;">
-                    <a href='{request.base_url}s/{nova.id_legado}' style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 12px;">Responder Solicitação</a>
+                    <a href='{request.base_url}s/{id_legado_gerado}' style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 12px;">Responder Solicitação</a>
                 </p>
                 <p style="color: #64748b; font-size: 12px;">Responsável: {current_user.nome}</p>
             </div>
