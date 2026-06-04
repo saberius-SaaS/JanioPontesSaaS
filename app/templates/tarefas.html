@@ -68,13 +68,22 @@
             <select name="responsavel" required class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
                 <option value="">Selecione...</option>
                 {% for u in usuarios %}
-                <option value="{{ u.email }}">{{ u.nome }} ({{ u.email }})</option>
+                <option value="{{ u.email }}">{{ u.nome }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="flex items-end">
-            <button type="submit" class="w-full bg-jp-navy hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex justify-center items-center h-[40px]">
-                <i class="fa-solid fa-check mr-2"></i> Confirmar
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Ação Inicial</label>
+            <select name="acao" required class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                <option value="ENVIAR">ENVIAR</option>
+                <option value="COMUNICAR">COMUNICAR</option>
+                <option value="ARQUIVAR">ARQUIVAR</option>
+                <option value="AUDITAR">AUDITAR</option>
+            </select>
+        </div>
+        <div class="md:col-span-4 flex justify-end mt-2">
+            <button type="submit" class="px-8 bg-jp-navy hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg transition-colors flex justify-center items-center h-[40px] shadow-sm">
+                <i class="fa-solid fa-check mr-2"></i> Confirmar Criação
             </button>
         </div>
     </form>

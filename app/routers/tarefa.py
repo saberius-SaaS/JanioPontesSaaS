@@ -263,6 +263,7 @@ async def create_tarefa_avulsa(
     departamento: str = Form("AVULSA"),
     responsavel: str = Form(...),
     complemento: str = Form(""),
+    acao: str = Form("ENVIAR"),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -279,7 +280,7 @@ async def create_tarefa_avulsa(
         vencimento=datetime.datetime.strptime(vencimento, '%Y-%m-%d').date(),
         departamento=departamento,
         status="PENDENTE",
-        acao="ENVIAR",
+        acao=acao,
         responsavel=responsavel,
         id_controle=f"AVULSA-{uuid.uuid4().hex[:8]}",
         nivel=1
