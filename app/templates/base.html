@@ -360,6 +360,11 @@
         <i class="fa-solid fa-code-branch w-6 text-center text-emerald-400"></i>
         <span class="ml-1 text-emerald-100">Workflows e Fases</span>
       </a>
+      
+      <a href="/ferramentas" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
+        <i class="fa-solid fa-toolbox w-6 text-center text-amber-400"></i>
+        <span class="ml-1 text-amber-100">Ferramentas / Admin</span>
+      </a>
       {% endif %}
     </nav>
 
@@ -543,27 +548,33 @@
       });
     });
 
-    // Função global para filtro de tabelas
-    function filtrarTabela(inputId, tbodyId) {
+    // Função global para filtro de tabelas e listas de cards
+    function filtrarTabela(inputId, containerId) {
         const input = document.getElementById(inputId);
         const filter = input.value.toLowerCase();
-        const tbody = document.getElementById(tbodyId);
-        if (!tbody) return;
-        const trs = tbody.getElementsByTagName('tr');
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        // Pega todos os filhos diretos (pode ser <tr> ou <div> como os task-cards)
+        const items = container.children;
 
-        for (let i = 0; i < trs.length; i++) {
-            // Ignorar a linha de "nenhum resultado" nativa (geralmente tem colspan)
-            if (trs[i].cells.length === 1 && trs[i].cells[0].hasAttribute('colspan')) continue;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             
-            const tds = trs[i].getElementsByTagName('td');
-            let match = false;
-            for (let j = 0; j < tds.length; j++) {
-                if (tds[j] && tds[j].innerText.toLowerCase().indexOf(filter) > -1) {
-                    match = true;
-                    break;
-                }
+            // Ignorar elementos de script ou estilo
+            if (item.tagName.toLowerCase() === 'script' || item.tagName.toLowerCase() === 'style') continue;
+            
+            // Ignorar a linha de "nenhum resultado" de tabelas
+            if (item.tagName.toLowerCase() === 'tr' && item.cells && item.cells.length === 1 && item.cells[0].hasAttribute('colspan')) continue;
+            
+            // Busca pelo texto completo do elemento
+            const textContent = item.innerText.toLowerCase();
+            
+            if (textContent.indexOf(filter) > -1) {
+                item.style.display = "";
+            } else {
+                item.style.display = "none";
             }
-            trs[i].style.display = match ? "" : "none";
         }
     }
   </script>

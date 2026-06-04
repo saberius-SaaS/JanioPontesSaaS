@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block page_title %}Ferramentas (Admin){% endblock %}
+
+{% block hero_title %}Painel de Ferramentas e Rotinas{% endblock %}
+{% block hero_subtitle %}Serviços avançados de administração do sistema. Use com cuidado.{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <!-- Card: Gerador de Tarefas -->
+    <div class="card-premium p-6">
+        <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-4">
+            <div class="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center font-bold text-xl shadow-sm border border-indigo-100">
+                <i class="fa-solid fa-gears"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-jp-navy text-lg leading-tight">Gerador de Tarefas Automático</h3>
+                <p class="text-xs text-slate-400">Motor de análise Híbrida (Whitelist/Blacklist)</p>
+            </div>
+        </div>
+        
+        <p class="text-sm text-slate-600 mb-6">
+            Este serviço deve ser acionado manualmente quando você cadastra um novo cliente com datas retroativas, altera as regras de obrigações, ou para corrigir distorções. O motor varrerá toda a base e gerará as obrigações faltantes no mês corrente.
+        </p>
+
+        <form action="/ferramentas/gerador" method="POST" onsubmit="return confirm('ATENÇÃO: Deseja rodar o motor gerador de tarefas agora? Isso fará o sistema recalcular e gerar as tarefas faltantes para todos os clientes ativos.');">
+            <button type="submit" class="w-full bg-jp-navy hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all text-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-play"></i> Rodar Gerador de Tarefas Agora
+            </button>
+        </form>
+    </div>
+
+    <!-- Card: Comunicado Oficial -->
+    <div class="card-premium p-6">
+        <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-4">
+            <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center font-bold text-xl shadow-sm border border-emerald-100">
+                <i class="fa-solid fa-bullhorn"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-jp-navy text-lg leading-tight">Comunicado Oficial</h3>
+                <p class="text-xs text-slate-400">Disparo de e-mails em massa / avisos</p>
+            </div>
+        </div>
+        
+        <form action="/ferramentas/comunicado" method="POST" class="space-y-4" onsubmit="return confirm('Confirmar o envio do Comunicado Oficial?');">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Público Alvo</label>
+                <select name="alvo" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <option value="TODOS">Todos os Clientes (Disparo em Massa)</option>
+                    {% for c in clientes %}
+                    <option value="{{ c.cliente }}">{{ c.cliente }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Assunto do E-mail</label>
+                <input type="text" name="assunto" required placeholder="Ex: Aviso Importante - Feriado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+            </div>
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Mensagem</label>
+                <textarea name="mensagem" required rows="4" placeholder="Escreva o comunicado aqui..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+            
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all text-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i> Disparar Comunicado
+            </button>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

@@ -35,11 +35,12 @@ Após a alteração, rode `.\deploy.ps1` para publicar. Nenhuma outra mudança d
 
 ## 🔧 Módulos Prioritários (Pós-Auditoria)
 - [x] **Workflows e Múltiplas Fases**: Implementar lógica de etapas contínuas para tarefas (Ex: Contábil > Fiscal > Paralegal). Desenvolvimento imediato. *(Concluído: a lógica de encadeamento automático via "Próxima Fase" já está operando 100% nas rotas atuais!)*
-- [ ] **Portal do Cliente / Repositório**: Desenvolver interface dedicada e segura (login restrito) para o cliente consultar todo o histórico de arquivos e obrigações. Desenvolvimento imediato.
+- [x] **Portal do Cliente / Repositório**: Desenvolver interface dedicada e segura (login restrito) para o cliente consultar todo o histórico de arquivos e obrigações. *(Concluído: Implementado com "Link Mágico" e módulo de Solicitações integrado ao portal).*
+- [x] **Ferramentas Admin (GAS Legacy)**: Incorporar os scripts utilitários do sistema GAS para dentro do SaaS. *(Concluído: Gerador de Tarefas Híbrido e Disparador de Comunicados Oficiais em Massa inseridos na aba Ferramentas).*
 - [ ] *Notificações via WhatsApp*: Será migrado no futuro com a adoção do Chatwoot (Aguardando integração futura).
 - [ ] *Inteligência Artificial (AIService)*: Será migrado no futuro como projeto específico (Pausado).
 
-## 🔶 Etapa 10: Homologação Final e Migração de Dados (Pendências)
+## 🚀 Conclusão da Migração Final e Migração de Dados (Pendências)
 - [ ] **10.2.1.** Travar a edição das planilhas do GAS atual (modo leitura).
 - [ ] **10.3.1.** Habilitar script de Reverse Sync: Cada novo registro no banco salva uma cópia na planilha antiga (Rollback).
 - [ ] **10.3.2.** Manter este script rodando por 72h em produção.
