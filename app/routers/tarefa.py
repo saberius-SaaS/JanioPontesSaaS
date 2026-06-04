@@ -215,7 +215,7 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
     ).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status.in_(['PENDENTE', 'ATRASADO'])
-    ).order_by(models.Tarefa.vencimento.asc()).all()
+    ).order_by(models.Tarefa.vencimento.asc()).limit(100).all()
     
     tarefas = []
     for t, rev in tarefas_raw:
@@ -251,6 +251,42 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
         "departamentos": departamentos,
         "chatwoot_token": getattr(request.state, "chatwoot_token", ""),
         "chatwoot_base_url": getattr(request.state, "chatwoot_base_url", "")
+    })
+
+
+@router.get("/tarefas/pesquisa", response_class=HTMLResponse)
+async def pesquisa_tarefas(request: Request, q: str = "", db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
+    from sqlalchemy import or_
+    
+    query = db.query(models.Tarefa, models.RegraObrigacao.revisao).outerjoin(
+        models.RegraObrigacao,
+        (models.RegraObrigacao.tenant_id == models.Tarefa.tenant_id) &
+        (models.RegraObrigacao.obrigacao == models.Tarefa.obrigacao)
+    ).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status.in_(['PENDENTE', 'ATRASADO'])
+    )
+    
+    if q:
+        search_term = f"%{q}%"
+        query = query.filter(or_(
+            models.Tarefa.cliente.ilike(search_term),
+            models.Tarefa.obrigacao.ilike(search_term),
+            models.Tarefa.responsavel.ilike(search_term),
+            models.Tarefa.departamento.ilike(search_term)
+        ))
+        
+    tarefas_raw = query.order_by(models.Tarefa.vencimento.asc()).limit(100).all()
+    
+    tarefas = []
+    for t, rev in tarefas_raw:
+        is_revisao = (rev and str(rev).strip().upper() == 'S')
+        t.precisa_revisao_flag = 'S' if is_revisao else 'N'
+        tarefas.append(t)
+        
+    return templates.TemplateResponse(request=request, name="partials/tarefas_list.html", context={
+        "request": request,
+        "tarefas": tarefas
     })
 
 

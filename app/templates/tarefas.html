@@ -8,10 +8,9 @@
 {% block content %}
 <!-- Controles de Tabela e Tarefa Avulsa -->
 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-    <!-- Barra de Pesquisa -->
     <div class="relative w-full md:w-96">
         <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400 text-sm"></i>
-        <input type="text" id="searchInputTarefas" placeholder="Pesquisar cliente, obrigação, responsável..." class="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 shadow-sm transition-shadow" onkeyup="filtrarTabela('searchInputTarefas', 'tabelaTarefas')">
+        <input type="text" id="searchInputTarefas" placeholder="Pesquisar cliente, obrigação, responsável..." class="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 shadow-sm transition-shadow" onkeyup="buscarTarefasBackEnd(this.value)">
     </div>
     
     <!-- Botão Criar Tarefa -->
@@ -92,7 +91,7 @@
 <div class="card-premium flex flex-col overflow-hidden">
     <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
         <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-layer-group mr-2 text-indigo-400"></i> Fila de Trabalho</h3>
-        <span class="text-xs font-semibold bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100">{{ tarefas|length }} registros</span>
+        <span id="contadorTarefas" class="text-xs font-semibold bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100">{{ tarefas|length }} registros</span>
     </div>
 
     <div class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-2" id="tabelaTarefas">
@@ -402,6 +401,38 @@ async function executarFinalizacao() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-check"></i> Tentar Novamente';
     }
+}
+
+let timerBusca = null;
+function buscarTarefasBackEnd(termo) {
+    if (timerBusca) clearTimeout(timerBusca);
+    timerBusca = setTimeout(() => {
+        const url = termo.trim() !== '' ? `/tarefas/pesquisa?q=${encodeURIComponent(termo)}` : '/tarefas/pesquisa';
+        const tabela = document.getElementById('tabelaTarefas');
+        
+        tabela.style.opacity = '0.5';
+        
+        fetch(url)
+            .then(res => res.text())
+            .then(html => {
+                tabela.innerHTML = html;
+                tabela.style.opacity = '1';
+                
+                const spanCount = document.getElementById('contadorTarefas');
+                if (spanCount) {
+                    const foundCount = tabela.querySelectorAll('.task-card').length;
+                    if (foundCount >= 100) {
+                        spanCount.innerHTML = `100+ registros`;
+                    } else {
+                        spanCount.innerHTML = `${foundCount} registros`;
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Erro na busca', err);
+                tabela.style.opacity = '1';
+            });
+    }, 400);
 }
 
 // Fechar modal com ESC
