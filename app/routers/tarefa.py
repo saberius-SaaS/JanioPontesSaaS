@@ -215,7 +215,7 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
     ).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status.in_(['PENDENTE', 'ATRASADO'])
-    ).order_by(models.Tarefa.vencimento.asc()).limit(200).all()
+    ).order_by(models.Tarefa.vencimento.asc()).all()
     
     tarefas = []
     for t, rev in tarefas_raw:

@@ -140,7 +140,7 @@ def run_task_engine(db: Session, tenant_id: str, force_competencia=None):
                         obrigacao=reg.obrigacao,
                         vencimento=dt_prazo,
                         departamento=reg.departamento,
-                        status="PENDENTE",
+                        status="ATRASADO" if dt_prazo < hoje else "PENDENTE",
                         acao=reg.acao,
                         responsavel=resp,
                         id_controle=str(uuid.uuid4()),
@@ -149,9 +149,10 @@ def run_task_engine(db: Session, tenant_id: str, force_competencia=None):
                     db.add(nova_tarefa)
                     novas += 1
                 else:
-                    if tarefa_existente.status == "PENDENTE":
+                    if tarefa_existente.status in ["PENDENTE", "ATRASADO"]:
                         tarefa_existente.vencimento = dt_prazo
                         tarefa_existente.responsavel = resp
+                        tarefa_existente.status = "ATRASADO" if dt_prazo < hoje else "PENDENTE"
                         atualizadas += 1
                         
     db.commit()
