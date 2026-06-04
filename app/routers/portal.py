@@ -44,6 +44,10 @@ async def acesso_magico(
     if not protocolo:
         return HTMLResponse("<h1>Link inválido ou expirado.</h1>", status_code=404)
 
+    cliente_nome = protocolo.cliente
+    tenant_id_str = str(protocolo.tenant_id)
+    prot_id = protocolo.id
+
     # Marca como lido se ainda não estiver
     if not protocolo.conf_recto:
         protocolo.conf_recto = datetime.now()
@@ -52,11 +56,11 @@ async def acesso_magico(
     # Gera token de sessão do cliente
     expires = timedelta(days=30)
     expire = datetime.now(timezone.utc) + expires
-    token_data = {"exp": expire, "cliente": protocolo.cliente, "tenant_id": str(protocolo.tenant_id)}
+    token_data = {"exp": expire, "cliente": cliente_nome, "tenant_id": tenant_id_str}
     from jose import jwt
     token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-    response = RedirectResponse(url=f"/portal/documento/{protocolo.id}", status_code=status.HTTP_302_FOUND)
+    response = RedirectResponse(url=f"/portal/documento/{prot_id}", status_code=status.HTTP_302_FOUND)
     response.set_cookie(
         key="client_session",
         value=token,
