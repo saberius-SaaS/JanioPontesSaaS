@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from app import models
@@ -51,14 +51,10 @@ async def acesso_magico(
 
     # Gera token de sessão do cliente
     expires = timedelta(days=30)
-    # JWT precisa receber string ou dict no subject? security.create_access_token espera subject (que é o sub),
-    # mas o nosso JWT recebe dict e extrai as coisas? Não, a nossa dependência pega payload.get("cliente").
-    # Precisamos montar um dict para gerar o JWT, ou passar subject.
-    # Vamos adaptar para a assinatura do create_access_token.
-    token_data = {"sub": "cliente", "cliente": protocolo.cliente, "tenant_id": str(protocolo.tenant_id)}
-    # O security.create_access_token aceita um subject (string) ou dicionário dependendo da implementação.
-    # Como implementamos? O padrão fastapi template recebe subject: Union[str, Any].
-    token = security.create_access_token(subject=token_data, expires_delta=expires)
+    expire = datetime.now(timezone.utc) + expires
+    token_data = {"exp": expire, "cliente": protocolo.cliente, "tenant_id": str(protocolo.tenant_id)}
+    from jose import jwt
+    token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     response = RedirectResponse(url=f"/portal/documento/{protocolo.id}", status_code=status.HTTP_302_FOUND)
     response.set_cookie(

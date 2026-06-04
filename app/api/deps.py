@@ -123,14 +123,17 @@ def get_cliente_from_cookie(request: Request) -> Optional[dict]:
     if not token:
         return None
     try:
-        from app.core import security
-        payload = security.decode_access_token(token)
+        from jose import jwt
+        from app.core.config import settings
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         cliente_nome = payload.get("cliente")
         tenant_id = payload.get("tenant_id")
         if not cliente_nome or not tenant_id:
             return None
         return {"cliente": cliente_nome, "tenant_id": tenant_id}
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Erro ao decodificar token do cliente: {e}")
         return None
 
 def require_cliente_login(request: Request):
