@@ -284,92 +284,100 @@
   <!-- ==================== SIDEBAR ==================== -->
   <aside id="sidebarEl" class="w-64 sidebar-premium sidebar-mobile text-white flex flex-col transition-all duration-300 z-20">
     <!-- Logo / Header -->
-    <div class="h-16 flex items-center justify-center border-b border-white/5 shadow-sm relative">
-      <i class="fa-solid fa-rocket text-xl mr-3 text-indigo-400"></i>
-      <span class="text-lg font-bold tracking-wider">JANIO PONTES <span class="text-gradient text-sm font-semibold">SaaS</span></span>
+    <div class="h-16 flex items-center justify-center border-b border-white/10 shadow-sm relative">
+      <i class="fa-solid fa-rocket text-xl mr-3 text-amber-300"></i>
+      <span class="text-lg font-bold tracking-wider text-white">JANIO PONTES <span class="text-gradient text-sm font-semibold">SaaS</span></span>
     </div>
 
     <!-- Navegação -->
-    <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-1">
-      <a href="/" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-chart-line w-6 text-center"></i>
-        <span class="ml-1">Dashboard</span>
+    <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
+      
+      <!-- Seção: Operacional -->
+      <div class="px-4 py-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Operacional</div>
+
+      <a href="/" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-chart-line w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Dashboard</span>
       </a>
 
-      <a href="/tarefas" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-list-check w-6 text-center text-indigo-400"></i>
-        <span class="ml-1 text-indigo-200">Fila de Tarefas</span>
+      <a href="/tarefas" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-list-check w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Fila de Tarefas</span>
       </a>
 
       {% if user and user.nivel in ['ADMIN', 'MASTER'] %}
-      <a href="/revisoes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white relative">
-        <i class="fa-solid fa-stamp w-6 text-center text-purple-400"></i>
-        <span class="ml-1 text-purple-200">Aprovar Revisões</span>
+      <a href="/revisoes" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-stamp w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Aprovar Revisões</span>
       </a>
       {% endif %}
 
-      <a href="/solicitacoes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-comments w-6 text-center text-indigo-400"></i>
-        <span class="ml-1 text-indigo-200">Solicitações</span>
+      <a href="/solicitacoes" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-comments w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Solicitações</span>
       </a>
 
-      <a href="/compliance" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-shield-halved w-6 text-center text-red-400"></i>
-        <span class="ml-1 text-red-100">Compliance (Risco)</span>
+      <a href="/compliance" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-shield-halved w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Compliance (Risco)</span>
       </a>
 
-      <a href="/historico" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-box-archive w-6 text-center"></i>
-        <span class="ml-1">Histórico</span>
+      <!-- Seção: Registros -->
+      <div class="px-4 py-2 mt-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] border-t border-white/5 pt-3">Registros</div>
+
+      <a href="/historico" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-box-archive w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Histórico</span>
       </a>
 
-      <a href="/protocolos" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-file-signature w-6 text-center"></i>
-        <span class="ml-1">Protocolos</span>
+      <a href="/protocolos" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-file-signature w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Protocolos</span>
       </a>
 
       {% if user and user.nivel in ['ADMIN', 'MASTER'] %}
-      <div class="px-4 py-2 mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-t border-white/5 pt-4">Administração</div>
+      <!-- Seção: Administração -->
+      <div class="px-4 py-2 mt-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] border-t border-white/5 pt-3">Administração</div>
 
-      <a href="/clientes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-building w-6 text-center"></i>
-        <span class="ml-1">Clientes</span>
+      <a href="/clientes" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-building w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Clientes</span>
       </a>
 
-      <a href="/obrigacoes" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-list-check w-6 text-center"></i>
-        <span class="ml-1">Obrigações/Serviços</span>
+      <a href="/obrigacoes" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-list-check w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Obrigações / Serviços</span>
       </a>
 
-      <a href="/perfis" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-tags w-6 text-center"></i>
-        <span class="ml-1">Perfis de Clientes</span>
+      <a href="/perfis" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-tags w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Perfis de Clientes</span>
       </a>
 
-      <a href="/usuarios" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-users-gear w-6 text-center"></i>
-        <span class="ml-1">Gestão de Equipe</span>
+      <a href="/usuarios" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-users-gear w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Gestão de Equipe</span>
       </a>
 
-      <a href="/tipos-tarefa" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-clipboard-list w-6 text-center"></i>
-        <span class="ml-1">Tipos de Tarefa</span>
+      <a href="/tipos-tarefa" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-clipboard-list w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Tipos de Tarefa</span>
       </a>
 
-      <a href="/workflows" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-code-branch w-6 text-center text-emerald-400"></i>
-        <span class="ml-1 text-emerald-100">Workflows e Fases</span>
+      <a href="/workflows" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-code-branch w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Workflows e Fases</span>
       </a>
       
-      <a href="/ferramentas" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100 hover:bg-slate-800 no-underline text-white">
-        <i class="fa-solid fa-toolbox w-6 text-center text-amber-400"></i>
-        <span class="ml-1 text-amber-100">Ferramentas / Admin</span>
+      <a href="/ferramentas" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-toolbox w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Ferramentas</span>
       </a>
       {% endif %}
     </nav>
 
     <!-- Sync Rodapé -->
-    <div class="px-4 py-2 border-t border-white/5 flex items-center justify-between text-[9px] uppercase tracking-widest font-bold text-indigo-400/60">
+    <div class="px-4 py-2 border-t border-white/5 flex items-center justify-between text-[9px] uppercase tracking-widest font-bold text-amber-300/40">
        <span><span class="sync-dot mr-1.5"></span> Sync</span>
        <span id="txtLastSync">Online</span>
     </div>
@@ -382,13 +390,13 @@
               JP
            </div>
            <div class="ml-3">
-             <p class="text-xs font-semibold">{{ user.nome if user else 'Usuário' }}</p>
-             <p class="text-[10px] font-bold text-rose-400/80 uppercase tracking-tighter mt-0.5">{{ user.nivel if user else 'ADMIN' }}</p>
-             <p class="text-[10px] text-indigo-300/70">{{ user.email if user else 'email@exemplo.com' }}</p>
-             <p class="text-[9px] text-indigo-300/40 mt-0.5">v2.0 — FastAPI</p>
+             <p class="text-xs font-semibold text-white">{{ user.nome if user else 'Usuário' }}</p>
+             <p class="text-[10px] font-bold text-amber-300/80 uppercase tracking-tighter mt-0.5">{{ user.nivel if user else 'ADMIN' }}</p>
+             <p class="text-[10px] text-slate-400">{{ user.email if user else 'email@exemplo.com' }}</p>
+             <p class="text-[9px] text-slate-500 mt-0.5">v2.0 — FastAPI</p>
            </div>
         </div>
-        <a href="/logout" onclick="localStorage.clear(); sessionStorage.clear();" class="text-indigo-400/50 hover:text-red-400 transition-colors ml-2" title="Sair do sistema">
+        <a href="/logout" onclick="localStorage.clear(); sessionStorage.clear();" class="text-slate-500 hover:text-red-400 transition-colors ml-2" title="Sair do sistema">
            <i class="fa-solid fa-power-off text-lg"></i>
         </a>
       </div>

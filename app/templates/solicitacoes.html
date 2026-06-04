@@ -38,33 +38,33 @@
         <span class="text-xs font-semibold bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100">{{ solicitacoes|length }}</span>
     </div>
 
-    <div class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-2">
+    <div class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-1.5">
         {% for s in solicitacoes %}
-        <div class="task-card flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group border-l-4 {% if s.status == 'ENTREGUE' %}border-l-emerald-500{% else %}border-l-amber-400{% endif %}">
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <span class="bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ s.data.strftime('%d/%m/%Y') if s.data else '-' }}</span>
+        <div class="task-card flex items-center justify-between p-2.5 bg-white border border-slate-100 rounded-lg shadow-sm hover:shadow hover:bg-slate-50 transition group border-l-4 {% if s.status == 'ENTREGUE' %}border-l-emerald-500{% else %}border-l-amber-400{% endif %}">
+            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
+                <div class="flex-1 min-w-0 flex items-baseline">
+                    <span class="text-[11px] font-bold text-jp-navy uppercase tracking-wider truncate max-w-[35%]">{{ s.cliente }}</span>
+                    <span class="text-slate-300 mx-2 hidden md:inline">/</span>
+                    <span class="text-[11px] text-slate-600 truncate flex-1">{{ s.pedido }}</span>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden lg:inline-flex"><i class="fa-solid fa-user-shield mr-1"></i>{{ (s.responsavel or 'N/A').split(' ')[0] }}</span>
+                    <span class="bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ s.data.strftime('%d/%m') if s.data else '-' }}</span>
                     {% if s.qtd_avisos and s.qtd_avisos > 0 %}
-                    <span class="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-blue-100">{{ s.qtd_avisos }} aviso{{ 's' if s.qtd_avisos > 1 }}</span>
-                    {% endif %}
-                    {% if s.ultima_cobranca %}
-                    <span class="bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-slate-100">Últ. {{ s.ultima_cobranca.strftime('%d/%m') }}</span>
+                    <span class="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-blue-100">{{ s.qtd_avisos }}x</span>
                     {% endif %}
                 </div>
-                <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider">{{ s.cliente }}</div>
-                <div class="text-xs text-slate-600 truncate">{{ s.pedido }}</div>
-                <div class="mt-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-user-shield mr-1 text-slate-300"></i>{{ s.responsavel or 'N/A' }}</div>
             </div>
-            <div class="ml-3 flex-shrink-0 flex items-center gap-2">
+            <div class="ml-3 flex-shrink-0 flex items-center gap-1.5">
                 {% if s.status == 'ENTREGUE' %}
-                <span class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-emerald-100 text-emerald-700 border-emerald-200"><i class="fa-solid fa-check mr-1"></i>Concluído</span>
+                <span class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border bg-emerald-100 text-emerald-700 border-emerald-200"><i class="fa-solid fa-check mr-1"></i>OK</span>
                 {% else %}
                 <form action="/solicitacoes/{{ s.id }}/cobrar" method="POST" class="inline">
-                    <button type="submit" class="bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white p-1.5 rounded-lg text-xs font-bold transition-all" title="Enviar cobrança"><i class="fa-solid fa-bell"></i></button>
+                    <button type="submit" class="bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white p-1 rounded-md text-xs font-bold transition-all" title="Cobrar"><i class="fa-solid fa-bell"></i></button>
                 </form>
                 <form action="/solicitacoes/{{ s.id }}/concluir" method="POST" class="inline">
-                    <button type="submit" class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-slate-100 text-slate-600 border-slate-200 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-all" title="Confirmar recebimento do documento">
-                        <i class="fa-solid fa-check-double mr-1"></i>Dar Baixa
+                    <button type="submit" class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border bg-slate-100 text-slate-600 border-slate-200 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-all" title="Dar Baixa">
+                        <i class="fa-solid fa-check-double mr-1"></i>Baixa
                     </button>
                 </form>
                 {% endif %}

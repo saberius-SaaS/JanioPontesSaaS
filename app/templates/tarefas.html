@@ -89,35 +89,47 @@
     <div class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-2" id="tabelaTarefas">
         {% for t in tarefas %}
         {% set acao = (t.acao or 'ENVIAR')|upper %}
-        <div class="task-card flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group cursor-pointer border-l-4 {% if t.status == 'ATRASADO' %}border-l-red-500{% elif 'COMUNICAR' in acao %}border-l-indigo-500{% elif 'ARQUIVAR' in acao %}border-l-slate-400{% elif 'AUDITAR' in acao %}border-l-amber-400{% else %}border-l-emerald-500{% endif %}"
+        <div class="task-card flex items-center justify-between p-2.5 bg-white border border-slate-100 rounded-lg shadow-sm hover:shadow hover:bg-slate-50 transition group cursor-pointer border-l-4 {% if t.status == 'ATRASADO' %}border-l-red-500{% elif 'COMUNICAR' in acao %}border-l-indigo-500{% elif 'ARQUIVAR' in acao %}border-l-slate-400{% elif 'AUDITAR' in acao %}border-l-amber-400{% else %}border-l-emerald-500{% endif %}"
              id="row-{{ t.id }}"
              onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}', '{{ t.precisa_revisao_flag }}')">
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-indigo-100 uppercase">{{ t.departamento }}</span>
-                    <span class="bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}</span>
+            
+            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
+                <!-- Info Principal: Cliente e Obrigação -->
+                <div class="flex-1 min-w-0 flex items-baseline">
+                    <span class="text-[11px] font-bold text-jp-navy uppercase tracking-wider truncate max-w-[40%]">{{ t.cliente }}</span>
+                    <span class="text-slate-300 mx-2 hidden md:inline">/</span>
+                    <span class="text-[11px] text-slate-600 truncate flex-1">{{ t.obrigacao }}</span>
+                </div>
+                
+                <!-- Info Secundária: Tags e Metadados (escondido um pouco no mobile para caber, agrupado) -->
+                <div class="flex items-center gap-1.5 md:gap-2 flex-shrink-0 flex-wrap">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden lg:inline-flex" title="Responsável"><i class="fa-solid fa-user-shield mr-1"></i>{{ (t.responsavel or 'N/A').split(' ')[0] }}</span>
+                    
+                    <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-indigo-100 uppercase">{{ t.departamento[:4] }}</span>
+                    
+                    <span class="bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-slate-200 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ t.vencimento.strftime('%d/%m') if t.vencimento else '-' }}</span>
+                    
                     {% if 'ENVIAR' in acao %}
-                    <span class="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-emerald-100">ENVIAR</span>
+                    <span class="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-emerald-100">ENVIAR</span>
                     {% elif 'COMUNICAR' in acao %}
-                    <span class="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest">COMUNICAR</span>
+                    <span class="bg-indigo-600 text-white px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest">COMUNICAR</span>
                     {% elif 'ARQUIVAR' in acao %}
-                    <span class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest">ARQUIVAR</span>
+                    <span class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest">ARQUIVAR</span>
                     {% elif 'AUDITAR' in acao %}
-                    <span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-amber-100">AUDITAR</span>
+                    <span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-amber-100">AUDITAR</span>
                     {% else %}
-                    <span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest">{{ acao }}</span>
+                    <span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest">{{ acao[:6] }}</span>
                     {% endif %}
                 </div>
-                <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider">{{ t.cliente }}</div>
-                <div class="text-xs text-slate-600 truncate">{{ t.obrigacao }}</div>
-                <div class="mt-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-user-shield mr-1 text-slate-300"></i>{{ t.responsavel or 'N/A' }}</div>
             </div>
+
+            <!-- Botão de Ação -->
             <div class="ml-3 flex-shrink-0">
                 {% if t.status == 'ATRASADO' %}
-                <span class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-red-100 text-red-700 border-red-200">Atrasado</span>
+                <span class="px-2 py-1 text-[9px] uppercase font-black rounded-lg border shadow-sm bg-red-100 text-red-700 border-red-200">Atrasado</span>
                 {% else %}
-                <button class="bg-jp-navy hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase tracking-wider shadow-sm opacity-70 group-hover:opacity-100" onclick="event.stopPropagation();">
-                    <i class="fa-solid fa-arrow-right mr-1"></i>Resolver
+                <button class="bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white px-2.5 py-1 rounded-md text-[10px] font-bold transition-all uppercase tracking-wider opacity-60 group-hover:opacity-100" onclick="event.stopPropagation();">
+                    Resolver <i class="fa-solid fa-arrow-right ml-1"></i>
                 </button>
                 {% endif %}
             </div>

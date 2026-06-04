@@ -25,31 +25,34 @@
         </div>
     </div>
 
-    <div class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-2" id="listaHistorico">
+    <div class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-1.5" id="listaHistorico">
         {% for h in historicos %}
-        <div class="task-card flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow transition group border-l-4 {% if h.status == 'ENTREGUE' %}border-l-emerald-500{% elif h.status == 'REVISAO' %}border-l-amber-400{% else %}border-l-slate-400{% endif %}">
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-indigo-100 uppercase">{{ h.departamento or 'GERAL' }}</span>
-                    <span class="bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ h.vencimento.strftime('%d/%m/%Y') if h.vencimento else '-' }}</span>
-                    <span class="bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest border border-slate-100 uppercase">{{ h.mes_ano }}</span>
+        <div class="task-card flex items-center justify-between p-2.5 bg-white border border-slate-100 rounded-lg shadow-sm hover:shadow hover:bg-slate-50 transition group border-l-4 {% if h.status == 'ENTREGUE' %}border-l-emerald-500{% elif h.status == 'REVISAO' %}border-l-amber-400{% else %}border-l-slate-400{% endif %}">
+            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
+                <div class="flex-1 min-w-0 flex items-baseline">
+                    <span class="text-[11px] font-bold text-jp-navy uppercase tracking-wider truncate max-w-[40%]">{{ h.cliente }}</span>
+                    <span class="text-slate-300 mx-2 hidden md:inline">/</span>
+                    <span class="text-[11px] text-slate-600 truncate flex-1">{{ h.obrigacao }}</span>
                 </div>
-                <div class="text-[10px] font-bold text-jp-navy uppercase tracking-wider">{{ h.cliente }}</div>
-                <div class="text-xs text-slate-600 truncate">{{ h.obrigacao }}</div>
-                {% if h.protocolo %}
-                <div class="mt-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-hashtag mr-1 text-slate-300"></i>{{ h.protocolo }}</div>
-                {% endif %}
+                <div class="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+                    {% if h.protocolo %}
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden lg:inline-flex"><i class="fa-solid fa-hashtag mr-1"></i>{{ h.protocolo[:12] }}</span>
+                    {% endif %}
+                    <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-indigo-100 uppercase">{{ (h.departamento or 'GERAL')[:4] }}</span>
+                    <span class="bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-slate-200 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ h.vencimento.strftime('%d/%m') if h.vencimento else '-' }}</span>
+                    <span class="bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-slate-100 uppercase">{{ h.mes_ano }}</span>
+                </div>
             </div>
             <div class="ml-3 flex-shrink-0 flex items-center gap-2">
                 {% if h.protocolo %}
-                <button hx-post="/historico/{{ h.id }}/reenviar" hx-swap="outerHTML" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg" title="Reenviar Mensagem / Arquivo Anexo"><i class="fa-solid fa-paper-plane"></i></button>
+                <button hx-post="/historico/{{ h.id }}/reenviar" hx-swap="outerHTML" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1 bg-indigo-50 hover:bg-indigo-100 rounded-md" title="Reenviar"><i class="fa-solid fa-paper-plane text-xs"></i></button>
                 {% endif %}
                 {% if h.status == 'ENTREGUE' %}
-                <span class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-emerald-100 text-emerald-700 border-emerald-200">Entregue</span>
+                <span class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border bg-emerald-100 text-emerald-700 border-emerald-200">Entregue</span>
                 {% elif h.status == 'REVISAO' %}
-                <span class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-amber-100 text-amber-700 border-amber-200">Revisão</span>
+                <span class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border bg-amber-100 text-amber-700 border-amber-200">Revisão</span>
                 {% else %}
-                <span class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-slate-100 text-slate-600 border-slate-200">{{ h.status }}</span>
+                <span class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border bg-slate-100 text-slate-600 border-slate-200">{{ h.status }}</span>
                 {% endif %}
             </div>
         </div>
