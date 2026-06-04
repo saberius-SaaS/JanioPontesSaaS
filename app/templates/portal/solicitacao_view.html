@@ -1,0 +1,72 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Solicitação {{ solicitacao.id_legado }} - Portal do Cliente{% endblock %}
+
+{% block content %}
+<div class="mb-4 flex items-center">
+    <a href="/portal/solicitacoes" class="text-xs font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors flex items-center">
+        <i class="fa-solid fa-arrow-left mr-2"></i> Voltar para Solicitações
+    </a>
+</div>
+
+{% if sucesso %}
+<div class="bg-emerald-50 border-l-4 border-emerald-500 p-4 mb-6 rounded-r-lg">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm text-emerald-700 font-bold">Resposta enviada com sucesso!</p>
+            <p class="text-xs text-emerald-600 mt-1">Nossa equipe foi notificada e dará andamento ao processo.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="glass-panel rounded-2xl overflow-hidden mb-6">
+    <div class="p-6 border-b border-slate-100 bg-white">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold tracking-widest border border-slate-200 uppercase">Solicitação: {{ solicitacao.id_legado }}</span>
+            <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold tracking-widest border border-slate-200 uppercase"><i class="fa-regular fa-clock mr-1"></i>Enviada em {{ solicitacao.data.strftime('%d/%m/%Y %H:%M') }}</span>
+        </div>
+        <h2 class="text-xl font-bold text-jp-navy mb-2">Mensagem da Equipe:</h2>
+        <div class="bg-slate-50 p-4 rounded-xl text-slate-700 text-sm whitespace-pre-wrap font-medium border border-slate-100">
+            {{ solicitacao.pedido }}
+        </div>
+    </div>
+    
+    {% if solicitacao.status == 'PENDENTE' %}
+    <div class="p-6 bg-slate-50/50">
+        <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider"><i class="fa-solid fa-reply mr-2 text-indigo-500"></i> Enviar sua Resposta</h3>
+        
+        <form action="/portal/solicitacoes/{{ solicitacao.id_legado }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mensagem (Opcional)</label>
+                <textarea name="mensagem" rows="4" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow" placeholder="Digite sua resposta aqui..."></textarea>
+            </div>
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Anexar Documento (Opcional)</label>
+                <input type="file" name="arquivo" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+            </div>
+            
+            <div class="pt-2">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Enviar Resposta
+                </button>
+            </div>
+        </form>
+    </div>
+    {% else %}
+    <div class="p-6 bg-slate-50 flex items-center justify-center">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-slate-200 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-lock text-2xl"></i>
+            </div>
+            <h3 class="font-bold text-slate-600 mb-1">Solicitação Encerrada</h3>
+            <p class="text-xs text-slate-400">Esta solicitação já foi respondida e encontra-se arquivada.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

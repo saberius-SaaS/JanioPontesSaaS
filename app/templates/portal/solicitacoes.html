@@ -1,0 +1,38 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Atendimento - Portal do Cliente{% endblock %}
+
+{% block content %}
+<div class="glass-panel rounded-2xl overflow-hidden mb-6">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
+        <h3 class="font-bold text-slate-800"><i class="fa-solid fa-headset mr-2 text-indigo-500"></i> Histórico de Solicitações</h3>
+    </div>
+    
+    <div class="p-2 space-y-2 bg-slate-50/50">
+        {% for solic in solicitacoes %}
+        <a href="/portal/solicitacoes/{{ solic.id_legado }}" class="block p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase">{{ solic.id_legado }}</span>
+                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ solic.data.strftime('%d/%m/%Y') }}</span>
+                    {% if solic.status == 'PENDENTE' %}
+                    <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black tracking-widest border border-orange-200 uppercase">AGUARDANDO SUA RESPOSTA</span>
+                    {% else %}
+                    <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[9px] font-black tracking-widest border border-emerald-200 uppercase">ENTREGUE</span>
+                    {% endif %}
+                </div>
+                <div class="text-sm font-medium text-slate-600 line-clamp-1 group-hover:text-indigo-600 transition-colors">{{ solic.pedido[:100] }}...</div>
+            </div>
+            <div class="ml-4 flex-shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </a>
+        {% else %}
+        <div class="p-8 text-center text-slate-500">
+            <i class="fa-regular fa-comment-dots text-4xl mb-3 text-slate-300"></i>
+            <p class="text-sm font-medium">Você não possui nenhuma solicitação de atendimento.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
