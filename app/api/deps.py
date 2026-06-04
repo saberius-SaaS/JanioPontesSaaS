@@ -116,10 +116,10 @@ def require_login(request: Request, db: Session = Depends(get_db)) -> models.Usu
 
 def get_cliente_from_cookie(request: Request) -> Optional[dict]:
     """
-    Extrai o JWT do cookie 'client_session' para o Portal do Cliente.
+    Extrai o JWT do cookie '__session' para o Portal do Cliente.
     Retorna um dicionário com tenant_id e cliente_nome, ou None.
     """
-    token = request.cookies.get("client_session")
+    token = request.cookies.get("__session")
     if not token:
         return None
     try:
