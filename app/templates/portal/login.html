@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso Expirado - Portal do Cliente</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'jp-navy': '#1C3051',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+        <div class="p-8 text-center">
+            <img src="/static/logo.jpg" alt="Logo" class="h-16 w-auto mx-auto mb-6 rounded-lg shadow-sm border border-slate-200">
+            
+            <div class="w-16 h-16 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-clock-rotate-left text-2xl"></i>
+            </div>
+            
+            <h2 class="text-xl font-bold text-jp-navy mb-2">Sua Sessão Expirou</h2>
+            <p class="text-sm text-slate-500 mb-6">Por questões de segurança, o seu acesso ao portal foi desconectado.</p>
+            
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl mb-6 text-left">
+                <p class="text-xs text-indigo-800 font-medium">
+                    <i class="fa-solid fa-lightbulb text-indigo-500 mr-1"></i>
+                    Para voltar ao portal, basta abrir qualquer e-mail enviado recentemente pela nossa equipe e clicar no botão <strong>"Acessar no Portal do Cliente"</strong>.
+                </p>
+            </div>
+            
+            <a href="mailto:contato@janiopontes.com.br" class="text-xs text-slate-400 hover:text-indigo-600 font-semibold transition-colors">
+                Precisa de ajuda? Fale conosco.
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

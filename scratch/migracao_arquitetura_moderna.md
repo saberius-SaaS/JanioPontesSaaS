@@ -33,6 +33,12 @@ Após a alteração, rode `.\deploy.ps1` para publicar. Nenhuma outra mudança d
 - [x] **9.5.1.** Auditar todas as rotas FastAPI garantindo `Depends(require_login)` ou `Depends(verify_scheduler_key)`.
 - [x] **9.5.3.** Adicionar *rate limiting* nas rotas públicas (especialmente `/login`).
 
+## 🔧 Módulos Prioritários (Pós-Auditoria)
+- [x] **Workflows e Múltiplas Fases**: Implementar lógica de etapas contínuas para tarefas (Ex: Contábil > Fiscal > Paralegal). Desenvolvimento imediato. *(Concluído: a lógica de encadeamento automático via "Próxima Fase" já está operando 100% nas rotas atuais!)*
+- [ ] **Portal do Cliente / Repositório**: Desenvolver interface dedicada e segura (login restrito) para o cliente consultar todo o histórico de arquivos e obrigações. Desenvolvimento imediato.
+- [ ] *Notificações via WhatsApp*: Será migrado no futuro com a adoção do Chatwoot (Aguardando integração futura).
+- [ ] *Inteligência Artificial (AIService)*: Será migrado no futuro como projeto específico (Pausado).
+
 ## 🔶 Etapa 10: Homologação Final e Migração de Dados (Pendências)
 - [ ] **10.2.1.** Travar a edição das planilhas do GAS atual (modo leitura).
 - [ ] **10.3.1.** Habilitar script de Reverse Sync: Cada novo registro no banco salva uma cópia na planilha antiga (Rollback).

@@ -1,0 +1,61 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Documento: {{ protocolo.obrigacao }} - Portal do Cliente{% endblock %}
+
+{% block content %}
+<div class="mb-4 flex items-center">
+    <a href="/portal" class="text-xs font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors flex items-center">
+        <i class="fa-solid fa-arrow-left mr-2"></i> Voltar para Início
+    </a>
+</div>
+
+<div class="glass-panel rounded-2xl overflow-hidden mb-6">
+    <div class="p-6 bg-jp-navy text-white relative overflow-hidden">
+        <div class="absolute top-0 right-0 p-6 opacity-10">
+            <i class="fa-solid fa-file-invoice text-8xl"></i>
+        </div>
+        <div class="relative z-10">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="bg-indigo-500/30 text-indigo-100 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-widest border border-indigo-400/30 uppercase">Protocolo: {{ protocolo.protocolo }}</span>
+                <span class="bg-white/10 text-white/80 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-widest border border-white/10 uppercase"><i class="fa-regular fa-clock mr-1"></i>Enviado em {{ protocolo.data.strftime('%d/%m/%Y %H:%M') }}</span>
+            </div>
+            <h2 class="text-2xl font-black text-white mb-1">{{ protocolo.obrigacao }}</h2>
+            <p class="text-indigo-200 text-sm">Disponibilizado por: {{ protocolo.responsavel }}</p>
+        </div>
+    </div>
+    
+    <div class="p-8 bg-white">
+        <div class="flex flex-col items-center justify-center py-10">
+            <div class="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-indigo-100">
+                <i class="fa-solid fa-file-pdf text-4xl"></i>
+            </div>
+            
+            <h3 class="text-lg font-bold text-slate-800 mb-2 text-center">Seus arquivos estão prontos para visualização</h3>
+            <p class="text-sm text-slate-500 text-center max-w-md mb-8">O acesso aos documentos originais é seguro e os links são gerados temporariamente para a sua proteção.</p>
+            
+            <div class="flex flex-col gap-4 w-full max-w-xs">
+                {% if links %}
+                    {% for link in links %}
+                    <a href="{{ link }}" target="_blank" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Baixar / Visualizar Arquivo {{ loop.index }}
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="bg-slate-50 border border-slate-200 text-slate-600 text-sm p-4 rounded-xl text-center font-medium">
+                        Não há arquivos anexados (Apenas Comunicado).
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <div class="text-xs text-slate-400">
+            <strong>Status de Leitura:</strong> Confirmada
+        </div>
+        <div class="text-xs text-emerald-600 font-bold flex items-center">
+            <i class="fa-solid fa-check-double mr-1"></i> Protocolo Registrado
+        </div>
+    </div>
+</div>
+{% endblock %}

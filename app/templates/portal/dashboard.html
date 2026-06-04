@@ -1,0 +1,41 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Meu Painel - Portal do Cliente{% endblock %}
+
+{% block content %}
+<div class="glass-panel rounded-2xl overflow-hidden p-6 mb-6">
+    <h2 class="text-2xl font-black text-jp-navy mb-2 tracking-tight">Bem-vindo(a) ao seu Portal.</h2>
+    <p class="text-slate-500 text-sm">Aqui você encontra todos os documentos e obrigações enviados pela nossa equipe.</p>
+</div>
+
+<div class="glass-panel rounded-2xl overflow-hidden">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
+        <h3 class="font-bold text-slate-800"><i class="fa-solid fa-file-invoice mr-2 text-indigo-500"></i> Últimos Arquivos Recebidos</h3>
+    </div>
+    
+    <div class="p-2 space-y-2 bg-slate-50/50">
+        {% for p in protocolos %}
+        <a href="/portal/documento/{{ p.id }}" class="block task-card p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase">{{ p.protocolo }}</span>
+                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ p.data.strftime('%d/%m/%Y') }}</span>
+                    {% if not p.conf_recto %}
+                    <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black tracking-widest border border-orange-200 uppercase">NOVO</span>
+                    {% endif %}
+                </div>
+                <div class="text-sm font-bold text-jp-navy group-hover:text-indigo-600 transition-colors">{{ p.obrigacao }}</div>
+            </div>
+            <div class="ml-4 flex-shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </a>
+        {% else %}
+        <div class="p-8 text-center text-slate-500">
+            <i class="fa-solid fa-inbox text-4xl mb-3 text-slate-300"></i>
+            <p class="text-sm font-medium">Nenhum documento recente encontrado.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -126,10 +126,10 @@ async def create_protocolo(
                         <td style="padding: 10px; font-size: 14px; font-weight: bold; color: #6366f1;">{prt_code}</td>
                     </tr>
                 </table>
-                <p style="text-align: center; margin: 30px 0;"><a href='{link}' style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 12px;">Acessar Documento</a></p>
+                <p style="text-align: center; margin: 30px 0;"><a href='https://app.janiopontes.com.br/acesso/{prt_code}' style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">Acessar no Portal do Cliente</a></p>
                 <div style="margin-top: 30px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
                     <p style="color: #64748b; font-size: 12px; margin: 0; font-weight: bold;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</p>
-                    <p style="color: #94a3b8; font-size: 10px; margin: 5px 0 0;">Monitoramento legal de abertura de mensagem.</p>
+                    <p style="color: #94a3b8; font-size: 10px; margin: 5px 0 0;">O link acima concede acesso seguro aos arquivos desta entrega.</p>
                 </div>
             </div>
         </div>

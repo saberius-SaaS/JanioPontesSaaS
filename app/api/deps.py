@@ -110,6 +110,43 @@ def require_login(request: Request, db: Session = Depends(get_db)) -> models.Usu
     return user
 
 
+# ==========================================
+# Autenticação do Portal do Cliente
+# ==========================================
+
+def get_cliente_from_cookie(request: Request) -> Optional[dict]:
+    """
+    Extrai o JWT do cookie 'client_session' para o Portal do Cliente.
+    Retorna um dicionário com tenant_id e cliente_nome, ou None.
+    """
+    token = request.cookies.get("client_session")
+    if not token:
+        return None
+    try:
+        from app.core import security
+        payload = security.decode_access_token(token)
+        cliente_nome = payload.get("cliente")
+        tenant_id = payload.get("tenant_id")
+        if not cliente_nome or not tenant_id:
+            return None
+        return {"cliente": cliente_nome, "tenant_id": tenant_id}
+    except Exception:
+        return None
+
+def require_cliente_login(request: Request):
+    """
+    Exige que o cliente esteja logado para acessar rotas do /portal.
+    Se não estiver, redireciona para uma tela de aviso ou login.
+    """
+    cliente_data = get_cliente_from_cookie(request)
+    if not cliente_data:
+        raise HTTPException(
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+            headers={"Location": "/portal/login"}
+        )
+    return cliente_data
+
+
 def require_admin(current_user: models.Usuario = Depends(require_login)) -> models.Usuario:
     """
     Dependency para rotas SSR que exigem nível ADMIN.

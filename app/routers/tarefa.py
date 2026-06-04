@@ -110,15 +110,15 @@ async def enviar_notificacao_entrega(tarefa, protocolo: str, email_destino: str,
             </table>
     """
     
-    # Botões de acesso aos documentos anexos (destaque visual)
+    # Botão de acesso único via Portal do Cliente (Link Mágico)
     if links_documentos:
-        corpo += """<div style="text-align: center; margin: 25px 0;">"""
-        for i, link in enumerate(links_documentos):
-            label = f"Acessar Documento {i+1}" if len(links_documentos) > 1 else "Acessar Documento"
-            corpo += f"""
-                <p style="margin: 8px 0;"><a href="{link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">{label}</a></p>
-            """
-        corpo += """</div>"""
+        magic_link = f"https://app.janiopontes.com.br/acesso/{protocolo}"
+        corpo += f"""
+        <div style="text-align: center; margin: 25px 0;">
+            <p style="margin: 8px 0;"><a href="{magic_link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">Acessar no Portal do Cliente</a></p>
+            <p style="color: #64748b; font-size: 11px; margin-top: 12px;">O link acima concede acesso seguro aos arquivos desta entrega.</p>
+        </div>
+        """
 
     if justificativa:
         corpo += f"""

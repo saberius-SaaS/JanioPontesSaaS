@@ -93,9 +93,11 @@ class StorageService:
             client = self._get_client()
             bucket = client.bucket(GCS_BUCKET_NAME)
             
-            # Limpar nome do cliente para usar como pasta
+            # Limpar nome do cliente e nome do arquivo para usar como pasta e objeto seguros
+            import re
             safe_cliente = "".join(c if c.isalnum() else "_" for c in cliente_nome)
-            file_path = f"{safe_cliente}/{uuid.uuid4().hex[:8]}_{file.filename}"
+            safe_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)
+            file_path = f"{safe_cliente}/{uuid.uuid4().hex[:8]}_{safe_filename}"
             
             blob = bucket.blob(file_path)
             
