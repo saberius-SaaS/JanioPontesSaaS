@@ -192,7 +192,7 @@ def login_google_oauth(
 
         response = JSONResponse(content={"ok": True, "message": "Login realizado com sucesso."})
         response.set_cookie(
-            key="access_token",
+            key="__session",
             value=token,
             httponly=True,
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
@@ -213,5 +213,5 @@ def login_google_oauth(
 @router.get("/logout")
 def logout():
     response = RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="__session")
     return response

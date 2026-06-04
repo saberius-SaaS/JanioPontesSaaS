@@ -65,10 +65,10 @@ def get_current_active_user(
 
 def get_user_from_cookie(request: Request, db: Session = Depends(get_db)) -> Optional[models.Usuario]:
     """
-    Extrai o JWT do cookie 'access_token' para páginas SSR (Jinja2).
+    Extrai o JWT do cookie '__session' para páginas SSR (Jinja2).
     Retorna o usuário ou None (para redirecionar ao login).
     """
-    token = request.cookies.get("access_token")
+    token = request.cookies.get("__session")
     if not token:
         return None
     try:
