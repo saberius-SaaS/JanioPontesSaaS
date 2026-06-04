@@ -5,7 +5,7 @@ Fluxo: Google Identity Services (One Tap) → validação backend → JWT em coo
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from google.oauth2 import id_token
@@ -121,10 +121,12 @@ def login_page(request: Request):
                     const res = await fetch('/google', {{
                         method: 'POST',
                         headers: {{ 'Content-Type': 'application/x-www-form-urlencoded' }},
-                        body: 'credential=' + encodeURIComponent(response.credential)
+                        body: 'credential=' + encodeURIComponent(response.credential),
+                        redirect: 'manual'
                     }});
-                    if (res.ok || res.redirected) {{
+                    if (res.ok || res.type === 'opaqueredirect' || res.status === 0) {{
                         window.location.href = '/';
+                        return;
                     }} else {{
                         const data = await res.json().catch(() => ({{detail: 'Erro desconhecido'}}));
                         document.getElementById('loading-msg').classList.add('hidden');
@@ -188,7 +190,7 @@ def login_google_oauth(
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         token = security.create_access_token(user.id, expires_delta=access_token_expires)
 
-        response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        response = JSONResponse(content={"ok": True, "message": "Login realizado com sucesso."})
         response.set_cookie(
             key="access_token",
             value=token,
