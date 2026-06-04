@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from datetime import datetime, timedelta
 import logging
 
@@ -27,7 +28,7 @@ async def acesso_magico(
     """
     # Bypass RLS porque não temos tenant ainda
     try:
-        db.execute("SET LOCAL app.bypass_rls = 'on';")
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
     except Exception:
         pass
 
@@ -84,8 +85,8 @@ async def portal_dashboard(
     tenant_id = cliente_data["tenant_id"]
 
     try:
-        db.execute(f"SET LOCAL app.current_tenant = '{tenant_id}';")
-        db.execute("SET LOCAL app.bypass_rls = 'off';")
+        db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
+        db.execute(text("SET LOCAL app.bypass_rls = 'off';"))
     except Exception:
         pass
 
@@ -111,8 +112,8 @@ async def portal_documento(
     tenant_id = cliente_data["tenant_id"]
 
     try:
-        db.execute(f"SET LOCAL app.current_tenant = '{tenant_id}';")
-        db.execute("SET LOCAL app.bypass_rls = 'off';")
+        db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
+        db.execute(text("SET LOCAL app.bypass_rls = 'off';"))
     except Exception:
         pass
 
@@ -153,8 +154,8 @@ async def portal_solicitacoes_list(
     tenant_id = cliente_data["tenant_id"]
 
     try:
-        db.execute(f"SET LOCAL app.current_tenant = '{tenant_id}';")
-        db.execute("SET LOCAL app.bypass_rls = 'off';")
+        db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
+        db.execute(text("SET LOCAL app.bypass_rls = 'off';"))
     except Exception:
         pass
 
@@ -179,8 +180,8 @@ async def portal_solicitacao_view(
     tenant_id = cliente_data["tenant_id"]
 
     try:
-        db.execute(f"SET LOCAL app.current_tenant = '{tenant_id}';")
-        db.execute("SET LOCAL app.bypass_rls = 'off';")
+        db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
+        db.execute(text("SET LOCAL app.bypass_rls = 'off';"))
     except Exception:
         pass
 
@@ -226,8 +227,8 @@ async def portal_solicitacao_reply(
     tenant_id = cliente_data["tenant_id"]
 
     try:
-        db.execute(f"SET LOCAL app.current_tenant = '{tenant_id}';")
-        db.execute("SET LOCAL app.bypass_rls = 'off';")
+        db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
+        db.execute(text("SET LOCAL app.bypass_rls = 'off';"))
     except Exception:
         pass
 
