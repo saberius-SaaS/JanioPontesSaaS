@@ -19,7 +19,7 @@
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
                     <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase">{{ p.protocolo }}</span>
-                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ p.data.strftime('%d/%m/%Y') }}</span>
+                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ p.data|brasilia('%d/%m/%Y') }}</span>
                     {% if not p.conf_recto %}
                     <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black tracking-widest border border-orange-200 uppercase">NOVO</span>
                     {% endif %}

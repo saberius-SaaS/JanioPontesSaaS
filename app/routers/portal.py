@@ -16,6 +16,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+# Filtro Jinja2 para converter UTC → Horário de Brasília (UTC-3)
+_tz_brasilia = timezone(timedelta(hours=-3))
+
+def _filtro_brasilia(dt, fmt="%d/%m/%Y %H:%M"):
+    """Converte datetime UTC para horário de Brasília e formata."""
+    if dt is None:
+        return "-"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(_tz_brasilia).strftime(fmt)
+
+templates.env.filters["brasilia"] = _filtro_brasilia
+
 @router.get("/acesso/{protocolo_id}", response_class=HTMLResponse)
 async def acesso_magico(
     request: Request,

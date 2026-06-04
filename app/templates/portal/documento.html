@@ -17,7 +17,7 @@
         <div class="relative z-10">
             <div class="flex items-center gap-2 mb-2">
                 <span class="bg-indigo-500/30 text-indigo-100 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-widest border border-indigo-400/30 uppercase">Protocolo: {{ protocolo.protocolo }}</span>
-                <span class="bg-white/10 text-white/80 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-widest border border-white/10 uppercase"><i class="fa-regular fa-clock mr-1"></i>Enviado em {{ protocolo.data.strftime('%d/%m/%Y %H:%M') }}</span>
+                <span class="bg-white/10 text-white/80 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-widest border border-white/10 uppercase"><i class="fa-regular fa-clock mr-1"></i>Enviado em {{ protocolo.data|brasilia }}</span>
             </div>
             <h2 class="text-2xl font-black text-white mb-1">{{ protocolo.obrigacao }}</h2>
             <p class="text-indigo-200 text-sm">Disponibilizado por: {{ protocolo.responsavel }}</p>

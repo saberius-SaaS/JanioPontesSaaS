@@ -27,7 +27,7 @@
     <div class="p-6 border-b border-slate-100 bg-white">
         <div class="flex items-center gap-2 mb-2">
             <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold tracking-widest border border-slate-200 uppercase">Solicitação: {{ solicitacao.id_legado }}</span>
-            <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold tracking-widest border border-slate-200 uppercase"><i class="fa-regular fa-clock mr-1"></i>Enviada em {{ solicitacao.data.strftime('%d/%m/%Y %H:%M') }}</span>
+            <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold tracking-widest border border-slate-200 uppercase"><i class="fa-regular fa-clock mr-1"></i>Enviada em {{ solicitacao.data|brasilia }}</span>
         </div>
         <h2 class="text-xl font-bold text-jp-navy mb-2">Mensagem da Equipe:</h2>
         <div class="bg-slate-50 p-4 rounded-xl text-slate-700 text-sm whitespace-pre-wrap font-medium border border-slate-100">

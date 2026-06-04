@@ -14,7 +14,7 @@
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
                     <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase">{{ solic.id_legado }}</span>
-                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ solic.data.strftime('%d/%m/%Y') }}</span>
+                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ solic.data|brasilia('%d/%m/%Y') }}</span>
                     {% if solic.status == 'PENDENTE' %}
                     <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black tracking-widest border border-orange-200 uppercase">AGUARDANDO SUA RESPOSTA</span>
                     {% else %}
