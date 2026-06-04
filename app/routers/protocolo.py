@@ -138,3 +138,22 @@ async def create_protocolo(
 
     protocolos = db.query(models.Protocolo).order_by(models.Protocolo.data.desc()).limit(PAGE_SIZE).all()
     return templates.TemplateResponse(request, "partials/protocolos_table.html", {"protocolos": protocolos})
+
+
+@router.post("/protocolos/{protocolo_id}/baixa")
+async def baixa_manual_protocolo(
+    protocolo_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
+    protocolo = db.query(models.Protocolo).filter(
+        models.Protocolo.id == protocolo_id,
+        models.Protocolo.tenant_id == current_user.tenant_id
+    ).first()
+    
+    if protocolo:
+        protocolo.conf_recto = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        db.commit()
+    
+    # Retorna uma div vazia para remover o card da lista usando htmx (hx-swap="outerHTML")
+    return HTMLResponse(content="")

@@ -40,7 +40,10 @@
                 <div class="mt-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-hashtag mr-1 text-slate-300"></i>{{ h.protocolo }}</div>
                 {% endif %}
             </div>
-            <div class="ml-3 flex-shrink-0">
+            <div class="ml-3 flex-shrink-0 flex items-center gap-2">
+                {% if h.protocolo %}
+                <button hx-post="/historico/{{ h.id }}/reenviar" hx-swap="outerHTML" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg" title="Reenviar Mensagem / Arquivo Anexo"><i class="fa-solid fa-paper-plane"></i></button>
+                {% endif %}
                 {% if h.status == 'ENTREGUE' %}
                 <span class="px-2.5 py-1 text-[10px] uppercase font-black rounded-lg border shadow-sm bg-emerald-100 text-emerald-700 border-emerald-200">Entregue</span>
                 {% elif h.status == 'REVISAO' %}
