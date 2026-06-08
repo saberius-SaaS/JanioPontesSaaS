@@ -23,15 +23,17 @@ async def compliance_dashboard(
     tarefas_ativas = db.query(models.Tarefa).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status.notin_(['ENTREGUE', 'ARQUIVADO', 'IGNORADO']),
-        models.Tarefa.vencimento_legal != None
+        models.Tarefa.vencimento != None
     ).all()
     
     atrasadas = []
     em_risco = []
     
     for t in tarefas_ativas:
-        if t.vencimento_legal:
-            dias_restantes = (t.vencimento_legal - hoje).days
+        # Usa vencimento_legal se disponível, senão usa vencimento (prazo operacional)
+        data_ref = t.vencimento_legal or t.vencimento
+        if data_ref:
+            dias_restantes = (data_ref - hoje).days
             t.dias_restantes = dias_restantes
             
             if dias_restantes < 0 or t.status == 'ATRASADO':
@@ -39,8 +41,8 @@ async def compliance_dashboard(
             elif dias_restantes <= 5:
                 em_risco.append(t)
                 
-    atrasadas.sort(key=lambda x: x.vencimento_legal)
-    em_risco.sort(key=lambda x: x.vencimento_legal)
+    atrasadas.sort(key=lambda x: x.vencimento_legal or x.vencimento)
+    em_risco.sort(key=lambda x: x.vencimento_legal or x.vencimento)
     
     return templates.TemplateResponse(request=request, name="compliance.html", context={
         "request": request,
