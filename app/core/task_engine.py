@@ -118,6 +118,8 @@ def run_task_engine(db: Session, tenant_id: str, force_competencia=None):
                 dt_prazo = calcular_data_complexa(inicio_mes, reg.dia, reg.desloca, reg.antecipa_fds)
                 if not dt_prazo: continue
                 
+                dt_legal = calcular_data_complexa(inicio_mes, reg.vencimento_legal, reg.desloca, reg.antecipa_fds) if reg.vencimento_legal else dt_prazo
+                
                 tarefa_existente = db.query(models.Tarefa).filter(
                     models.Tarefa.tenant_id == tenant_id,
                     models.Tarefa.mes_ano == mes_ano_ref,
@@ -139,6 +141,7 @@ def run_task_engine(db: Session, tenant_id: str, force_competencia=None):
                         cliente=cli.cliente,
                         obrigacao=reg.obrigacao,
                         vencimento=dt_prazo,
+                        vencimento_legal=dt_legal,
                         departamento=reg.departamento,
                         status="ATRASADO" if dt_prazo < hoje else "PENDENTE",
                         acao=reg.acao,
@@ -151,6 +154,7 @@ def run_task_engine(db: Session, tenant_id: str, force_competencia=None):
                 else:
                     if tarefa_existente.status in ["PENDENTE", "ATRASADO"]:
                         tarefa_existente.vencimento = dt_prazo
+                        tarefa_existente.vencimento_legal = dt_legal
                         tarefa_existente.responsavel = resp
                         tarefa_existente.status = "ATRASADO" if dt_prazo < hoje else "PENDENTE"
                         atualizadas += 1
