@@ -20,7 +20,7 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 
 from app.database import SessionLocal
-from app.models import Tenant, Cliente, RegraObrigacao, Protocolo, HistoricoTarefa, Perfil, Usuario, TipoTarefaAvulsa
+from app.models import Tenant, Cliente, RegraObrigacao, Protocolo, HistoricoTarefa, Perfil, Usuario, TipoTarefaAvulsa, Workflow
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -189,22 +189,38 @@ def migrar_regras(db: Session, tenant_id: str, regras_sheet: List[Dict]):
     db.commit()
     logging.info(f"Regras: {count_inseridos} regras processadas (novas ou atualizadas).")
 
-def migrar_perfis(db: Session, tenant_id: str, regras_sheet: List[Dict]):
-    """Migra os perfis baseados na coluna GRUPO_REGRA da aba DB_REGRAS."""
-    logging.info(f"Extraindo perfis de {len(regras_sheet)} regras...")
+def migrar_perfis(db: Session, tenant_id: str, regras_sheet: List[Dict], clientes_sheet: List[Dict]):
+    """
+    Migra os perfis de DUAS fontes:
+    1. GRUPO_REGRA da aba DB_REGRAS (ex: SIMPLES, PRESUMIDO)
+    2. PERFIS_ATIVOS da aba DB_CLIENTES (ex: CERTIDAO_NEGATIVA, CLINICA_MEDICA)
+    Isso garante que todo perfil referenciado por qualquer cliente exista na tabela perfis.
+    """
+    logging.info("Extraindo perfis de DB_REGRAS (GRUPO_REGRA) + DB_CLIENTES (PERFIS_ATIVOS)...")
     
     count_inseridos = 0
     count_atualizados = 0
     
-    # Extrair grupos únicos
-    grupos_unicos = set()
+    # Fonte 1: Extrair perfis dos grupos de regras
+    perfis_unicos = set()
     for row in regras_sheet:
         grupo = row.get('GRUPO_REGRA', '').strip()
         if grupo:
-            grupos_unicos.add(grupo)
+            perfis_unicos.add(grupo)
+    
+    # Fonte 2: Extrair perfis usados pelos clientes (campo PERFIS_ATIVOS é uma lista separada por vírgula)
+    for row in clientes_sheet:
+        perfis_str = row.get('PERFIS_ATIVOS', '').strip()
+        if perfis_str:
+            for perfil in perfis_str.split(','):
+                perfil = perfil.strip()
+                if perfil:
+                    perfis_unicos.add(perfil)
+    
+    logging.info(f"  Total de perfis unicos encontrados: {len(perfis_unicos)}")
             
-    for nome_perfil in grupos_unicos:
-        existente = db.query(Perfil).filter(Perfil.nome == nome_perfil).first()
+    for nome_perfil in sorted(perfis_unicos):
+        existente = db.query(Perfil).filter(Perfil.nome == nome_perfil, Perfil.tenant_id == tenant_id).first()
         if existente:
             existente.status = 'ATIVO'
             count_atualizados += 1
@@ -213,34 +229,43 @@ def migrar_perfis(db: Session, tenant_id: str, regras_sheet: List[Dict]):
         novo_perfil = Perfil(
             tenant_id=tenant_id,
             nome=nome_perfil,
-            descricao=f"Perfil importado automaticamente do grupo {nome_perfil}",
+            descricao=f"Perfil importado automaticamente: {nome_perfil}",
             status='ATIVO'
         )
         db.add(novo_perfil)
         count_inseridos += 1
         
     db.commit()
-    logging.info(f"Perfis: {count_inseridos} novos inseridos, {count_atualizados} atualizados (de {len(grupos_unicos)} encontrados).")
+    logging.info(f"Perfis: {count_inseridos} novos inseridos, {count_atualizados} atualizados (de {len(perfis_unicos)} encontrados).")
 
 def migrar_tipos_tarefa_avulsa(db: Session, tenant_id: str, regras_sheet: List[Dict]):
-    """Migra os tipos de tarefas avulsas baseados na coluna TIPOS da aba DB_REGRAS."""
+    """
+    Migra os tipos de tarefas avulsas de DUAS fontes dentro de DB_REGRAS:
+    1. Coluna TIPOS (tipos de empresa, ex: JUCEMG, MEI)
+    2. Coluna OBRIGACAO (nome da obrigação, ex: DCTF, EFD) — cada obrigação é um tipo de tarefa válido
+    """
     logging.info(f"Extraindo tipos de tarefas de {len(regras_sheet)} regras...")
     
     count_inseridos = 0
     tipos_unicos = {}
     
     for row in regras_sheet:
-        tipos_str = row.get('TIPOS', '').strip()
         departamento = row.get('DEPARTAMENTO', '').strip()
-        if not tipos_str:
-            continue
-            
-        for tipo in tipos_str.split(','):
-            tipo = tipo.strip().upper()
-            if tipo and tipo not in tipos_unicos:
-                tipos_unicos[tipo] = departamento
+        
+        # Fonte 1: coluna TIPOS (filtros de tipo de empresa)
+        tipos_str = row.get('TIPOS', '').strip()
+        if tipos_str:
+            for tipo in tipos_str.split(','):
+                tipo = tipo.strip().upper()
+                if tipo and tipo not in tipos_unicos:
+                    tipos_unicos[tipo] = departamento
+        
+        # Fonte 2: coluna OBRIGACAO (cada obrigação é um tipo de tarefa válido para criação avulsa)
+        obrigacao = row.get('OBRIGACAO', '').strip().upper()
+        if obrigacao and obrigacao not in tipos_unicos:
+            tipos_unicos[obrigacao] = departamento
                 
-    for nome_tipo, depto in tipos_unicos.items():
+    for nome_tipo, depto in sorted(tipos_unicos.items()):
         existente = db.query(TipoTarefaAvulsa).filter(TipoTarefaAvulsa.nome == nome_tipo, TipoTarefaAvulsa.tenant_id == tenant_id).first()
         if existente:
             continue
@@ -249,7 +274,7 @@ def migrar_tipos_tarefa_avulsa(db: Session, tenant_id: str, regras_sheet: List[D
             tenant_id=tenant_id,
             nome=nome_tipo,
             departamento=depto,
-            descricao=f"Importado automaticamente (Obrigação/Regra)",
+            descricao=f"Importado automaticamente",
             status='ATIVO'
         )
         db.add(novo_tipo)
@@ -294,6 +319,37 @@ def migrar_usuarios(db: Session, tenant_id: str, usuarios_sheet: List[Dict]):
     db.commit()
     logging.info(f"Usuários: {count_inseridos} novos inseridos, {count_atualizados} atualizados.")
 
+def migrar_workflows(db: Session, tenant_id: str, workflows_sheet: List[Dict]):
+    """Migra os dados da aba DB_WORKFLOWS."""
+    logging.info(f"Migrando {len(workflows_sheet)} fluxos de workflow...")
+    
+    count_inseridos = 0
+    
+    # Limpa a tabela de workflows antes de migrar (pois os fluxos podem ter sido remodelados)
+    db.query(Workflow).filter(Workflow.tenant_id == tenant_id).delete()
+    db.flush()
+    
+    for row in workflows_sheet:
+        fase_atual = row.get('FASE_ATUAL', '').strip()
+        proxima_fase = row.get('PROXIMA_FASE', '').strip()
+        if not fase_atual or not proxima_fase:
+            continue
+            
+        novo_workflow = Workflow(
+            tenant_id=tenant_id,
+            fase_atual=fase_atual,
+            proxima_fase=proxima_fase,
+            dias=int(row.get('DIAS', 0)) if str(row.get('DIAS', '')).strip().isdigit() else 0,
+            departamento=row.get('DEPARTAMENTO', ''),
+            acao=row.get('ACAO', ''),
+            responsavel_padrao=row.get('RESPONSAVEL_PADRAO', row.get('RESPONSAVEL', ''))
+        )
+        db.add(novo_workflow)
+        count_inseridos += 1
+        
+    db.commit()
+    logging.info(f"Workflows: {count_inseridos} inseridos.")
+
 def iniciar_migracao():
     logging.info("🚀 Iniciando script de migração (Google Sheets -> PostgreSQL)")
     
@@ -326,14 +382,17 @@ def iniciar_migracao():
         clientes_dados = ler_aba_planilha(service, SPREADSHEET_ID, "DB_CLIENTES!A:Z")
         regras_dados = ler_aba_planilha(service, SPREADSHEET_ID, "DB_REGRAS!A:Z")
         usuarios_dados = ler_aba_planilha(service, SPREADSHEET_ID, "DB_USUARIOS!A:Z")
+        workflows_dados = ler_aba_planilha(service, SPREADSHEET_ID, "DB_WORKFLOWS!A:Z")
         
         # 4. Migra para o banco de dados
         migrar_clientes(db, tenant_id, clientes_dados)
         migrar_regras(db, tenant_id, regras_dados)
-        migrar_perfis(db, tenant_id, regras_dados)
+        migrar_perfis(db, tenant_id, regras_dados, clientes_dados)
         migrar_tipos_tarefa_avulsa(db, tenant_id, regras_dados)
         if usuarios_dados:
             migrar_usuarios(db, tenant_id, usuarios_dados)
+        if workflows_dados:
+            migrar_workflows(db, tenant_id, workflows_dados)
         
         logging.info("✅ Migração Carga Inicial concluída com sucesso!")
         

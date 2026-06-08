@@ -26,7 +26,7 @@ async def list_protocolos_page(
 ):
     offset = (page - 1) * PAGE_SIZE
     total = db.query(models.Protocolo).count()
-    protocolos = db.query(models.Protocolo).order_by(models.Protocolo.data.desc()).offset(offset).limit(PAGE_SIZE).all()
+    protocolos = db.query(models.Protocolo).order_by(models.Protocolo.data.asc()).offset(offset).limit(PAGE_SIZE).all()
     clientes = db.query(models.Cliente).filter(models.Cliente.status == "ATIVO").order_by(models.Cliente.cliente).all()
     total_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
 
@@ -52,7 +52,7 @@ async def search_protocolos(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
-    query = db.query(models.Protocolo).order_by(models.Protocolo.data.desc())
+    query = db.query(models.Protocolo).order_by(models.Protocolo.data.asc())
     if q:
         query = query.filter(
             models.Protocolo.protocolo.ilike(f"%{q}%")
@@ -136,7 +136,7 @@ async def create_protocolo(
         """
         background_tasks.add_task(email_service.enviar_email, email, f"Novo Documento: {obrigacao}", corpo_html)
 
-    protocolos = db.query(models.Protocolo).order_by(models.Protocolo.data.desc()).limit(PAGE_SIZE).all()
+    protocolos = db.query(models.Protocolo).order_by(models.Protocolo.data.asc()).limit(PAGE_SIZE).all()
     return templates.TemplateResponse(request, "partials/protocolos_table.html", {"protocolos": protocolos})
 
 
