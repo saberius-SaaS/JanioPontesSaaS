@@ -152,6 +152,9 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block modals %}
 <!-- ==================== MODAL DE RESOLUÇÃO ==================== -->
 <div id="modalTarefa" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
     <div id="modalContent" class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden transform scale-95 transition-transform duration-300">
@@ -215,7 +218,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 let tarefaAtual = null;
 const nivelUsuario = "{{ user.nivel }}";
