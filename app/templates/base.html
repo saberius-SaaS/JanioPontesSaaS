@@ -300,6 +300,13 @@
         <span class="ml-2.5">Dashboard</span>
       </a>
 
+      {% if user and user.nivel in ['ADMIN', 'MASTER'] %}
+      <a href="/atendimento" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
+        <i class="fa-solid fa-headset w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Central de Atendimento</span>
+      </a>
+      {% endif %}
+
       <a href="/tarefas" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
         <i class="fa-solid fa-list-check w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
         <span class="ml-2.5">Fila de Tarefas</span>
@@ -574,7 +581,7 @@
   </script>
 
   <!-- Integração Chatwoot (carrega apenas se configurado) -->
-  {% if request.state.chatwoot_token %}
+  {% if request.state.chatwoot_token and (not user or user.nivel not in ['ADMIN', 'MASTER']) %}
   <script>
     (function(d,t) {
       var BASE_URL="{{ request.state.chatwoot_base_url | default('https://chat.janiopontes.com.br') }}";

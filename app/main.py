@@ -171,3 +171,12 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
 @app.get("/htmx-test", response_class=HTMLResponse)
 async def htmx_test(request: Request):
     return "<p class='text-green-600 font-bold'>Requisição HTMX funcionou com sucesso!</p>"
+
+@app.get("/atendimento", response_class=HTMLResponse)
+async def atendimento_view(request: Request, current_user: models.Usuario = Depends(require_login)):
+    chatwoot_url = getattr(request.state, "chatwoot_base_url", "https://chat.janiopontes.com.br")
+    return templates.TemplateResponse(request, "atendimento.html", {
+        "request": request,
+        "user": current_user,
+        "chatwoot_url": chatwoot_url
+    })
