@@ -99,7 +99,7 @@
         {% set acao = (t.acao or 'ENVIAR')|upper %}
         <div class="task-card flex items-center justify-between p-2.5 bg-white border border-slate-100 rounded-lg shadow-sm hover:shadow hover:bg-slate-50 transition group cursor-pointer border-l-4 {% if t.status == 'ATRASADO' %}border-l-red-500{% elif 'COMUNICAR' in acao %}border-l-indigo-500{% elif 'ARQUIVAR' in acao %}border-l-slate-400{% elif 'AUDITAR' in acao %}border-l-amber-400{% else %}border-l-emerald-500{% endif %}"
              id="row-{{ t.id }}"
-             onclick="abrirModal('{{ t.id }}', '{{ t.cliente }}', '{{ t.obrigacao }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento }}', '{{ t.mes_ano }}', '{{ t.precisa_revisao_flag }}')">
+             onclick="abrirModal('{{ t.id }}', '{{ t.cliente | string | replace(\"'\", \"\\\\'\") }}', '{{ t.obrigacao | string | replace(\"'\", \"\\\\'\") }}', '{{ t.vencimento.strftime('%d/%m/%Y') if t.vencimento else '-' }}', '{{ t.acao or 'ENVIAR' }}', '{{ t.departamento | string | replace(\"'\", \"\\\\'\") }}', '{{ t.mes_ano }}', '{{ t.precisa_revisao_flag }}')">
             
             <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
                 <!-- Info Principal: Cliente e Obrigação -->
