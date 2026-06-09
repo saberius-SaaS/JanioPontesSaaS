@@ -513,21 +513,7 @@
         </div>
       </div>
 
-      <!-- Teste HTMX -->
-      <div class="card-premium p-6">
-        <div class="relative z-10">
-          <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[10px] mb-2"><i class="fa-solid fa-plug mr-2 text-indigo-400"></i> Teste de Integração HTMX</h3>
-          <p class="text-slate-500 mb-4 text-sm">Verifique se o backend FastAPI e o frontend reativo estão se comunicando perfeitamente.</p>
-          <div class="flex items-center space-x-6">
-            <button hx-get="/htmx-test" hx-target="#htmx-result" hx-swap="innerHTML" class="px-6 py-2.5 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-200 transition-all hover:-translate-y-0.5 text-xs uppercase tracking-widest">
-              <i class="fa-solid fa-bolt mr-2"></i>Disparar Requisição
-            </button>
-            <div id="htmx-result" class="text-slate-400 text-sm italic border-l-2 border-slate-200 pl-4 py-1">
-              Nenhuma requisição feita ainda.
-            </div>
-          </div>
-        </div>
-      </div>
+
       {% endblock %}
 
     </div>
