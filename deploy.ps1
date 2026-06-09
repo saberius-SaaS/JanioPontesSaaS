@@ -104,7 +104,12 @@ $ENV_VARS = @(
     "GMAIL_DELEGATED_USER=janiopontes@janiopontes.com.br",
     "STORAGE_MODE=production",
     "GCS_BUCKET_NAME=janio-pontes-saas-docs",
-    "GOOGLE_CLIENT_ID=471313311249-sda2g2e9m40l6ui02m1vut9i3glgu40m.apps.googleusercontent.com"
+    "GOOGLE_CLIENT_ID=471313311249-sda2g2e9m40l6ui02m1vut9i3glgu40m.apps.googleusercontent.com",
+    "CHATWOOT_BASE_URL=https://chat.janiopontes.com.br",
+    "CHATWOOT_ACCOUNT_ID=1",
+    "CHATWOOT_INBOX_ID=1",
+    "CHATWOOT_WEB_TOKEN=VD2dxy7b93oDV3ZFvfg28LtK",
+    "CHATWOOT_API_TOKEN=EskrAALRW9c8ex8XcdB9iUxZ"
 ) -join ","
 
 gcloud run deploy $CLOUDRUN_SVC `

@@ -601,7 +601,18 @@
         window.chatwootSDK.run({
           websiteToken: '{{ request.state.chatwoot_token }}',
           baseUrl: BASE_URL
-        })
+        });
+        
+        {% if user %}
+        // Identificação automática do usuário logado
+        window.addEventListener("chatwoot:ready", function () {
+          window.$chatwoot.setUser('{{ user.id }}', {
+            email: '{{ user.email }}',
+            name: '{{ user.nome }}'
+            // avatar_url: '' // Opcional
+          });
+        });
+        {% endif %}
       }
     })(document,"script");
   </script>

@@ -30,7 +30,7 @@ Quando todos os testes forem aprovados, basta alterar **UMA variável** em dois 
 De `EMAIL_MODE=intercept` para `EMAIL_MODE=production`.
 
 ## 🔧 Fase 3: Módulos Pendentes e Próximos Passos (Durante os testes)
-- [ ] **Integração Chatwoot x FastAPI**: Conectar o Portal (SaaS) ao Chatwoot via Webhooks e envio outbound. *(A Infraestrutura já está 100% pronta e rodando em chat.janiopontes.com.br).*
+- [x] **Integração Chatwoot x FastAPI**: Conectar o Portal (SaaS) ao Chatwoot via Webhooks e envio outbound. *(A Infraestrutura já está 100% pronta e rodando em chat.janiopontes.com.br).*
 - [ ] **Notificações via WhatsApp**: Conectar a API oficial no Chatwoot e desligar o Maxbot (GAS Legacy).
 
 ## 🌪️ Fase 4: Cutover (A Grande Virada)

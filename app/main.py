@@ -68,9 +68,10 @@ def ensure_schema_updates():
 # Middleware para injetar variáveis globais nos templates e Headers de Segurança
 @app.middleware("http")
 async def add_global_template_context_and_security(request: Request, call_next):
+    from app.core.config import settings
     # Contexto para o template
-    request.state.chatwoot_token = os.getenv("CHATWOOT_TOKEN", "")
-    request.state.chatwoot_base_url = os.getenv("CHATWOOT_BASE_URL", "https://chat.janiopontes.com.br")
+    request.state.chatwoot_token = settings.CHATWOOT_WEB_TOKEN
+    request.state.chatwoot_base_url = settings.CHATWOOT_BASE_URL
     
     response = await call_next(request)
     
