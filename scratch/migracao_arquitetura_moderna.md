@@ -31,7 +31,7 @@ De `EMAIL_MODE=intercept` para `EMAIL_MODE=production`.
 
 ## 🔧 Fase 3: Módulos Pendentes e Próximos Passos (Durante os testes)
 - [x] **Integração Chatwoot x FastAPI**: Conectar o Portal (SaaS) ao Chatwoot via Webhooks e envio outbound. *(A Infraestrutura já está 100% pronta e rodando em chat.janiopontes.com.br).*
-- [ ] **Notificações via WhatsApp**: Conectar a API oficial no Chatwoot e desligar o Maxbot (GAS Legacy).
+- [x] **Notificações via WhatsApp**: Conectar a API oficial no Chatwoot e desligar o Maxbot (GAS Legacy).
 
 ## 🌪️ Fase 4: Cutover (A Grande Virada)
 No dia escolhido para o lançamento oficial:
