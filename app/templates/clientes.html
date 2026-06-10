@@ -93,10 +93,10 @@
                             <select name="fiscal" class="glass-input w-1/2">
                                 <option value="">— Nenhuma —</option>
                                 {% for eq in equipes if eq.departamento == 'FISCAL' %}
-                                <option value="{{ eq.nome }}">{{ eq.nome }}</option>
+                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
                                 {% endfor %}
                             </select>
-                            <input type="email" name="email_fiscal" placeholder="E-mail do cliente" class="glass-input w-1/2">
+                            <input type="email" name="email_fiscal" placeholder="E-mail do cliente (Fiscal)" class="glass-input w-1/2">
                         </div>
                     </div>
                     
@@ -106,10 +106,10 @@
                             <select name="contabil" class="glass-input w-1/2">
                                 <option value="">— Nenhuma —</option>
                                 {% for eq in equipes if eq.departamento == 'CONTABIL' %}
-                                <option value="{{ eq.nome }}">{{ eq.nome }}</option>
+                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
                                 {% endfor %}
                             </select>
-                            <input type="email" name="email_contabil" placeholder="E-mail do cliente" class="glass-input w-1/2">
+                            <input type="email" name="email_contabil" placeholder="E-mail do cliente (Contábil)" class="glass-input w-1/2">
                         </div>
                     </div>
                     
@@ -119,10 +119,10 @@
                             <select name="pessoal" class="glass-input w-1/2">
                                 <option value="">— Nenhuma —</option>
                                 {% for eq in equipes if eq.departamento == 'PESSOAL' %}
-                                <option value="{{ eq.nome }}">{{ eq.nome }}</option>
+                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
                                 {% endfor %}
                             </select>
-                            <input type="email" name="email_pessoal" placeholder="E-mail do cliente" class="glass-input w-1/2">
+                            <input type="email" name="email_pessoal" placeholder="E-mail do cliente (Pessoal)" class="glass-input w-1/2">
                         </div>
                     </div>
                     
@@ -132,10 +132,10 @@
                             <select name="societario" class="glass-input w-1/2">
                                 <option value="">— Nenhuma —</option>
                                 {% for eq in equipes if eq.departamento == 'SOCIETARIO' %}
-                                <option value="{{ eq.nome }}">{{ eq.nome }}</option>
+                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
                                 {% endfor %}
                             </select>
-                            <input type="email" name="email_societario" placeholder="E-mail do cliente" class="glass-input w-1/2">
+                            <input type="email" name="email_societario" placeholder="E-mail do cliente (Societário)" class="glass-input w-1/2">
                         </div>
                     </div>
 
