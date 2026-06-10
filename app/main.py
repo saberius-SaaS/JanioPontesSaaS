@@ -98,36 +98,6 @@ app.include_router(regra.router, tags=["Regras e Obrigações"])
 app.include_router(usuario.router, tags=["Usuários"])
 app.include_router(equipe.router, tags=["Equipes"])
 
-@app.get("/migracao-tarefas-equipes")
-def migracao_tarefas_equipes(db: Session = Depends(get_db)):
-    from sqlalchemy import text
-    from app.models import Tarefa
-    
-    try:
-        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
-    except Exception:
-        pass
-        
-    tarefas = db.query(Tarefa).all()
-    atualizadas = 0
-    
-    for t in tarefas:
-        if not t.departamento: continue
-        dep = t.departamento.upper()
-        
-        nova_equipe = None
-        if dep == 'FISCAL': nova_equipe = 'Fiscal A'
-        elif dep == 'CONTABIL': nova_equipe = 'Contábil A'
-        elif dep == 'PESSOAL': nova_equipe = 'Pessoal A'
-        elif dep == 'SOCIETARIO': nova_equipe = 'Societário A'
-        
-        if nova_equipe and t.responsavel != nova_equipe:
-            t.responsavel = nova_equipe
-            atualizadas += 1
-            
-    db.commit()
-    return {"status": "sucesso", "tarefas_atualizadas": atualizadas, "aviso": "Os emails foram substituídos pelas equipes!"}
-
 app.include_router(perfil.router, tags=["Perfis"])
 app.include_router(tipo_tarefa.router, tags=["Tipos de Tarefa"])
 app.include_router(protocolo.router, tags=["Protocolos"])

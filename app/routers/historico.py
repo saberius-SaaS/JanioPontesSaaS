@@ -24,7 +24,7 @@ async def list_historico(
     if mes:
         query = query.filter(models.HistoricoTarefa.mes_ano == mes)
     
-    historicos = query.order_by(models.HistoricoTarefa.vencimento.desc()).limit(300).all()
+    historicos = query.order_by(models.HistoricoTarefa.criado_em.desc()).limit(300).all()
     
     # Busca meses disponíveis para o filtro
     meses_raw = db.query(models.HistoricoTarefa.mes_ano).filter(
