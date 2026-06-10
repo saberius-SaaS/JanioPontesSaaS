@@ -730,6 +730,7 @@
 
       // Interceptar hx-confirm do HTMX para usar nosso modal
       document.addEventListener('htmx:confirm', function(e) {
+          if (!e.detail.question) return;
           e.preventDefault();
           showConfirm(e.detail.question).then(function(result) {
               if (result) e.detail.issueRequest(true); 

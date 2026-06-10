@@ -51,7 +51,7 @@ def obter_email_cliente(db: Session, tenant_id: str, nome_cliente: str, departam
 
 def registrar_protocolo(db: Session, tenant_id: str, tarefa, protocolo: str, 
                         email_destino: str, link_arquivo: str, responsavel: str,
-                        status_envio: str = "ENVIADO") -> models.Protocolo:
+                        status_envio: str = "ENVIADO", baixa_automatica: bool = False) -> models.Protocolo:
     """Registra o protocolo de entrega no banco."""
     prot = models.Protocolo(
         tenant_id=tenant_id,
@@ -65,7 +65,8 @@ def registrar_protocolo(db: Session, tenant_id: str, tarefa, protocolo: str,
         link_arquivo=link_arquivo,
         status_envio=status_envio,
         vcto_legal=tarefa.vencimento_legal,
-        acao=tarefa.acao
+        acao=tarefa.acao,
+        conf_recto=datetime.datetime.now(datetime.timezone.utc) if baixa_automatica else None
     )
     db.add(prot)
     return prot
@@ -440,11 +441,19 @@ async def finalizar_tarefa(
     tarefa.status = status_final
     tarefa.protocolo = protocolo
     
+    # Define se o protocolo já nasce "baixado" (ex: Comunicados, Arquivamentos ou Envios sem anexo onde cliente não clica em link)
+    deve_baixar = False
+    if "COMUNICAR" in acao or "ARQUIVAR" in acao:
+        deve_baixar = True
+    elif "ENVIAR" in acao and not links_gerados:
+        deve_baixar = True
+
     # Registra protocolo
     registrar_protocolo(
         db, current_user.tenant_id, tarefa, protocolo,
         email_destino, link_arquivo, current_user.nome,
-        status_envio="REVISAO" if precisa_revisao else "ENVIADO"
+        status_envio="REVISAO" if precisa_revisao else "ENVIADO",
+        baixa_automatica=deve_baixar
     )
     
     # Só envia email e arquiva se NÃO for revisão

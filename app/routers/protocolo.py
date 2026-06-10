@@ -160,8 +160,18 @@ async def baixa_manual_protocolo(
         db.commit()
         logger.info(f"[BAIXA] Protocolo {protocolo.protocolo} ({protocolo.cliente}) marcado como lido por {current_user.nome}")
     
-    # Retorna uma div vazia para remover o card da lista usando htmx (hx-swap="outerHTML")
-    return HTMLResponse(content="")
+    # Atualiza contagem
+    pendentes_count = db.query(models.Protocolo).filter(
+        models.Protocolo.conf_recto == None,
+        models.Protocolo.tenant_id == current_user.tenant_id
+    ).count()
+
+    html_resposta = f"""
+    <div style='display: none;'></div>
+    <span id="badge-pendentes-count" hx-swap-oob="true" class="bg-orange-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm">{pendentes_count}</span>
+    """
+    
+    return HTMLResponse(content=html_resposta)
 
 
 def _extrair_links(link_arquivo: str) -> list:
