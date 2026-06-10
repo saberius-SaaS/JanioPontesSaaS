@@ -113,6 +113,21 @@ def migracao_equipes_clientes(db: Session = Depends(get_db)):
     db.commit()
     return {"status": "sucesso", "clientes_encontrados": atualizados, "aviso": "Todos os clientes foram forçados para as equipes A"}
 
+@app.get("/debug-db")
+def debug_db(db: Session = Depends(get_db)):
+    from sqlalchemy import text
+    from app.models import Cliente, Usuario, Equipe
+    import os
+    return {
+        "DB_HOST": os.getenv("DB_HOST"),
+        "DB_NAME": os.getenv("DB_NAME"),
+        "DB_USER": os.getenv("DB_USER"),
+        "clientes_count": db.query(Cliente).count(),
+        "usuarios_count": db.query(Usuario).count(),
+        "equipes_count": db.query(Equipe).count(),
+        "db_current_database": db.execute(text("SELECT current_database()")).scalar()
+    }
+
 app.include_router(perfil.router, tags=["Perfis"])
 app.include_router(tipo_tarefa.router, tags=["Tipos de Tarefa"])
 app.include_router(protocolo.router, tags=["Protocolos"])
