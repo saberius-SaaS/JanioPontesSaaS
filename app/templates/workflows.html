@@ -47,7 +47,7 @@
                         <button onclick="abrirModalWorkflow('{{ wf.id }}', '{{ wf.fase_atual }}', '{{ wf.proxima_fase }}', '{{ wf.dias }}', '{{ wf.departamento or '' }}', '{{ wf.acao or 'ENVIAR' }}', '{{ wf.responsavel_padrao or '' }}')" class="text-indigo-500 hover:text-indigo-700 px-2 transition-colors">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
-                        <form action="/workflows/{{ wf.id }}/excluir" method="POST" class="inline" onsubmit="return confirm('Tem certeza que deseja excluir esta regra de encadeamento?');">
+                        <form action="/workflows/{{ wf.id }}/excluir" method="POST" class="inline" onsubmit="event.preventDefault(); showConfirm('Tem certeza que deseja excluir esta regra de encadeamento?').then(res => { if(res) this.submit(); });">
                             <button type="submit" class="text-red-500 hover:text-red-700 px-2 transition-colors">
                                 <i class="fa-solid fa-trash"></i>
                             </button>

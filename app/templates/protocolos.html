@@ -109,21 +109,25 @@ function filtrarCards(inputId, containerId) {
 async function abrirArquivo(protocoloId) {
     try {
         const resp = await fetch(`/protocolos/${protocoloId}/arquivo`);
-        if (resp.redirected) {
-            window.open(resp.url, '_blank');
+        if (!resp.ok) {
+            const data = await resp.json().catch(() => ({}));
+            showToast('Falha no Acesso', data.detail || 'Erro ao comunicar com o servidor.', 'error');
             return;
         }
+        
         const data = await resp.json();
         if (data.tipo === 'info') {
-            alert('Informação do protocolo:\n\n' + data.conteudo);
+            showToast('Informação do Documento', data.conteudo, 'info');
+        } else if (data.tipo === 'unico') {
+            window.open(data.link, '_blank');
         } else if (data.tipo === 'multiplos') {
             // Abre todos os links em novas abas
             data.links.forEach(link => window.open(link, '_blank'));
         } else if (data.detail) {
-            alert('Erro: ' + data.detail);
+            showToast('Falha no Acesso', data.detail, 'error');
         }
     } catch (e) {
-        alert('Erro ao abrir arquivo: ' + e.message);
+        showToast('Erro Inesperado', e.message, 'error');
     }
 }
 </script>

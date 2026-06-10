@@ -198,8 +198,8 @@ async def abrir_arquivo_protocolo(
         return JSONResponse(content={"tipo": "info", "conteudo": info})
     
     if len(links) == 1:
-        # Redireciona direto ao arquivo
-        return RedirectResponse(url=links[0], status_code=302)
+        # Retorna o link para o front abrir, evitando erro de CORS no fetch se fosse RedirectResponse
+        return JSONResponse(content={"tipo": "unico", "link": links[0]})
     
     # Múltiplos arquivos - retorna JSON para o front tratar
     return JSONResponse(content={"tipo": "multiplos", "links": links})

@@ -24,7 +24,7 @@
             Este serviço deve ser acionado manualmente quando você cadastra um novo cliente com datas retroativas, altera as regras de obrigações, ou para corrigir distorções. O motor varrerá toda a base e gerará as obrigações faltantes no mês corrente.
         </p>
 
-        <form action="/ferramentas/gerador" method="POST" onsubmit="return confirm('ATENÇÃO: Deseja rodar o motor gerador de tarefas agora? Isso fará o sistema recalcular e gerar as tarefas faltantes para todos os clientes ativos.');">
+        <form action="/ferramentas/gerador" method="POST" onsubmit="event.preventDefault(); showConfirm('Deseja rodar o motor gerador de tarefas agora? Isso fará o sistema recalcular e gerar as tarefas faltantes para todos os clientes ativos.', 'Atenção').then(res => { if(res) this.submit(); });">
             <button type="submit" class="w-full bg-jp-navy hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all text-sm flex items-center justify-center gap-2">
                 <i class="fa-solid fa-play"></i> Rodar Gerador de Tarefas Agora
             </button>
@@ -43,7 +43,7 @@
             </div>
         </div>
         
-        <form action="/ferramentas/comunicado" method="POST" class="space-y-4" onsubmit="return confirm('Confirmar o envio do Comunicado Oficial?');">
+        <form action="/ferramentas/comunicado" method="POST" class="space-y-4" onsubmit="event.preventDefault(); showConfirm('Confirmar o envio do Comunicado Oficial?').then(res => { if(res) this.submit(); });">
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Público Alvo</label>
                 <select name="alvo" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">

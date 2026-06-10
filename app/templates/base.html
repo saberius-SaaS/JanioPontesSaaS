@@ -578,6 +578,60 @@
             }
         }
     }
+
+    // Sistema de Toast Global (Substitui alerts do navegador)
+    function showToast(title, message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = 'pointer-events-auto'; // Re-enable pointer events for the toast itself
+        
+        let borderClass = 'border-l-indigo-500';
+        let iconClass = 'fa-info-circle text-indigo-500';
+        
+        if (type === 'success') {
+            borderClass = 'border-l-emerald-500';
+            iconClass = 'fa-check-circle text-emerald-500';
+        } else if (type === 'error') {
+            borderClass = 'border-l-red-500';
+            iconClass = 'fa-circle-exclamation text-red-500';
+        } else if (type === 'warning') {
+            borderClass = 'border-l-amber-500';
+            iconClass = 'fa-triangle-exclamation text-amber-500';
+        }
+
+        const baseClasses = `transform transition-all duration-300 translate-y-8 opacity-0 flex items-start gap-3 p-4 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 border-l-4 bg-white ${borderClass} w-80 max-w-[90vw]`;
+        toast.innerHTML = `
+            <div class="${baseClasses}">
+                <div class="mt-0.5 shrink-0"><i class="fa-solid ${iconClass} text-lg"></i></div>
+                <div class="flex-1 min-w-0">
+                    ${title ? `<h4 class="text-sm font-bold text-slate-800 mb-0.5">${title}</h4>` : ''}
+                    <p class="text-xs text-slate-600 break-words whitespace-pre-wrap">${message}</p>
+                </div>
+                <button onclick="const t = this.closest('.transform'); t.classList.add('opacity-0', 'scale-95'); setTimeout(() => t.parentElement.remove(), 300);" class="shrink-0 text-slate-400 hover:text-slate-600 transition-colors p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        `;
+
+        container.appendChild(toast);
+
+        // Entrada
+        requestAnimationFrame(() => {
+            const inner = toast.firstElementChild;
+            inner.classList.remove('translate-y-8', 'opacity-0');
+        });
+
+        // Saída automática
+        setTimeout(() => {
+            if (toast.parentElement) {
+                const inner = toast.firstElementChild;
+                inner.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    if (toast.parentElement) toast.remove();
+                }, 300);
+            }
+        }, 5000);
+    }
   </script>
 
   <!-- Integração Chatwoot (carrega apenas se configurado) -->
@@ -610,6 +664,78 @@
     })(document,"script");
   </script>
   {% endif %}
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-3 pointer-events-none"></div>
+
+  <!-- Custom Confirm Modal -->
+  <div id="custom-confirm-modal" class="hidden fixed inset-0 z-[150] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0" id="confirm-overlay"></div>
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col relative z-10 transform transition-all scale-95 opacity-0" id="confirm-box">
+          <div class="p-6 text-center">
+              <div class="w-16 h-16 rounded-full bg-amber-100 text-amber-500 mx-auto flex items-center justify-center mb-4">
+                  <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+              </div>
+              <h3 class="font-bold text-jp-navy text-lg mb-2" id="confirm-title">Confirmação</h3>
+              <p class="text-sm text-slate-600 mb-6" id="confirm-message">Tem certeza que deseja realizar esta ação?</p>
+              
+              <div class="flex gap-3 justify-center">
+                  <button type="button" id="confirm-btn-cancel" class="px-5 py-2.5 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors flex-1">Cancelar</button>
+                  <button type="button" id="confirm-btn-ok" class="px-5 py-2.5 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex-1">Confirmar</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <script>
+      // Sistema Custom Confirm
+      function showConfirm(message, title = "Atenção") {
+          return new Promise((resolve) => {
+              const modal = document.getElementById('custom-confirm-modal');
+              const overlay = document.getElementById('confirm-overlay');
+              const box = document.getElementById('confirm-box');
+              
+              document.getElementById('confirm-title').textContent = title;
+              document.getElementById('confirm-message').textContent = message;
+              
+              modal.classList.remove('hidden');
+              // trigger animation
+              requestAnimationFrame(() => {
+                  overlay.classList.remove('opacity-0');
+                  box.classList.remove('scale-95', 'opacity-0');
+              });
+
+              const cleanup = () => {
+                  overlay.classList.add('opacity-0');
+                  box.classList.add('scale-95', 'opacity-0');
+                  setTimeout(() => {
+                      modal.classList.add('hidden');
+                  }, 200);
+                  
+                  document.getElementById('confirm-btn-ok').onclick = null;
+                  document.getElementById('confirm-btn-cancel').onclick = null;
+              };
+
+              document.getElementById('confirm-btn-ok').onclick = () => {
+                  cleanup();
+                  resolve(true);
+              };
+              
+              document.getElementById('confirm-btn-cancel').onclick = () => {
+                  cleanup();
+                  resolve(false);
+              };
+          });
+      }
+
+      // Interceptar hx-confirm do HTMX para usar nosso modal
+      document.addEventListener('htmx:confirm', function(e) {
+          e.preventDefault();
+          showConfirm(e.detail.question).then(function(result) {
+              if (result) e.detail.issueRequest(true); 
+          });
+      });
+  </script>
 
   {% block modals %}{% endblock %}
   {% block scripts %}{% endblock %}
