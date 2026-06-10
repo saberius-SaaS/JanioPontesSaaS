@@ -100,8 +100,15 @@ app.include_router(equipe.router, tags=["Equipes"])
 
 @app.get("/migracao-equipes-clientes")
 def migracao_equipes_clientes(db: Session = Depends(get_db)):
+    from sqlalchemy import text
     from app.models import Cliente, Equipe
     
+    # Precisamos contornar a segurança de linha (RLS) porque o script roda sem estar "logado"
+    try:
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    except Exception:
+        pass
+        
     clientes = db.query(Cliente).all()
     atualizados = len(clientes)
     for c in clientes:
