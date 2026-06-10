@@ -103,16 +103,15 @@ def migracao_equipes_clientes(db: Session = Depends(get_db)):
     from app.models import Cliente, Equipe
     
     clientes = db.query(Cliente).all()
-    atualizados = 0
+    atualizados = len(clientes)
     for c in clientes:
-        if c.contabil and c.contabil.strip(): c.contabil = "Contábil A"
-        if c.fiscal and c.fiscal.strip(): c.fiscal = "Fiscal A"
-        if c.pessoal and c.pessoal.strip(): c.pessoal = "Pessoal A"
-        if c.societario and c.societario.strip(): c.societario = "Societário A"
-        atualizados += 1
+        c.contabil = "Contábil A"
+        c.fiscal = "Fiscal A"
+        c.pessoal = "Pessoal A"
+        c.societario = "Societário A"
     
     db.commit()
-    return {"status": "sucesso", "clientes_atualizados": atualizados}
+    return {"status": "sucesso", "clientes_encontrados": atualizados, "aviso": "Todos os clientes foram forçados para as equipes A"}
 
 app.include_router(perfil.router, tags=["Perfis"])
 app.include_router(tipo_tarefa.router, tags=["Tipos de Tarefa"])
