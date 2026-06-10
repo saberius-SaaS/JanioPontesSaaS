@@ -167,7 +167,6 @@ async def baixa_manual_protocolo(
     ).count()
 
     html_resposta = f"""
-    <div style='display: none;'></div>
     <span id="badge-pendentes-count" hx-swap-oob="true" class="bg-orange-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm">{pendentes_count}</span>
     """
     
