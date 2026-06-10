@@ -225,22 +225,33 @@ async def responder_solicitacao_publica(
         resposta_texto += f"\n[ARQUIVO ANEXADO]: {link}"
         
     solic.pedido = solic.pedido + resposta_texto
+    
+    # Extrai dados antes do commit para evitar ObjectDeletedError no lazy-load pós-commit
+    s_responsavel = solic.responsavel
+    s_tenant_id = solic.tenant_id
+    s_cliente = solic.cliente
     db.commit()
     
-    if solic.responsavel:
+    if s_responsavel:
+        # Precisamos reativar o bypass para buscar o usuário responsável (pois o commit encerrou a transação)
+        try:
+            db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+        except Exception:
+            pass
+            
         user_responsavel = db.query(models.Usuario).filter(
-            models.Usuario.nome == solic.responsavel,
-            models.Usuario.tenant_id == solic.tenant_id
+            models.Usuario.nome == s_responsavel,
+            models.Usuario.tenant_id == s_tenant_id
         ).first()
         if user_responsavel and user_responsavel.email:
-            assunto = f"Solicitação Respondida: {solic.cliente}"
+            assunto = f"Solicitação Respondida: {s_cliente}"
             corpo = f"""
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
                 <div style="background: #10b981; color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
                     <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">CLIENTE RESPONDEU</h1>
                 </div>
                 <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
-                    <p>O cliente <strong>{solic.cliente}</strong> respondeu a sua solicitação.</p>
+                    <p>O cliente <strong>{s_cliente}</strong> respondeu a sua solicitação.</p>
                     <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; white-space: pre-wrap;">{mensagem or "Nenhuma mensagem enviada."}</div>
                     <p><a href="{link or '#'}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px;">Acessar Anexo (se houver)</a></p>
                 </div>
