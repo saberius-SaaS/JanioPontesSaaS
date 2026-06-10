@@ -73,6 +73,9 @@ async def create_solicitacao(
         responsavel=current_user.nome
     )
     db.add(nova)
+    
+    # Store variable before commit to avoid lazy-load RLS issues
+    resp_nome = current_user.nome 
     db.commit()
     
     if email:
@@ -92,7 +95,7 @@ async def create_solicitacao(
                 <p style="text-align: center; margin: 30px 0;">
                     <a href='{request.base_url}s/{id_legado_gerado}' style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 12px;">Responder Solicitação</a>
                 </p>
-                <p style="color: #64748b; font-size: 12px;">Responsável: {current_user.nome}</p>
+                <p style="color: #64748b; font-size: 12px;">Responsável: {resp_nome}</p>
             </div>
         </div>
         """
@@ -113,11 +116,18 @@ async def cobrar_solicitacao(
     ).first()
     
     if solic:
+        # Extrair variáveis antes do commit
+        resp_nome = current_user.nome
+        cli_nome = solic.cliente
+        ped = solic.pedido
+        idl = solic.id_legado
+        eml = solic.email
+
         solic.qtd_avisos = (solic.qtd_avisos or 0) + 1
         solic.ultima_cobranca = datetime.now()
         db.commit()
         
-        if solic.email:
+        if eml:
             assunto = f"Lembrete: Solicitação Janio Pontes Contabilidade"
             corpo = f"""
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
@@ -127,18 +137,18 @@ async def cobrar_solicitacao(
                 </div>
                 <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
                     <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a),</p>
-                    <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Gostaríamos de relembrar a seguinte solicitação pendente para <strong>{solic.cliente}</strong>:</p>
+                    <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Gostaríamos de relembrar a seguinte solicitação pendente para <strong>{cli_nome}</strong>:</p>
                     <div style="background: #fffbeb; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fde68a;">
-                        <p style="margin: 0; font-size: 14px; color: #92400e; white-space: pre-wrap;">{solic.pedido}</p>
+                        <p style="margin: 0; font-size: 14px; color: #92400e; white-space: pre-wrap;">{ped}</p>
                     </div>
                     <p style="text-align: center; margin: 30px 0;">
-                        <a href='{request.base_url}s/{solic.id_legado}' style="display: inline-block; background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 12px;">Responder Solicitação</a>
+                        <a href='{request.base_url}s/{idl}' style="display: inline-block; background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 12px;">Responder Solicitação</a>
                     </p>
-                    <p style="color: #64748b; font-size: 12px;">Responsável: {current_user.nome}</p>
+                    <p style="color: #64748b; font-size: 12px;">Responsável: {resp_nome}</p>
                 </div>
             </div>
             """
-            await email_service.enviar_email(para=solic.email, assunto=assunto, corpo_html=corpo)
+            await email_service.enviar_email(para=eml, assunto=assunto, corpo_html=corpo)
         
     return RedirectResponse(url="/solicitacoes", status_code=303)
 

@@ -156,9 +156,10 @@ async def baixa_manual_protocolo(
     ).first()
     
     if protocolo:
+        log_msg = f"[BAIXA] Protocolo {protocolo.protocolo} ({protocolo.cliente}) marcado como lido por {current_user.nome}"
         protocolo.conf_recto = datetime.now()
         db.commit()
-        logger.info(f"[BAIXA] Protocolo {protocolo.protocolo} ({protocolo.cliente}) marcado como lido por {current_user.nome}")
+        logger.info(log_msg)
     
     # Atualiza contagem
     pendentes_count = db.query(models.Protocolo).filter(
