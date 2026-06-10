@@ -14,7 +14,7 @@
         
         <!-- Info Secundária: Tags e Metadados (escondido um pouco no mobile para caber, agrupado) -->
         <div class="flex items-center gap-1.5 md:gap-2 flex-shrink-0 flex-wrap">
-            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden lg:inline-flex" title="Responsável"><i class="fa-solid fa-user-shield mr-1"></i>{{ (t.responsavel or 'N/A').split(' ')[0] }}</span>
+            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden lg:inline-flex" title="Responsável"><i class="fa-solid fa-user-shield mr-1"></i>{{ t.responsavel or 'N/A' }}</span>
             
             <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-indigo-100 uppercase">{{ t.departamento[:4] }}</span>
             

@@ -237,6 +237,7 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
     
     clientes = db.query(models.Cliente).filter(models.Cliente.tenant_id == current_user.tenant_id, models.Cliente.status == 'ATIVO').order_by(models.Cliente.cliente).all()
     usuarios = db.query(models.Usuario).filter(models.Usuario.tenant_id == current_user.tenant_id, models.Usuario.ativo == True).all()
+    equipes = db.query(models.Equipe).filter(models.Equipe.tenant_id == current_user.tenant_id).order_by(models.Equipe.nome).all()
     
     # Tipos de tarefas avulsas (tabela dedicada)
     tipos_raw = db.query(models.TipoTarefaAvulsa).filter(
@@ -258,6 +259,7 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
         "tarefas": tarefas,
         "clientes": clientes,
         "usuarios": usuarios,
+        "equipes": equipes,
         "tipos_avulsa": tipos_avulsa,
         "departamentos": departamentos,
         "chatwoot_token": getattr(request.state, "chatwoot_token", ""),

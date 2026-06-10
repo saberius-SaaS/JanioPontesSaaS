@@ -98,42 +98,35 @@ app.include_router(regra.router, tags=["Regras e Obrigações"])
 app.include_router(usuario.router, tags=["Usuários"])
 app.include_router(equipe.router, tags=["Equipes"])
 
-@app.get("/migracao-equipes-clientes")
-def migracao_equipes_clientes(db: Session = Depends(get_db)):
+@app.get("/migracao-tarefas-equipes")
+def migracao_tarefas_equipes(db: Session = Depends(get_db)):
     from sqlalchemy import text
-    from app.models import Cliente, Equipe
+    from app.models import Tarefa
     
-    # Precisamos contornar a segurança de linha (RLS) porque o script roda sem estar "logado"
     try:
         db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
     except Exception:
         pass
         
-    clientes = db.query(Cliente).all()
-    atualizados = len(clientes)
-    for c in clientes:
-        c.contabil = "Contábil A"
-        c.fiscal = "Fiscal A"
-        c.pessoal = "Pessoal A"
-        c.societario = "Societário A"
+    tarefas = db.query(Tarefa).all()
+    atualizadas = 0
     
+    for t in tarefas:
+        if not t.departamento: continue
+        dep = t.departamento.upper()
+        
+        nova_equipe = None
+        if dep == 'FISCAL': nova_equipe = 'Fiscal A'
+        elif dep == 'CONTABIL': nova_equipe = 'Contábil A'
+        elif dep == 'PESSOAL': nova_equipe = 'Pessoal A'
+        elif dep == 'SOCIETARIO': nova_equipe = 'Societário A'
+        
+        if nova_equipe and t.responsavel != nova_equipe:
+            t.responsavel = nova_equipe
+            atualizadas += 1
+            
     db.commit()
-    return {"status": "sucesso", "clientes_encontrados": atualizados, "aviso": "Todos os clientes foram forçados para as equipes A"}
-
-@app.get("/debug-db")
-def debug_db(db: Session = Depends(get_db)):
-    from sqlalchemy import text
-    from app.models import Cliente, Usuario, Equipe
-    import os
-    return {
-        "DB_HOST": os.getenv("DB_HOST"),
-        "DB_NAME": os.getenv("DB_NAME"),
-        "DB_USER": os.getenv("DB_USER"),
-        "clientes_count": db.query(Cliente).count(),
-        "usuarios_count": db.query(Usuario).count(),
-        "equipes_count": db.query(Equipe).count(),
-        "db_current_database": db.execute(text("SELECT current_database()")).scalar()
-    }
+    return {"status": "sucesso", "tarefas_atualizadas": atualizadas, "aviso": "Os emails foram substituídos pelas equipes!"}
 
 app.include_router(perfil.router, tags=["Perfis"])
 app.include_router(tipo_tarefa.router, tags=["Tipos de Tarefa"])
