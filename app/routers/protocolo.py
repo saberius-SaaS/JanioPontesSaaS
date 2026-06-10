@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends, Request, Form, Query, UploadFile, File, BackgroundTasks
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import datetime
 import uuid
+import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app import models
 from app.database import get_db
@@ -142,7 +146,7 @@ async def create_protocolo(
 
 @router.post("/protocolos/{protocolo_id}/baixa")
 async def baixa_manual_protocolo(
-    protocolo_id: int,
+    protocolo_id: str,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -152,8 +156,50 @@ async def baixa_manual_protocolo(
     ).first()
     
     if protocolo:
-        protocolo.conf_recto = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        protocolo.conf_recto = datetime.now()
         db.commit()
+        logger.info(f"[BAIXA] Protocolo {protocolo.protocolo} ({protocolo.cliente}) marcado como lido por {current_user.nome}")
     
     # Retorna uma div vazia para remover o card da lista usando htmx (hx-swap="outerHTML")
     return HTMLResponse(content="")
+
+
+def _extrair_links(link_arquivo: str) -> list:
+    """Extrai URLs limpas do campo link_arquivo, removendo metadados entre colchetes."""
+    if not link_arquivo:
+        return []
+    # Remove tags de metadados [COMUNICADO: ...], [ARQUIVADO], etc.
+    base_link = re.sub(r'\[.*?\]', '', link_arquivo).strip()
+    # Separa múltiplos links por ' | '
+    links = [l.strip() for l in base_link.split(' | ') if l.strip().startswith('http')]
+    return links
+
+
+@router.get("/protocolos/{protocolo_id}/arquivo")
+async def abrir_arquivo_protocolo(
+    protocolo_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
+    """Abre o(s) arquivo(s) anexo(s) do protocolo. Redireciona para o link ou retorna lista."""
+    protocolo = db.query(models.Protocolo).filter(
+        models.Protocolo.id == protocolo_id,
+        models.Protocolo.tenant_id == current_user.tenant_id
+    ).first()
+    
+    if not protocolo:
+        return JSONResponse(status_code=404, content={"detail": "Protocolo não encontrado"})
+    
+    links = _extrair_links(protocolo.link_arquivo)
+    
+    if not links:
+        # Se não há links HTTP, retorna o conteúdo bruto como informação
+        info = protocolo.link_arquivo or "Nenhum arquivo anexado"
+        return JSONResponse(content={"tipo": "info", "conteudo": info})
+    
+    if len(links) == 1:
+        # Redireciona direto ao arquivo
+        return RedirectResponse(url=links[0], status_code=302)
+    
+    # Múltiplos arquivos - retorna JSON para o front tratar
+    return JSONResponse(content={"tipo": "multiplos", "links": links})

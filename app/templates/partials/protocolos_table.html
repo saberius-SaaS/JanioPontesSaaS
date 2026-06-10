@@ -29,7 +29,7 @@
         </td>
         <td class="py-3 px-4 text-right">
             {% if p.link_arquivo and p.link_arquivo != 'Não anexado' %}
-            <button onclick="alert('Documentos/Info:\\n{{ p.link_arquivo }}')" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1" title="Ver Anexo">
+            <button onclick="abrirArquivo('{{ p.id }}')" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1" title="Ver Anexo">
                 <i class="fa-solid fa-paperclip"></i>
             </button>
             {% endif %}
