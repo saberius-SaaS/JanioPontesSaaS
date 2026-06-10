@@ -4,6 +4,7 @@ Mapeamento: DB_USUARIOS (3 colunas originais + tenant + audit)
 """
 from sqlalchemy import Boolean, Column, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.models.base import Base, TenantMixin, gerar_uuid
 
@@ -17,3 +18,5 @@ class Usuario(TenantMixin, Base):
     nome = Column(String(255), nullable=False, comment="Nome de exibição")
     nivel = Column(String(20), nullable=False, default="USER", comment="USER, ADMIN, MASTER, CONSULTOR")
     ativo = Column(Boolean, nullable=False, default=True, comment="Usuário ativo/inativo")
+
+    equipes = relationship("UsuarioEquipe", back_populates="usuario", cascade="all, delete-orphan")

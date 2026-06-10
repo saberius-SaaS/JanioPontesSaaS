@@ -28,10 +28,14 @@ async def list_clientes_page(
     clientes = db.query(models.Cliente).order_by(models.Cliente.cliente).offset(offset).limit(PAGE_SIZE).all()
     total_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
     perfis = db.query(models.Perfil).filter(models.Perfil.status == "ATIVO").order_by(models.Perfil.nome).all()
+    equipes = db.query(models.Equipe).filter(
+        models.Equipe.tenant_id == current_user.tenant_id
+    ).order_by(models.Equipe.departamento, models.Equipe.nome).all()
 
     return templates.TemplateResponse(request, "clientes.html", {
         "clientes": clientes,
         "perfis": perfis,
+        "equipes": equipes,
         "page": page,
         "total_pages": total_pages,
         "total": total,

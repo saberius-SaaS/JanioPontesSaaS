@@ -88,34 +88,54 @@
                     <h4 class="col-span-1 md:col-span-2 text-sm font-bold text-jp-navy mt-4 border-b border-slate-200 pb-2">Departamentos e Roteamento</h4>
                     
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Fiscal (Ref / E-mail)</label>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Fiscal (Equipe / E-mail)</label>
                         <div class="flex gap-2">
-                            <input type="text" name="fiscal" placeholder="Referência" class="glass-input w-1/2">
-                            <input type="email" name="email_fiscal" placeholder="E-mail" class="glass-input w-1/2">
+                            <select name="fiscal" class="glass-input w-1/2">
+                                <option value="">— Nenhuma —</option>
+                                {% for eq in equipes if eq.departamento == 'FISCAL' %}
+                                <option value="{{ eq.nome }}">{{ eq.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="email" name="email_fiscal" placeholder="E-mail do cliente" class="glass-input w-1/2">
                         </div>
                     </div>
                     
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Contábil (Ref / E-mail)</label>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Contábil (Equipe / E-mail)</label>
                         <div class="flex gap-2">
-                            <input type="text" name="contabil" placeholder="Referência" class="glass-input w-1/2">
-                            <input type="email" name="email_contabil" placeholder="E-mail" class="glass-input w-1/2">
+                            <select name="contabil" class="glass-input w-1/2">
+                                <option value="">— Nenhuma —</option>
+                                {% for eq in equipes if eq.departamento == 'CONTABIL' %}
+                                <option value="{{ eq.nome }}">{{ eq.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="email" name="email_contabil" placeholder="E-mail do cliente" class="glass-input w-1/2">
                         </div>
                     </div>
                     
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Pessoal (Ref / E-mail)</label>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Pessoal (Equipe / E-mail)</label>
                         <div class="flex gap-2">
-                            <input type="text" name="pessoal" placeholder="Referência" class="glass-input w-1/2">
-                            <input type="email" name="email_pessoal" placeholder="E-mail" class="glass-input w-1/2">
+                            <select name="pessoal" class="glass-input w-1/2">
+                                <option value="">— Nenhuma —</option>
+                                {% for eq in equipes if eq.departamento == 'PESSOAL' %}
+                                <option value="{{ eq.nome }}">{{ eq.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="email" name="email_pessoal" placeholder="E-mail do cliente" class="glass-input w-1/2">
                         </div>
                     </div>
                     
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Societário (Ref / E-mail)</label>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Societário (Equipe / E-mail)</label>
                         <div class="flex gap-2">
-                            <input type="text" name="societario" placeholder="Referência" class="glass-input w-1/2">
-                            <input type="email" name="email_societario" placeholder="E-mail" class="glass-input w-1/2">
+                            <select name="societario" class="glass-input w-1/2">
+                                <option value="">— Nenhuma —</option>
+                                {% for eq in equipes if eq.departamento == 'SOCIETARIO' %}
+                                <option value="{{ eq.nome }}">{{ eq.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="email" name="email_societario" placeholder="E-mail do cliente" class="glass-input w-1/2">
                         </div>
                     </div>
 

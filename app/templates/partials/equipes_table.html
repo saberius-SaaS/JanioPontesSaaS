@@ -1,0 +1,39 @@
+{% for eq in equipes %}
+<tr class="hover:bg-slate-50 transition-colors group">
+    <td class="px-4 py-3">
+        <span class="px-2 py-1 bg-slate-100 text-slate-600 font-bold text-[10px] rounded uppercase tracking-wider">{{ eq.departamento }}</span>
+    </td>
+    <td class="px-4 py-3 font-semibold text-jp-navy">{{ eq.nome }}</td>
+    <td class="px-4 py-3">
+        <div class="flex flex-wrap gap-2 items-center">
+            {% for membro in eq.membros %}
+            <div class="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium border border-indigo-100">
+                <span>{{ membro.usuario.nome }}</span>
+                <button hx-delete="/equipes/{{ eq.id }}/membros/{{ membro.usuario_id }}" hx-target="#equipes-tbody" class="text-indigo-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                </button>
+            </div>
+            {% endfor %}
+            
+            <form hx-post="/equipes/{{ eq.id }}/membros" hx-target="#equipes-tbody" class="flex items-center gap-1 ml-2">
+                <select name="usuario_id" class="text-xs border-slate-200 rounded p-1 py-0.5 focus:ring-indigo-500" required>
+                    <option value="">+ Adicionar Membro</option>
+                    {% for u in usuarios %}
+                    <option value="{{ u.id }}">{{ u.nome }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="text-emerald-600 hover:text-emerald-800 p-1"><i class="fa-solid fa-check"></i></button>
+            </form>
+        </div>
+    </td>
+    <td class="px-4 py-3 text-right">
+        <button hx-delete="/equipes/{{ eq.id }}" hx-target="#equipes-tbody" hx-confirm="Tem certeza que deseja excluir esta equipe inteira?" class="text-slate-400 hover:text-red-600 transition-colors p-1" title="Excluir Equipe">
+            <i class="fa-regular fa-trash-can"></i>
+        </button>
+    </td>
+</tr>
+{% else %}
+<tr>
+    <td colspan="4" class="px-4 py-8 text-center text-slate-400 italic">Nenhuma equipe cadastrada.</td>
+</tr>
+{% endfor %}

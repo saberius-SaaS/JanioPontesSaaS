@@ -209,14 +209,24 @@ async def list_revisoes(request: Request, db: Session = Depends(get_db), current
 
 @router.get("/tarefas", response_class=HTMLResponse)
 async def list_tarefas(request: Request, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
-    tarefas_raw = db.query(models.Tarefa, models.RegraObrigacao.revisao).outerjoin(
+    from sqlalchemy import or_
+
+    query = db.query(models.Tarefa, models.RegraObrigacao.revisao).outerjoin(
         models.RegraObrigacao,
         (models.RegraObrigacao.tenant_id == models.Tarefa.tenant_id) &
         (models.RegraObrigacao.obrigacao == models.Tarefa.obrigacao)
     ).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status.in_(['PENDENTE', 'ATRASADO'])
-    ).order_by(models.Tarefa.vencimento.asc()).limit(100).all()
+    )
+
+    # Filtrar por equipe/usuário se não for ADMIN/MASTER
+    if current_user.nivel not in ['ADMIN', 'MASTER']:
+        nomes_equipes = [eq.equipe.nome for eq in current_user.equipes]
+        filtros_resp = [current_user.nome, current_user.email] + nomes_equipes
+        query = query.filter(models.Tarefa.responsavel.in_(filtros_resp))
+
+    tarefas_raw = query.order_by(models.Tarefa.vencimento.asc()).limit(100).all()
     
     tarefas = []
     for t, rev in tarefas_raw:
@@ -277,6 +287,12 @@ async def pesquisa_tarefas(request: Request, q: str = "", db: Session = Depends(
             models.Tarefa.departamento.ilike(search_term)
         ))
         
+    # Filtrar por equipe/usuário se não for ADMIN/MASTER
+    if current_user.nivel not in ['ADMIN', 'MASTER']:
+        nomes_equipes = [eq.equipe.nome for eq in current_user.equipes]
+        filtros_resp = [current_user.nome, current_user.email] + nomes_equipes
+        query = query.filter(models.Tarefa.responsavel.in_(filtros_resp))
+
     tarefas_raw = query.order_by(models.Tarefa.vencimento.asc()).limit(100).all()
     
     tarefas = []

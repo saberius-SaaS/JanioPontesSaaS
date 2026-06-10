@@ -1,7 +1,7 @@
 # 🚀 Checklist de Migração — Janio Pontes SaaS
 
 Referências de arquitetura: [RLS Multi-Tenant](./doc_arquitetura_rls_multitenant.md) · [Segurança e Deploy](./doc_seguranca_deploy_gcp.md) · [Chatwoot Infra](./doc_chatwoot_infra.md)
-
+Todos os deploys serão realizados exclusivamente pelo usuario.
 ---
 
 ## ✅ Concluído
