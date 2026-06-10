@@ -24,10 +24,46 @@
   </div>
 
   <iframe 
-    src="{{ chatwoot_url }}/app/login" 
+    id="chatwoot-iframe"
+    src="/chatwoot-sso" 
     class="w-full h-full border-0 absolute inset-0 z-20"
     onload="document.getElementById('iframe-loader').style.display = 'none';"
-    allow="camera; microphone; fullscreen; display-capture; picture-in-picture; clipboard-write"
+    allow="camera; microphone; fullscreen; display-capture; picture-in-picture; clipboard-write; storage-access"
   ></iframe>
+
+  <!-- Painel de Fallback / Aviso de Bloqueio -->
+  <div class="absolute bottom-6 right-6 z-30 bg-white p-4 rounded-xl shadow-xl border border-slate-200 max-w-sm hidden" id="fallback-panel">
+    <div class="flex items-start gap-3">
+      <div class="text-amber-500 mt-0.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <div>
+        <h4 class="text-sm font-bold text-slate-800">Problemas para visualizar?</h4>
+        <p class="text-xs text-slate-600 mt-1 mb-3">Se a tela do chat ficar em branco ou presa no login, seu navegador (como Safari ou Brave) pode estar bloqueando o acesso por segurança.</p>
+        <a href="/chatwoot-sso" target="_blank" class="inline-flex items-center justify-center px-4 py-2 text-xs font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm transition-colors w-full">
+          Abrir Chat em Nova Aba Segura
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1.5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+          </svg>
+        </a>
+        <button onclick="document.getElementById('fallback-panel').style.display='none'" class="text-[10px] text-slate-400 hover:text-slate-600 mt-3 text-center w-full underline">Entendi, fechar aviso</button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<script>
+  // Mostra o painel de fallback após 5 segundos para dar tempo ao iframe de carregar
+  // e apenas se o navegador for conhecido por políticas estritas de cookies (Safari, Brave, etc)
+  setTimeout(() => {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isBrave = (navigator.brave && navigator.brave.isBrave) || false;
+    
+    // Mostra o aviso preventivamente para ajudar os usuários
+    document.getElementById('fallback-panel').style.display = 'block';
+  }, 3000);
+</script>
 {% endblock %}

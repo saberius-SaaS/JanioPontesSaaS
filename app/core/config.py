@@ -15,6 +15,7 @@ class Settings:
     # Chatwoot Configuration
     CHATWOOT_BASE_URL: str = os.getenv("CHATWOOT_BASE_URL", "https://chat.janiopontes.com.br")
     CHATWOOT_API_TOKEN: str = os.getenv("CHATWOOT_API_TOKEN", "") # Access token do administrador (para API)
+    CHATWOOT_PLATFORM_TOKEN: str = os.getenv("CHATWOOT_PLATFORM_TOKEN", "") # Access token da Platform App (para SSO)
     CHATWOOT_ACCOUNT_ID: int = int(os.getenv("CHATWOOT_ACCOUNT_ID", "1"))
     CHATWOOT_INBOX_ID: int = int(os.getenv("CHATWOOT_INBOX_ID", "1")) # Inbox do WhatsApp ou Web
     CHATWOOT_WEB_TOKEN: str = os.getenv("CHATWOOT_WEB_TOKEN", "") # Website Token para o widget

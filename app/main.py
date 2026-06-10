@@ -180,3 +180,28 @@ async def atendimento_view(request: Request, current_user: models.Usuario = Depe
         "user": current_user,
         "chatwoot_url": chatwoot_url
     })
+
+@app.get("/chatwoot-sso")
+async def chatwoot_sso(request: Request, current_user: models.Usuario = Depends(require_login)):
+    """
+    Tenta logar o agente automaticamente no Chatwoot via Platform API.
+    Se não for possível, redireciona para a tela de login manual do Chatwoot.
+    """
+    from app.core.chatwoot_service import chatwoot_service
+    from app.core.config import settings
+    from fastapi.responses import RedirectResponse
+    
+    fallback_url = f"{settings.CHATWOOT_BASE_URL.rstrip('/')}/app/login"
+    
+    # 1. Encontra o agente pelo email
+    agent_id = await chatwoot_service.get_agent_by_email(current_user.email)
+    if not agent_id:
+        return RedirectResponse(url=fallback_url)
+        
+    # 2. Gera o URL de SSO
+    sso_url = await chatwoot_service.get_sso_url(agent_id)
+    if not sso_url:
+        return RedirectResponse(url=fallback_url)
+        
+    # 3. Redireciona com o token
+    return RedirectResponse(url=sso_url)

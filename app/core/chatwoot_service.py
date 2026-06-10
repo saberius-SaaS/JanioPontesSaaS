@@ -114,4 +114,41 @@ class ChatwootService:
             
         return await self.send_message(conversation_id, message)
 
+    async def get_agent_by_email(self, email: str) -> Optional[int]:
+        """
+        Lista agentes da conta e encontra o ID correspondente ao email.
+        """
+        agents = await self._request("GET", "agents")
+        if agents and isinstance(agents, list):
+            for agent in agents:
+                if agent.get("email") == email:
+                    return agent.get("id")
+        return None
+
+    async def get_sso_url(self, user_id: int) -> Optional[str]:
+        """
+        Gera um URL mágico de login para um usuário usando a Platform API.
+        Requer CHATWOOT_PLATFORM_TOKEN.
+        """
+        if not settings.CHATWOOT_PLATFORM_TOKEN:
+            logger.error("CHATWOOT_PLATFORM_TOKEN não configurado. Impossível gerar SSO.")
+            return None
+
+        url = f"{self.base_url}/platform/api/v1/users/{user_id}/login"
+        headers = {
+            "api_access_token": settings.CHATWOOT_PLATFORM_TOKEN,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.request("GET", url, headers=headers, timeout=10.0)
+                response.raise_for_status()
+                data = response.json()
+                return data.get("url")
+            except Exception as e:
+                logger.error(f"Erro na Platform API do Chatwoot ({url}): {str(e)}")
+                return None
+
 chatwoot_service = ChatwootService()
