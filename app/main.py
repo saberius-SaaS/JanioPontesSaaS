@@ -97,6 +97,23 @@ app.include_router(cliente.router, tags=["Clientes"])
 app.include_router(regra.router, tags=["Regras e Obrigações"])
 app.include_router(usuario.router, tags=["Usuários"])
 app.include_router(equipe.router, tags=["Equipes"])
+
+@app.get("/migracao-equipes-clientes")
+def migracao_equipes_clientes(db: Session = Depends(get_db)):
+    from app.models import Cliente, Equipe
+    
+    clientes = db.query(Cliente).all()
+    atualizados = 0
+    for c in clientes:
+        if c.contabil and c.contabil.strip(): c.contabil = "Contábil A"
+        if c.fiscal and c.fiscal.strip(): c.fiscal = "Fiscal A"
+        if c.pessoal and c.pessoal.strip(): c.pessoal = "Pessoal A"
+        if c.societario and c.societario.strip(): c.societario = "Societário A"
+        atualizados += 1
+    
+    db.commit()
+    return {"status": "sucesso", "clientes_atualizados": atualizados}
+
 app.include_router(perfil.router, tags=["Perfis"])
 app.include_router(tipo_tarefa.router, tags=["Tipos de Tarefa"])
 app.include_router(protocolo.router, tags=["Protocolos"])
