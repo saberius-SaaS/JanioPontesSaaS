@@ -725,6 +725,14 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw, status, d
           btnFin.innerHTML = `<i class="fa-solid fa-stamp mr-2"></i> Validar e Encerrar Agora`;
           btnFin.className = "px-6 py-2 text-sm font-black bg-purple-600 hover:bg-purple-700 text-white rounded shadow-lg transition flex items-center uppercase tracking-widest";
           btnFin.onclick = aprovarTarefaWeb;
+          
+          // Exibir área de reprovação para Admin
+          const areaMotivo = document.getElementById('areaMotivoReprovacao');
+          if (areaMotivo) areaMotivo.style.display = 'block';
+          const txtMotivo = document.getElementById('textoMotivoReprovacao');
+          if (txtMotivo) txtMotivo.value = '';
+          const btnReprov = document.getElementById('btnReprovarWeb');
+          if (btnReprov) btnReprov.classList.remove('hidden');
        } else {
           btnFin.disabled = true;
           btnFin.innerHTML = `<i class="fa-solid fa-hourglass-half mr-2"></i> Em Revisão pelo Gerente`;
@@ -736,6 +744,12 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw, status, d
        btnFin.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento`;
        btnFin.className = "px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center";
        btnFin.onclick = finalizarProcessoWeb;
+       
+       // Ocultar área de reprovação para tarefas normais
+       const areaMotivo = document.getElementById('areaMotivoReprovacao');
+       if (areaMotivo) areaMotivo.style.display = 'none';
+       const btnReprov = document.getElementById('btnReprovarWeb');
+       if (btnReprov) btnReprov.classList.add('hidden');
     }
 
     // Show modal fade in
@@ -801,6 +815,75 @@ async function aprovarTarefaWeb() {
             feedback.innerHTML = `<b>Erro:</b> ${errFetch.message}`;
             btnFin.disabled = false;
             btnFin.innerHTML = `<i class="fa-solid fa-rotate-right mr-2"></i> Tentar Novamente`;
+         }
+      }).getUrlParaFetch();
+}
+
+/**
+ * Acionada pelo Administrador para REPROVAR (devolver) uma tarefa em REVISÃO.
+ * Retorna a tarefa ao status PENDENTE para que o responsável corrija e reenvie.
+ */
+async function reprovarTarefaWeb() {
+    if (!tarefaEmFoco || !tarefaEmFoco.id) return;
+    
+    const motivo = (document.getElementById('textoMotivoReprovacao') || {}).value || '';
+    if (motivo.trim().length < 10) {
+       const feedback = document.getElementById('modalFeedback');
+       feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-amber-50 border-amber-200 text-amber-700 block";
+       feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Informe o motivo da devolução (mínimo 10 caracteres).`;
+       return;
+    }
+    
+    const feedback = document.getElementById('modalFeedback');
+    const btnReprov = document.getElementById('btnReprovarWeb');
+    const btnFin = document.getElementById('btnFinalizarWeb');
+    
+    btnReprov.disabled = true;
+    btnReprov.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Devolvendo...`;
+    btnFin.disabled = true;
+    
+    feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-rose-50 border-rose-200 text-rose-700 block";
+    feedback.innerHTML = `<i class="fa-solid fa-rotate-left mr-2 text-rose-500"></i> Comunicando devolução ao servidor...`;
+    
+    google.script.run
+      .withFailureHandler(err => {
+         feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-red-50 border-red-200 text-red-700 block";
+         feedback.textContent = "Erro na Devolução: " + err.message;
+         btnReprov.disabled = false;
+         btnReprov.innerHTML = `<i class="fa-solid fa-rotate-left mr-2"></i> Tentar Devolver Novamente`;
+         btnFin.disabled = false;
+      })
+      .withSuccessHandler(async urlWebApp => {
+         try {
+           const payload = {
+             action: "reprovarTarefa",
+             token: window.GIS_TOKEN,
+             taskId: tarefaEmFoco.id,
+             motivo: motivo.trim()
+           };
+           
+           const resposta = await fetch(urlWebApp, {
+             method: 'POST',
+             body: JSON.stringify(payload),
+             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+           });
+           
+           const result = await resposta.json();
+           if (result.success) {
+             feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-amber-50 border-amber-200 text-amber-700 block";
+             feedback.innerHTML = `<i class="fa-solid fa-rotate-left mr-2 text-amber-500"></i> Tarefa devolvida para correção com sucesso.`;
+             
+             carregarDadosBase(); // Refresh data quietly
+             setTimeout(() => { fecharModalTarefa(); }, 2000);
+           } else {
+             throw new Error(result.message);
+           }
+         } catch (errFetch) {
+            feedback.className = "mt-4 text-center text-xs font-semibold p-3 border rounded bg-red-50 border-red-200 text-red-700 block";
+            feedback.innerHTML = `<b>Erro:</b> ${errFetch.message}`;
+            btnReprov.disabled = false;
+            btnReprov.innerHTML = `<i class="fa-solid fa-rotate-left mr-2"></i> Tentar Novamente`;
+            btnFin.disabled = false;
          }
       }).getUrlParaFetch();
 }

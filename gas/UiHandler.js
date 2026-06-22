@@ -298,6 +298,12 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
+    if (payload.action === "reprovarTarefa") {
+      var resultado = reprovarTarefaRevisao(payload.taskId, payload.motivo, userLevel);
+      return ContentService.createTextOutput(JSON.stringify(resultado))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
     return ContentService.createTextOutput(JSON.stringify({ success: false, message: "Ação não reconhecida" }))
         .setMimeType(ContentService.MimeType.JSON);
         
@@ -454,15 +460,41 @@ function abrirAuditorRegras() {
  */
 function listarArquivosRepositorioInterno(folderId) {
   try {
+    var ss = getSs();
+    var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+    var dataP = wsProt ? wsProt.getDataRange().getValues() : [];
+    
+    // Mapear ID do arquivo para a Obrigação (Nome da Tarefa)
+    var idToTask = {};
+    for (var i = 1; i < dataP.length; i++) {
+       var obrigacao = dataP[i][4]; // Coluna E (Obrigação)
+       var linksRaw = String(dataP[i][7] || ""); // Coluna H (Links)
+       var urls = linksRaw.split(" | ");
+       urls.forEach(function(u) {
+           var cleanUrl = u.trim();
+           if (cleanUrl) {
+              var idMatch = cleanUrl.match(/[-\w]{25,}/);
+              if (idMatch) idToTask[idMatch[0]] = obrigacao;
+           }
+       });
+    }
+
     var folder = DriveApp.getFolderById(folderId);
     var files = folder.getFiles();
     var list = [];
     while (files.hasNext()) {
       var f = files.next();
       if (f.isTrashed()) continue;
+      
+      var fId = f.getId();
+      var thumbUrl = 'https://drive.google.com/thumbnail?id=' + fId + '&sz=w800';
+      
       list.push({
+        id: fId,
         name: f.getName(),
         url: f.getUrl(),
+        taskName: idToTask[fId] || "",
+        thumbUrl: thumbUrl,
         date: Utilities.formatDate(f.getLastUpdated(), "GMT-3", "dd/MM/yyyy HH:mm"),
         size: formatBytes(f.getSize())
       });
@@ -640,6 +672,98 @@ function aprovarTarefaRevisao(taskId, userLevel) {
         invalidarCacheSistema();
         
         return { success: true, message: "Tarefa aprovada e cliente notificado com sucesso." };
+     }
+  }
+  
+  return { success: false, message: "Tarefa não localizada na base de dados." };
+}
+
+/**
+ * REPROVAR TAREFA EM REVISÃO (ADMIN/MASTER/CONSULTOR)
+ * Devolve a tarefa para o operador (status PENDENTE) e envia e-mail com o motivo.
+ */
+function reprovarTarefaRevisao(taskId, motivo, userLevel) {
+  if (userLevel !== "ADMIN" && userLevel !== "MASTER" && userLevel !== "CONSULTOR") {
+    return { success: false, message: "Sem permissão para reprovar tarefas em revisão." };
+  }
+  
+  if (!motivo || motivo.trim().length < 10) {
+    return { success: false, message: "Motivo de reprovação insuficiente." };
+  }
+  
+  var ss = getSs();
+  var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
+  var dataT = wsTarefas.getDataRange().getValues();
+  
+  for (var i = 1; i < dataT.length; i++) {
+     if (String(dataT[i][9]).trim() === String(taskId).trim()) {
+        var rowIdx = i + 1;
+        var statusAtual = String(dataT[i][5]).toUpperCase().trim();
+        var protocolo = String(dataT[i][6]).trim();
+        var responsavel = String(dataT[i][8]).trim();
+        var cliente = String(dataT[i][1]).trim();
+        var obrigacao = String(dataT[i][2]).trim();
+        var vencimento = String(dataT[i][3]).trim();
+        
+        if (statusAtual !== getSafeStatus("REVISAO")) {
+           return { success: false, message: "A tarefa não está em status de REVISÃO." };
+        }
+        
+        // 1. Volta a tarefa para PENDENTE na DB_TAREFAS
+        wsTarefas.getRange(rowIdx, 6).setValue(getSafeStatus("PENDENTE"));
+        
+        // 2. Limpa o protocolo gerado incorretamente
+        wsTarefas.getRange(rowIdx, 7).setValue("");
+        
+        // 3. Marca o protocolo gerado como REPROVADO na DB_PROTOCOLOS
+        if (protocolo) {
+            try {
+                var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+                if (wsProt) {
+                    var dataP = wsProt.getDataRange().getValues();
+                    for (var p = dataP.length - 1; p >= 1; p--) {
+                        if (String(dataP[p][2]).trim() === protocolo) {
+                            wsProt.getRange(p + 1, 9).setValue(getSafeStatus("REPROVADO")); // Col I (Status)
+                            wsProt.getRange(p + 1, 8).setValue("REPROVADO: " + motivo); // Col H (Links/Anotação)
+                            break;
+                        }
+                    }
+                }
+            } catch(e) {
+                registrarLogSistema("PROTOCOLO_REPROV_ERR", e.message);
+            }
+        }
+        
+        // 4. Envia E-mail de notificação ao Responsável
+        if (responsavel && responsavel.indexOf("@") > -1) {
+            try {
+                var assunto = "[REPROVADO] Tarefa devolvida para correção: " + cliente;
+                var htmlBody = "<div style='font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto;'>" +
+                               "<h2 style='color: #e11d48;'>Atenção: Tarefa Devolvida</h2>" +
+                               "<p>Uma tarefa que você enviou para validação foi reprovada pelo setor de revisão.</p>" +
+                               "<table style='width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;'>" +
+                               "<tr><td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Cliente:</strong></td><td style='padding: 8px; border-bottom: 1px solid #ddd;'>" + cliente + "</td></tr>" +
+                               "<tr><td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Obrigação:</strong></td><td style='padding: 8px; border-bottom: 1px solid #ddd;'>" + obrigacao + "</td></tr>" +
+                               "<tr><td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Vencimento:</strong></td><td style='padding: 8px; border-bottom: 1px solid #ddd;'>" + vencimento + "</td></tr>" +
+                               "</table>" +
+                               "<div style='margin-top: 25px; padding: 15px; border-left: 4px solid #e11d48; background-color: #fff1f2; border-radius: 4px;'>" +
+                               "<strong style='color: #be123c;'>Motivo da Reprovação:</strong><br><br>" +
+                               "<div style='color: #881337; white-space: pre-wrap;'>" + motivo + "</div>" +
+                               "</div>" +
+                               "<p style='margin-top: 25px; font-size: 12px; color: #64748b;'>Acesse o sistema operacional para refazer a tarefa e submetê-la novamente.</p>" +
+                               "</div>";
+                               
+                var options = { htmlBody: htmlBody, from: CONFIG_SISTEMA.EMAILS.REMETENTE };
+                GmailApp.sendEmail(responsavel, assunto, "Sua tarefa foi devolvida. Motivo: " + motivo, options);
+            } catch(eNotif) {
+                registrarLogSistema("EMAIL_REPROV_ERR", eNotif.message);
+            }
+        }
+        
+        registrarLogSistema("WORKFLOW_REPROVACAO", "Tarefa " + taskId + " reprovada. Protocolo cancelado.");
+        invalidarCacheSistema();
+        
+        return { success: true, message: "Tarefa devolvida e responsável notificado." };
      }
   }
   

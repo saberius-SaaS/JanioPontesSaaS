@@ -106,9 +106,25 @@ app.include_router(scheduler.router, prefix="/scheduler", tags=["Rotinas Agendad
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
-    pendentes = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id, models.Tarefa.status == 'PENDENTE').count()
-    entregues = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id, models.Tarefa.status == 'ENTREGUE').count()
-    atrasadas = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id, models.Tarefa.status == 'ATRASADO').count()
+    # Fila de Tarefas
+    pendentes = db.query(models.Tarefa).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id, 
+        models.Tarefa.status.in_(['PENDENTE', 'EM ANDAMENTO', 'AGUARDANDO', 'EM_ANDAMENTO'])
+    ).count()
+    
+    entregues_ativas = db.query(models.Tarefa).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id, 
+        models.Tarefa.status.in_(['ENTREGUE', 'CONCLUIDO', 'CONCLUÍDO'])
+    ).count()
+    entregues_historico = db.query(models.HistoricoTarefa).filter(
+        models.HistoricoTarefa.tenant_id == current_user.tenant_id
+    ).count()
+    entregues = entregues_ativas + entregues_historico
+    
+    atrasadas = db.query(models.Tarefa).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id, 
+        models.Tarefa.status.in_(['PENDENTE', 'EM ANDAMENTO', 'AGUARDANDO', 'EM_ANDAMENTO', 'ATRASADO'])
+    ).filter(models.Tarefa.vencimento_legal < func.current_date()).count()
 
     # Desempenho Setorial
     setores_raw = db.query(

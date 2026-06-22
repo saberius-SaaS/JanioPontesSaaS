@@ -82,11 +82,81 @@
         .file-list {
             background: white;
             border-radius: 16px;
-            overflow: hidden;
+            /* overflow: hidden; -- Removido para permitir expansão da imagem (thumbnail hover) */
             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
             border: 1px solid var(--border);
         }
 
+        .accordion-group:first-child .accordion-header {
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+        }
+
+        /* --- Accordion Styles --- */
+        .accordion-header {
+            background-color: #F8FAFC;
+            padding: 18px 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            transition: background-color 0.2s;
+        }
+
+        .accordion-header:hover {
+            background-color: #F1F5F9;
+        }
+
+        .accordion-title {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .folder-icon {
+            font-size: 20px;
+        }
+
+        .accordion-badge {
+            font-size: 12px;
+            color: var(--text-alt);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #E2E8F0;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .accordion-content {
+            display: none;
+            background-color: white;
+        }
+
+        .accordion-content.active {
+            display: block;
+        }
+
+        .chevron {
+            font-size: 10px;
+            transition: transform 0.3s;
+        }
+
+        .accordion-header.active-header .chevron {
+            transform: rotate(180deg);
+        }
+
+        .accordion-header.active-header {
+            border-bottom: 2px solid var(--primary);
+            background-color: #EFF6FF;
+        }
+
+        /* --- File Item Styles --- */
         .file-item {
             display: flex;
             align-items: center;
@@ -97,12 +167,12 @@
             color: inherit;
         }
 
-        .file-item:last-child {
+        .accordion-content .file-item-container:last-child .file-item {
             border-bottom: none;
         }
 
         .file-item:hover {
-            background-color: #F1F5F9;
+            background-color: #F8FAFC;
         }
 
         .file-icon {
@@ -116,6 +186,42 @@
             margin-right: 20px;
             color: var(--accent);
             font-size: 20px;
+        }
+
+        .file-thumb {
+            width: 45px;
+            height: 45px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-right: 20px;
+            border: 1px solid var(--border);
+            background-color: #F8FAFC;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+            position: relative;
+            z-index: 1;
+            transform-origin: left center; /* Expande em direção ao texto */
+            cursor: crosshair;
+        }
+
+        .file-thumb:hover {
+            transform: scale(7); /* Expande a imagem 7 vezes (fica em ~315px) */
+            z-index: 999;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            border: 1px solid white;
+        }
+
+        .task-badge {
+            background-color: #3B82F6;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            vertical-align: middle;
         }
 
         .file-info {
@@ -154,9 +260,9 @@
             transform: translateY(-2px);
         }
 
-        /* --- Estilos de Destaque para Novos Protocolos --- */
+        /* --- Destaque --- */
         .file-item.highlight {
-            background-color: #ECFDF5; /* Verde esmeralda bem suave */
+            background-color: #ECFDF5;
             border-left: 5px solid #10B981;
         }
 
@@ -232,27 +338,88 @@
         </div>
 
         <div class="file-list" id="fileList">
-            <? if (arquivos && arquivos.length > 0) { ?>
-                <? arquivos.forEach(function(file) { 
-                    var isHighlight = (typeof protocoloDestaque !== 'undefined' && protocoloDestaque && file.name.indexOf("[" + protocoloDestaque + "]") > -1);
-                ?>
-                    <div class="file-item-container">
-                        <a href="<?= file.url ?>" target="_blank" class="file-item <?= isHighlight ? 'highlight' : '' ?>">
-                            <div class="file-icon">📄</div>
-                            <div class="file-info">
-                                <span class="file-name">
-                                    <?= file.name ?>
-                                    <? if (isHighlight) { ?>
-                                        <span class="badge-new">Novo Recebimento</span>
-                                    <? } ?>
-                                </span>
-                                <span class="file-meta">Modificado em: <?= file.date ?> • Tamanho: <?= file.size ?></span>
-                            </div>
-                            <div class="btn-download">Visualizar</div>
-                        </a>
+            <? if (arquivos && arquivos.length > 0) { 
+                
+                // --- AGRUPAMENTO POR MÊS/ANO VIA SCRIPT SCRIPTLETS ---
+                var grupos = {};
+                var meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                
+                arquivos.forEach(function(file) {
+                    var partesData = file.date.split(' ')[0].split('/'); // dd, MM, yyyy
+                    var mesIndex = parseInt(partesData[1], 10) - 1;
+                    var ano = partesData[2];
+                    
+                    var chaveGrupo = meses[mesIndex] + " de " + ano;
+                    var orderKey = ano + partesData[1]; // yyyyMM para ordenar do mais novo pro mais antigo
+                    
+                    if (!grupos[orderKey]) {
+                        grupos[orderKey] = { titulo: chaveGrupo, arquivos: [] };
+                    }
+                    grupos[orderKey].arquivos.push(file);
+                });
+                
+                // Ordenar chaves descrescente (meses mais novos primeiro)
+                var chavesOrdenadas = Object.keys(grupos).sort(function(a, b) {
+                    return b.localeCompare(a);
+                });
+                
+                var isFirst = true; // Para abrir apenas a primeira aba por padrão
+
+                chavesOrdenadas.forEach(function(chave) {
+                    var grupo = grupos[chave];
+            ?>
+                <div class="accordion-group">
+                    <div class="accordion-header <?= isFirst ? 'active-header' : '' ?>" onclick="toggleAccordion(this)">
+                        <div class="accordion-title">
+                            <span class="folder-icon">📁</span> <?= grupo.titulo ?>
+                        </div>
+                        <div class="accordion-badge">
+                            <?= grupo.arquivos.length ?> doc(s) 
+                            <span class="chevron">▼</span>
+                        </div>
                     </div>
-                <? }); ?>
-            <? } else { ?>
+                    <div class="accordion-content <?= isFirst ? 'active' : '' ?>">
+                        <? grupo.arquivos.forEach(function(file) { 
+                            var isHighlight = (typeof protocoloDestaque !== 'undefined' && protocoloDestaque && file.name.indexOf("[" + protocoloDestaque + "]") > -1);
+                            
+                            // Limpeza de nome do arquivo no Frontend
+                            var cleanName = file.name;
+                            cleanName = cleanName.replace(/\[?PROT-?\w+\]?/gi, '');
+                            cleanName = cleanName.replace(/\b\d{8,14}\b/g, ''); // CNPJ ou Base CNPJ
+                            cleanName = cleanName.replace(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g, ''); // CNPJ Formatado
+                            cleanName = cleanName.replace(/^[\s\-]+|[\s\-]+$/g, '').replace(/\s{2,}/g, ' '); // Hifens soltos e espaços duplos
+                            if (cleanName.length < 5) cleanName = file.name; // Fallback de segurança caso o nome suma
+                        ?>
+                            <div class="file-item-container">
+                                <a href="<?= file.url ?>" target="_blank" class="file-item <?= isHighlight ? 'highlight' : '' ?>">
+                                    <? if (file.thumbUrl) { ?>
+                                        <img src="<?= file.thumbUrl ?>" class="file-thumb" alt="Preview">
+                                    <? } else { ?>
+                                        <div class="file-icon">📄</div>
+                                    <? } ?>
+                                    <div class="file-info">
+                                        <span class="file-name">
+                                            <? if (file.taskName) { ?>
+                                                <span class="task-badge"><?= file.taskName ?></span>
+                                            <? } ?>
+                                            <?= cleanName ?>
+                                            <? if (isHighlight) { ?>
+                                                <span class="badge-new">Novo Recebimento</span>
+                                            <? } ?>
+                                        </span>
+                                        <span class="file-meta">Modificado em: <?= file.date ?> • Tamanho: <?= file.size ?></span>
+                                    </div>
+                                    <div class="btn-download">Visualizar</div>
+                                </a>
+                            </div>
+                        <? }); ?>
+                    </div>
+                </div>
+            <? 
+                    isFirst = false;
+                }); 
+            } else { 
+            ?>
                 <div class="empty-state">
                     <i>📂</i>
                     <p>Nenhum arquivo localizado nesta pasta.</p>
@@ -266,20 +433,76 @@
     </div>
 
     <script>
+        // Função para expandir/recolher os acordeões
+        function toggleAccordion(element) {
+            element.classList.toggle("active-header");
+            var content = element.nextElementSibling;
+            if (content.style.display === "block" || content.classList.contains("active")) {
+                content.style.display = "none";
+                content.classList.remove("active");
+            } else {
+                content.style.display = "block";
+                content.classList.add("active");
+            }
+        }
+
+        // Função de busca adaptada para abrir acordeões se houver resultados dentro
         function filterFiles() {
             var input = document.getElementById('searchInput');
             var filter = input.value.toUpperCase();
-            var items = document.getElementsByClassName('file-item-container');
+            var accordions = document.getElementsByClassName('accordion-group');
             
-            for (var i = 0; i < items.length; i++) {
-                var name = items[i].getElementsByClassName('file-name')[0];
-                if (name) {
-                    var txtValue = name.textContent || name.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        items[i].style.display = "";
-                    } else {
-                        items[i].style.display = "none";
+            for (var a = 0; a < accordions.length; a++) {
+                var accordion = accordions[a];
+                var items = accordion.getElementsByClassName('file-item-container');
+                var header = accordion.getElementsByClassName('accordion-header')[0];
+                var content = accordion.getElementsByClassName('accordion-content')[0];
+                var groupHasMatch = false;
+
+                // Verifica pelo nome do grupo (Ex: "Junho 2026")
+                var titleText = header.textContent || header.innerText;
+                var matchInTitle = titleText.toUpperCase().indexOf(filter) > -1;
+
+                for (var i = 0; i < items.length; i++) {
+                    var name = items[i].getElementsByClassName('file-name')[0];
+                    if (name) {
+                        var txtValue = name.textContent || name.innerText;
+                        if (txtValue.toUpperCase().indexOf(filter) > -1 || matchInTitle) {
+                            items[i].style.display = "";
+                            groupHasMatch = true;
+                        } else {
+                            items[i].style.display = "none";
+                        }
                     }
+                }
+
+                // Se houver texto na busca e algum arquivo do grupo bateu com a busca, expande a pasta
+                if (filter.trim() !== "" && groupHasMatch) {
+                    accordion.style.display = "";
+                    header.classList.add("active-header");
+                    content.style.display = "block";
+                    content.classList.add("active");
+                } 
+                // Se não há filtro, volta ao normal
+                else if (filter.trim() === "") {
+                    accordion.style.display = "";
+                    items = Array.from(items);
+                    items.forEach(function(item) { item.style.display = ""; });
+                    
+                    // Se for o primeiro, deixa aberto, senão, fecha
+                    if (a === 0) {
+                        header.classList.add("active-header");
+                        content.style.display = "block";
+                        content.classList.add("active");
+                    } else {
+                        header.classList.remove("active-header");
+                        content.style.display = "none";
+                        content.classList.remove("active");
+                    }
+                } 
+                // Se tem busca e não bateu nada, esconde o grupo inteiro
+                else if (!groupHasMatch) {
+                    accordion.style.display = "none";
                 }
             }
         }

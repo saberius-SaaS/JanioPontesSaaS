@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $ADMIN_ACCOUNT = "janiopontes@janiopontes.com.br"
 $GCP_PROJECT = "jp-saas-producao"
 $CLOUDRUN_SVC = "jp-saas-app"
-$CLOUDRUN_REGION = "southamerica-east1"
+$CLOUDRUN_REGION = "us-east1"
 
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "INICIANDO DEPLOY - Janio Pontes SaaS"      -ForegroundColor Cyan
@@ -98,12 +98,12 @@ $ENV_VARS = @(
     "ENVIRONMENT=production",
     "DB_USER=app_user",
     "DB_NAME=postgres",
-    "DB_HOST=/cloudsql/jp-saas-producao:southamerica-east1:jpsaas-db",
+    "DB_HOST=/cloudsql/jp-saas-producao:us-east1:jpsaas-db-us",
     "EMAIL_MODE=intercept",
     "EMAIL_INTERCEPT_ADDRESS=janiopontes@janiopontes.com.br",
     "GMAIL_DELEGATED_USER=janiopontes@janiopontes.com.br",
     "STORAGE_MODE=production",
-    "GCS_BUCKET_NAME=janio-pontes-saas-docs",
+    "GCS_BUCKET_NAME=janio-pontes-saas-docs-us",
     "GOOGLE_CLIENT_ID=471313311249-sda2g2e9m40l6ui02m1vut9i3glgu40m.apps.googleusercontent.com",
     "CHATWOOT_BASE_URL=https://chat.janiopontes.com.br",
     "CHATWOOT_ACCOUNT_ID=1",
@@ -117,9 +117,10 @@ gcloud run deploy $CLOUDRUN_SVC `
     --source . `
     --region $CLOUDRUN_REGION `
     --allow-unauthenticated `
+    --max-instances=10 `
     --set-env-vars="$ENV_VARS" `
     --set-secrets="DB_PASSWORD=JPSAAS_DB_PASSWORD:latest,SECRET_KEY=JPSAAS_SECRET_KEY:latest,GOOGLE_CLIENT_SECRET=JPSAAS_GOOGLE_CLIENT_SECRET:latest,/secrets/credentials.json=JPSAAS_GCP_CREDENTIALS:latest" `
-    --add-cloudsql-instances="jp-saas-producao:southamerica-east1:jpsaas-db" `
+    --add-cloudsql-instances="jp-saas-producao:us-east1:jpsaas-db-us" `
     --quiet
 
 if ($LASTEXITCODE -eq 0) {
@@ -128,6 +129,11 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "DEPLOY CONCLUIDO COM SUCESSO!"             -ForegroundColor Green
     Write-Host "URL: $url"                                 -ForegroundColor Green
     Write-Host "==========================================" -ForegroundColor Green
+
+    # Executa a limpeza do Artifact Registry
+    if (Test-Path ".\scripts\cleanup_artifact_registry.ps1") {
+        .\scripts\cleanup_artifact_registry.ps1 -Project $GCP_PROJECT -Region $CLOUDRUN_REGION -Service $CLOUDRUN_SVC
+    }
 }
 else {
     Write-Host "`nErro durante o deploy no Cloud Run." -ForegroundColor Red

@@ -702,6 +702,14 @@
 
         <div id="areaDocumentosRevisaoWeb" class="hidden mb-5"></div>
 
+        <div id="areaMotivoReprovacao" class="hidden mb-5">
+           <div class="bg-rose-50 border border-rose-200 rounded-lg p-3 mb-2">
+              <p class="text-[10px] font-bold text-rose-700 uppercase tracking-widest flex items-center"><i class="fa-solid fa-rotate-left mr-2 text-rose-500"></i> Motivo da Devolução (Obrigatório)</p>
+              <p class="text-[10px] text-rose-500 mt-1 leading-relaxed">Descreva o motivo da reprovação para que o colaborador possa corrigir e reenviar.</p>
+           </div>
+           <textarea id="textoMotivoReprovacao" rows="3" placeholder="Ex: Arquivo com dados inconsistentes, CNPJ divergente, período incorreto..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-rose-400/20 focus:border-rose-400 outline-none transition-all resize-none"></textarea>
+        </div>
+
         <div id="areaAnotacaoArquivar" class="hidden mb-5">
            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-2">
               <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center"><i class="fa-solid fa-sticky-note mr-2 text-slate-400"></i> Anotação de Registro (Opcional)</p>
@@ -739,11 +747,18 @@
         <div id="modalFeedback" class="mt-4 text-center text-sm font-semibold hidden p-3 rounded shadow-sm border"></div>
       </div>
       
-      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-         <button onclick="fecharModalTarefa()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded mr-2 transition">Cancelar</button>
-         <button id="btnFinalizarWeb" onclick="finalizarProcessoWeb()" class="px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center">
-            <i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento
-         </button>
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between">
+         <div>
+            <button id="btnReprovarWeb" onclick="reprovarTarefaWeb()" class="hidden px-5 py-2 text-sm font-bold bg-rose-600 hover:bg-rose-700 text-white rounded shadow transition flex items-center">
+               <i class="fa-solid fa-rotate-left mr-2"></i> Devolver para Correção
+            </button>
+         </div>
+         <div class="flex items-center">
+            <button onclick="fecharModalTarefa()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded mr-2 transition">Cancelar</button>
+            <button id="btnFinalizarWeb" onclick="finalizarProcessoWeb()" class="px-6 py-2 text-sm font-bold bg-jp-navy hover:bg-indigo-700 text-white rounded shadow transition flex items-center">
+               <i class="fa-solid fa-check mr-2"></i> Confirmar Fechamento
+            </button>
+         </div>
       </div>
     </div>
   </div>
