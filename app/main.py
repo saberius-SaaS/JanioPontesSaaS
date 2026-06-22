@@ -106,25 +106,49 @@ app.include_router(scheduler.router, prefix="/scheduler", tags=["Rotinas Agendad
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
-    # Fila de Tarefas
+    from datetime import date
+    hoje = date.today()
+    inicio_mes = date(hoje.year, hoje.month, 1)
+    if hoje.month == 12:
+        fim_mes = date(hoje.year + 1, 1, 1)
+    else:
+        fim_mes = date(hoje.year, hoje.month + 1, 1)
+    mes_ano_ref = f"{hoje.month:02d}/{hoje.year}"
+
+    # Pendentes do mês: tarefas NÃO-entregues com vencimento <= fim do mês
+    # (Alinhado com GAS DashboardService: inclui PENDENTE, REVISAO, REPROVADO, ATRASADO)
     pendentes = db.query(models.Tarefa).filter(
-        models.Tarefa.tenant_id == current_user.tenant_id, 
-        models.Tarefa.status.in_(['PENDENTE', 'EM ANDAMENTO', 'AGUARDANDO', 'EM_ANDAMENTO'])
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status.notin_(['ENTREGUE']),
+        models.Tarefa.vencimento != None,
+        models.Tarefa.vencimento < fim_mes
     ).count()
-    
+
+    # Entregas do mês: ENTREGUE na fila ativa + histórico do mês atual
     entregues_ativas = db.query(models.Tarefa).filter(
-        models.Tarefa.tenant_id == current_user.tenant_id, 
-        models.Tarefa.status.in_(['ENTREGUE', 'CONCLUIDO', 'CONCLUÍDO'])
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status == 'ENTREGUE',
+        models.Tarefa.vencimento != None,
+        models.Tarefa.vencimento >= inicio_mes,
+        models.Tarefa.vencimento < fim_mes
     ).count()
     entregues_historico = db.query(models.HistoricoTarefa).filter(
-        models.HistoricoTarefa.tenant_id == current_user.tenant_id
+        models.HistoricoTarefa.tenant_id == current_user.tenant_id,
+        models.HistoricoTarefa.status == 'ENTREGUE',
+        models.HistoricoTarefa.vencimento != None,
+        models.HistoricoTarefa.vencimento >= inicio_mes,
+        models.HistoricoTarefa.vencimento < fim_mes
     ).count()
     entregues = entregues_ativas + entregues_historico
-    
+
+    # Risco Legal: tarefas PENDENTE com vencimento <= hoje
+    # (Alinhado com GAS WebAppRoute: apenas status PENDENTE, vencimento vencido)
     atrasadas = db.query(models.Tarefa).filter(
-        models.Tarefa.tenant_id == current_user.tenant_id, 
-        models.Tarefa.status.in_(['PENDENTE', 'EM ANDAMENTO', 'AGUARDANDO', 'EM_ANDAMENTO', 'ATRASADO'])
-    ).filter(models.Tarefa.vencimento_legal < func.current_date()).count()
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status == 'PENDENTE',
+        models.Tarefa.vencimento != None,
+        models.Tarefa.vencimento <= hoje
+    ).count()
 
     # Desempenho Setorial
     setores_raw = db.query(
