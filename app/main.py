@@ -162,13 +162,13 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
     desempenho_setorial = []
     for s in setores_raw:
         if not s.departamento: continue
-        total = s.total or 0
-        entregues = s.entregues or 0
-        percentual = int((entregues / total * 100)) if total > 0 else 0
+        total_setor = s.total or 0
+        entregues_setor = s.entregues or 0
+        percentual = int((entregues_setor / total_setor * 100)) if total_setor > 0 else 0
         desempenho_setorial.append({
             "departamento": s.departamento,
-            "total": total,
-            "entregues": entregues,
+            "total": total_setor,
+            "entregues": entregues_setor,
             "percentual": percentual
         })
     desempenho_setorial.sort(key=lambda x: x['percentual'], reverse=True)
@@ -185,14 +185,14 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
     ranking_equipe = []
     for r in ranking_raw:
         if not r.responsavel: continue
-        total = r.total or 0
-        entregues = r.entregues or 0
-        if total == 0: continue
-        percentual = int((entregues / total * 100))
+        total_resp = r.total or 0
+        entregues_resp = r.entregues or 0
+        if total_resp == 0: continue
+        percentual = int((entregues_resp / total_resp * 100))
         ranking_equipe.append({
             "responsavel": r.responsavel,
-            "total": total,
-            "entregues": entregues,
+            "total": total_resp,
+            "entregues": entregues_resp,
             "percentual": percentual
         })
     ranking_equipe.sort(key=lambda x: x['total'], reverse=True)
