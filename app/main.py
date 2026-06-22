@@ -150,14 +150,41 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         models.Tarefa.vencimento <= hoje
     ).count()
 
+    # --- Desempenho e Ranking (Ativas + Histórico do Mês) ---
+    from sqlalchemy import select, union_all
+    
+    stmt1 = select(
+        models.Tarefa.tenant_id,
+        models.Tarefa.departamento,
+        models.Tarefa.responsavel,
+        models.Tarefa.status,
+        models.Tarefa.id
+    ).where(
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.vencimento >= inicio_mes,
+        models.Tarefa.vencimento < fim_mes
+    )
+    
+    stmt2 = select(
+        models.HistoricoTarefa.tenant_id,
+        models.HistoricoTarefa.departamento,
+        models.HistoricoTarefa.responsavel,
+        models.HistoricoTarefa.status,
+        models.HistoricoTarefa.id
+    ).where(
+        models.HistoricoTarefa.tenant_id == current_user.tenant_id,
+        models.HistoricoTarefa.vencimento >= inicio_mes,
+        models.HistoricoTarefa.vencimento < fim_mes
+    )
+    
+    subq = union_all(stmt1, stmt2).subquery()
+    
     # Desempenho Setorial
     setores_raw = db.query(
-        models.Tarefa.departamento,
-        func.count(models.Tarefa.id).label('total'),
-        func.sum(case((models.Tarefa.status == 'ENTREGUE', 1), else_=0)).label('entregues')
-    ).filter(
-        models.Tarefa.tenant_id == current_user.tenant_id
-    ).group_by(models.Tarefa.departamento).all()
+        subq.c.departamento,
+        func.count(subq.c.id).label('total'),
+        func.sum(case((subq.c.status == 'ENTREGUE', 1), else_=0)).label('entregues')
+    ).group_by(subq.c.departamento).all()
     
     desempenho_setorial = []
     for s in setores_raw:
@@ -175,12 +202,10 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
 
     # Ranking Equipe
     ranking_raw = db.query(
-        models.Tarefa.responsavel,
-        func.count(models.Tarefa.id).label('total'),
-        func.sum(case((models.Tarefa.status == 'ENTREGUE', 1), else_=0)).label('entregues')
-    ).filter(
-        models.Tarefa.tenant_id == current_user.tenant_id
-    ).group_by(models.Tarefa.responsavel).all()
+        subq.c.responsavel,
+        func.count(subq.c.id).label('total'),
+        func.sum(case((subq.c.status == 'ENTREGUE', 1), else_=0)).label('entregues')
+    ).group_by(subq.c.responsavel).all()
 
     ranking_equipe = []
     for r in ranking_raw:
