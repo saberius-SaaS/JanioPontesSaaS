@@ -202,7 +202,7 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
             "entregues": entregues_setor,
             "percentual": percentual
         })
-    desempenho_setorial.sort(key=lambda x: x['percentual'], reverse=True)
+    desempenho_setorial.sort(key=lambda x: x['departamento'])
 
     # Ranking Equipe
     ranking_raw = db.query(
@@ -254,8 +254,7 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
             "entregues": data["entregues"],
             "percentual": percentual
         })
-    ranking_equipe.sort(key=lambda x: x['total'], reverse=True)
-    ranking_equipe = ranking_equipe[:5]
+    ranking_equipe.sort(key=lambda x: x['responsavel'])
 
     return templates.TemplateResponse(request=request, name="base.html", context={
         "request": request,

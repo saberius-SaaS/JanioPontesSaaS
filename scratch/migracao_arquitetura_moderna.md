@@ -21,6 +21,8 @@ E-mails redirecionados para `janiopontes@janiopontes.com.br`. Para liberar: `EMA
 - [ ] Carga Base de Cadastros: Executar `python scripts/migracao_gas_to_pg.py`
 - [ ] Carga Operacional de Tarefas e Histórico: Executar `python scripts/import_tarefas_historico.py`
 - [ ] Carga de Protocolos: Executar `python scripts/migrar_protocolos.py`
+- [ ] **Ação Manual Obrigatória:** Acessar menu *Equipes de Trabalho* no SaaS, recriar os times (Contábil A, Fiscal A, etc) e **adicionar os respectivos membros**. Isso vincula as tarefas antigas ao novo "Ranking de Produtividade".
+- [ ] **Ação Manual Obrigatória:** Configurar **Google Cloud Scheduler**: Criar o Job `jp-saas-whatsapp-reminders` apontando para `/scheduler/whatsapp-reminders` (POST) com o cabeçalho `X-Scheduler-Key`. Use a frequência `0 9 * * 1-5` para rodar apenas de Segunda a Sexta (às 09:00), substituindo a rotina antiga do GAS.
 - [ ] **Validação com Prova Real:** Rodar `python scripts/validacao_migracao.py` para comparar totais do banco contra o GAS (Todos os indicadores devem dar "OK")
 - [ ] Validar Dashboard Web: Confirmar se Pendentes, Entregas e Atrasos refletem a prova real no front-end
 

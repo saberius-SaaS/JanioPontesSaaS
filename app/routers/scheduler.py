@@ -107,3 +107,89 @@ async def trigger_task_engine(
     resultado = run_task_engine(db, cliente.tenant_id)
     return resultado
 
+@router.post("/whatsapp-reminders")
+async def send_whatsapp_reminders(
+    db: Session = Depends(get_db),
+    _auth: bool = Depends(verify_scheduler_key)
+):
+    """
+    Envia lembrete via Chatwoot (WhatsApp) para clientes com protocolos não lidos.
+    Protegida por X-Scheduler-Key header. Chamada pelo Cloud Scheduler.
+    """
+    from sqlalchemy import not_, or_, text
+    from datetime import datetime, timezone, timedelta
+    from app.core.chatwoot_service import chatwoot_service
+    from collections import defaultdict
+    import re
+    
+    try:
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    except Exception:
+        pass
+        
+    agora = datetime.now(timezone.utc)
+    limite_notificacao = agora - timedelta(hours=24)
+
+    # Buscar protocolos não lidos que não foram notificados nas últimas 24h
+    protocolos = db.query(models.Protocolo).filter(
+        models.Protocolo.conf_recto == None,
+        models.Protocolo.status_envio == 'ENVIADO',
+        models.Protocolo.acao.ilike('%ENVIAR%'),
+        or_(
+            models.Protocolo.link_arquivo == None,
+            not_(models.Protocolo.link_arquivo.startswith('SEM_ENVIO:'))
+        ),
+        or_(
+            models.Protocolo.wpp_notif == None,
+            models.Protocolo.wpp_notif < limite_notificacao
+        )
+    ).all()
+    
+    protocolos_por_cliente = defaultdict(list)
+    for p in protocolos:
+        protocolos_por_cliente[(p.tenant_id, p.cliente)].append(p)
+        
+    contador_mensagens = 0
+    
+    for (tenant_id, nome_cliente), lista_p in protocolos_por_cliente.items():
+        cliente_db = db.query(models.Cliente).filter(
+            models.Cliente.tenant_id == tenant_id,
+            models.Cliente.cliente == nome_cliente
+        ).first()
+        
+        if not cliente_db:
+            continue
+            
+        telefone_raw = getattr(cliente_db, 'telefone', None)
+        if not telefone_raw:
+            continue
+            
+        telefones = re.split(r'[,;/]', telefone_raw)
+        wpp = telefones[0].strip() if telefones else None
+        if not wpp:
+            continue
+            
+        email = getattr(cliente_db, 'email', None)
+        if not email:
+            email = f"wpp_{re.sub(r'[^0-9]', '', wpp)}@cliente.local"
+            
+        total = len(lista_p)
+        
+        # Modelo Genérico (Ex: Prezado {{1}}, você tem {{2}} documento(s) não lido(s).)
+        # Se for aprovado com botões, não é necessário passar o link nas variáveis caso seja um link fixo.
+        sucesso = await chatwoot_service.send_template_notification(
+            name=nome_cliente,
+            email=email,
+            template_name="lembrete_protocolos", # Nome do novo template genérico
+            phone_number=wpp,
+            template_params=[nome_cliente, str(total)]
+        )
+        
+        if sucesso:
+            for p in lista_p:
+                p.wpp_notif = agora
+            contador_mensagens += 1
+            
+    db.commit()
+    return {"status": "success", "clientes_notificados": contador_mensagens}
+

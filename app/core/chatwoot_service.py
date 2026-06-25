@@ -114,6 +114,43 @@ class ChatwootService:
             
         return await self.send_message(conversation_id, message)
 
+    async def send_template_notification(self, name: str, email: str, template_name: str, phone_number: Optional[str] = None, template_params: list = None) -> bool:
+        """
+        Busca/cria contato e conversa, depois envia um template aprovado do WhatsApp.
+        template_params é uma lista de strings para preencher as variáveis {{1}}, {{2}} do corpo da mensagem.
+        """
+        contact_id = await self.get_or_create_contact(name, email, phone_number)
+        if not contact_id:
+            logger.error(f"Falha ao obter/criar contato no Chatwoot para: {email}")
+            return False
+            
+        conversation_id = await self.get_or_create_conversation(contact_id)
+        if not conversation_id:
+            logger.error(f"Falha ao obter/criar conversa no Chatwoot para contato ID: {contact_id}")
+            return False
+            
+        # Preparar os parâmetros do template (Body components)
+        components = []
+        if template_params:
+            components = [{
+                "type": "body",
+                "parameters": [{"type": "text", "text": str(p)} for p in template_params]
+            }]
+
+        msg_data = {
+            "content": f"Envio de template: {template_name}",
+            "message_type": "outgoing",
+            "content_attributes": {},
+            "template_params": {
+                "name": template_name,
+                "language": "pt_BR",
+                "components": components
+            }
+        }
+        
+        result = await self._request("POST", f"conversations/{conversation_id}/messages", msg_data)
+        return bool(result and result.get("id"))
+
     async def get_agent_by_email(self, email: str) -> Optional[int]:
         """
         Lista agentes da conta e encontra o ID correspondente ao email.
