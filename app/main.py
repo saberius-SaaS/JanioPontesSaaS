@@ -295,7 +295,8 @@ async def get_badges(db: Session = Depends(get_db), current_user: models.Usuario
         )
     ).count()
 
-    agora = datetime.now()
+    from datetime import timezone
+    agora = datetime.now(timezone.utc)
     limite_online = agora - timedelta(seconds=90)
     hoje = date.today()
     

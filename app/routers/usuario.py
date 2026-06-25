@@ -38,7 +38,8 @@ async def list_usuarios_page(
     ).group_by(models.FrequenciaAcesso.email).all()
     map_mes = {t.email: t.total_minutos for t in telemetria_mes}
 
-    agora = datetime.now()
+    from datetime import timezone
+    agora = datetime.now(timezone.utc)
     limite_online = agora - timedelta(seconds=90)
     online_freqs = db.query(models.FrequenciaAcesso.email).filter(
         models.FrequenciaAcesso.tenant_id == current_user.tenant_id,
