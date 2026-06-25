@@ -752,8 +752,7 @@
   {% block scripts %}{% endblock %}
   <script>
     // Telemetria de Uso (Heartbeat)
-    let isActive = false;
-    const pingInterval = 60000; // 1 minuto
+    let isActive = true; // Começa true para registrar o acesso inicial
 
     function markActive() { isActive = true; }
     
@@ -762,9 +761,13 @@
         document.addEventListener(evt, markActive, {passive: true})
     );
 
-    // Heartbeat (Telemetria)
+    // Heartbeat inteligente: só dispara se o usuário estiver ativo
     setInterval(() => {
-      fetch('/telemetria/ping', { method: 'POST' }).catch(e => console.error(e));
+      if (!isActive) return;
+      isActive = false;
+      fetch('/telemetria/ping', { method: 'POST' })
+        .then(r => r.json().catch(() => ({})))
+        .catch(e => {});
     }, 60000);
 
     // Badges globais do menu

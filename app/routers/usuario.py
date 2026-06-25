@@ -6,7 +6,7 @@ from uuid import UUID
 
 from app import models
 from app.database import get_db
-from app.api.deps import require_admin, require_login
+from app.api.deps import require_admin, require_login, get_user_from_cookie
 from datetime import date, datetime, timedelta
 from sqlalchemy import func
 
@@ -59,36 +59,45 @@ async def list_usuarios_page(
 @router.post("/telemetria/ping")
 async def register_ping(
     request: Request,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_login)
+    db: Session = Depends(get_db)
 ):
-    from datetime import date as d_date
+    """
+    Heartbeat silencioso — NÃO usa require_login para evitar 307 redirect
+    em cold starts do Cloud Run. Retorna JSON de erro em vez de redirecionar.
+    """
+    current_user = get_user_from_cookie(request, db)
+    if not current_user:
+        return {"status": "skip", "reason": "not_authenticated"}
+
+    from datetime import date as d_date, datetime as dt_class, timezone as tz
     hoje = d_date.today()
-    freq = db.query(models.FrequenciaAcesso).filter(
-        models.FrequenciaAcesso.tenant_id == current_user.tenant_id,
-        models.FrequenciaAcesso.email == current_user.email,
-        models.FrequenciaAcesso.data == hoje
-    ).first()
     
-    if not freq:
-        freq = models.FrequenciaAcesso(
-            tenant_id=current_user.tenant_id,
-            data=hoje,
-            email=current_user.email,
-            nome=current_user.nome,
-            tempo_minutos=1,
-            pings=1
-        )
-        db.add(freq)
-    else:
-        freq.tempo_minutos += 1
-        freq.pings += 1
+    try:
+        freq = db.query(models.FrequenciaAcesso).filter(
+            models.FrequenciaAcesso.tenant_id == current_user.tenant_id,
+            models.FrequenciaAcesso.email == current_user.email,
+            models.FrequenciaAcesso.data == hoje
+        ).first()
         
-    from datetime import datetime, timezone
-    freq.atualizado_em = datetime.now(timezone.utc)
-    
-    db.commit()
-    return {"status": "ok"}
+        if not freq:
+            freq = models.FrequenciaAcesso(
+                tenant_id=current_user.tenant_id,
+                data=hoje,
+                email=current_user.email,
+                nome=current_user.nome,
+                tempo_minutos=1,
+                pings=1
+            )
+            db.add(freq)
+        else:
+            freq.tempo_minutos += 1
+            freq.pings += 1
+            
+        freq.atualizado_em = dt_class.now(tz.utc)
+        db.commit()
+        return {"status": "ok"}
+    except Exception:
+        return {"status": "skip", "reason": "db_error"}
 
 @router.post("/usuarios", response_class=HTMLResponse)
 async def create_usuario(
