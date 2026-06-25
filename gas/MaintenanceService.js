@@ -198,33 +198,43 @@ function arquivarTarefasConcluidas() {
  * Move uma tarefa ENTREGUE diretamente para DB_HISTORICO e remove de DB_TAREFAS.
  * Chamada automaticamente ao concluir uma tarefa (sem depender do Robô de Arquivamento).
  * @param {number} rowIdx - Índice da linha na DB_TAREFAS (1-based, incluindo header)
+ * @param {Object} [protocoloInfo] - Dados do protocolo já conhecidos pelo caller (evita re-scan de DB_PROTOCOLOS)
+ * @param {string} [protocoloInfo.statusEnvio] - Status do envio (ex: "ENVIADO")
+ * @param {string} [protocoloInfo.confRecto] - Confirmação de recebimento formatada
  */
-function moverTarefaParaHistoricoImediato(rowIdx) {
+function moverTarefaParaHistoricoImediato(rowIdx, protocoloInfo) {
   try {
     var ss = getSs();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsHist = ss.getSheetByName(CONFIG_SISTEMA.ABA_HISTORICO);
-    var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
     
     if (!wsTarefas || !wsHist) return;
 
     // 1. Lê os 12 campos da tarefa
     var rowData = wsTarefas.getRange(rowIdx, 1, 1, 12).getValues()[0];
 
-    // 2. Cruza com DB_PROTOCOLOS para obter statusEnvio e confRecto
+    // 2. Resolve statusEnvio e confRecto
     var idTarefa = String(rowData[9]).trim();
     var statusEnvio = "-";
     var confRecto = "-";
 
-    if (wsProt) {
-      var dataProt = wsProt.getDataRange().getValues();
-      for (var p = dataProt.length - 1; p >= 1; p--) {
-        if (String(dataProt[p][3]).trim() === idTarefa) {
-          statusEnvio = dataProt[p][8] || "MANUAL";
-          confRecto = (dataProt[p][9] instanceof Date)
-            ? Utilities.formatDate(dataProt[p][9], "GMT-3", "dd/MM/yyyy HH:mm:ss")
-            : String(dataProt[p][9] || "");
-          break;
+    if (protocoloInfo) {
+      // ⚡ PERF: Caller já forneceu os dados — evita scan completo de DB_PROTOCOLOS
+      statusEnvio = protocoloInfo.statusEnvio || "MANUAL";
+      confRecto = protocoloInfo.confRecto || "-";
+    } else {
+      // Fallback: scan completo (mantido para callers legados)
+      var wsProt = ss.getSheetByName(CONFIG_SISTEMA.ABA_PROTOCOLOS);
+      if (wsProt) {
+        var dataProt = wsProt.getDataRange().getValues();
+        for (var p = dataProt.length - 1; p >= 1; p--) {
+          if (String(dataProt[p][3]).trim() === idTarefa) {
+            statusEnvio = dataProt[p][8] || "MANUAL";
+            confRecto = (dataProt[p][9] instanceof Date)
+              ? Utilities.formatDate(dataProt[p][9], "GMT-3", "dd/MM/yyyy HH:mm:ss")
+              : String(dataProt[p][9] || "");
+            break;
+          }
         }
       }
     }

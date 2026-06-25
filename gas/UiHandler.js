@@ -669,6 +669,7 @@ function aprovarTarefaRevisao(taskId, userLevel) {
         }
 
         registrarLogSistema("WORKFLOW_APROVACAO", "Tarefa " + taskId + " aprovada por Admin. Ciclo completo.");
+        reordenarTarefasElite();
         invalidarCacheSistema();
         
         return { success: true, message: "Tarefa aprovada e cliente notificado com sucesso." };

@@ -34,6 +34,7 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
   }
 
   try {
+    iniciarBufferLogs(); // ⚡ PERF (QW3): Inicia o buffer para evitar appendRows síncronos individuais
     var ss = getSs();
     var wsTarefas = ss.getSheetByName(CONFIG_SISTEMA.ABA_TAREFAS);
     var wsCli = ss.getSheetByName(CONFIG_SISTEMA.ABA_CLIENTES);
@@ -52,7 +53,8 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
     var mesRef = rowVal[0] instanceof Date ? Utilities.formatDate(rowVal[0], "GMT-3", "MM/yyyy") : String(rowVal[0]);
     
     // Localização do Cliente
-    var dadosC = wsCli.getDataRange().getValues();
+    // ⚡ PERF (QW4): Usa cache em vez de ler a planilha toda vez
+    var dadosC = getSheetDataCached(CONFIG_SISTEMA.ABA_CLIENTES, "DATA_CLIENTES");
     var emailCli = "", cnpj = "", pastaId = "", nomeResp = "";
     var cliRowIdx = -1;
     for(var i=1; i<dadosC.length; i++) {
@@ -170,7 +172,8 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
         
         if (statusFinal !== getSafeStatus("REVISAO")) {
            acionarWorkflowFaseSeguinte(taskId, rowIdx);
-           moverTarefaParaHistoricoImediato(rowIdx);
+           // ⚡ PERF (QW2): Passa os dados do protocolo diretamente para evitar full-scan em DB_PROTOCOLOS
+           moverTarefaParaHistoricoImediato(rowIdx, { statusEnvio: "ENVIADO", confRecto: Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy HH:mm:ss") });
         }
         reordenarTarefasElite(); 
         invalidarCacheSistema();
@@ -321,7 +324,8 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
     // Só aciona fase seguinte se NÃO for revisão
     if (statusFinal !== getSafeStatus("REVISAO")) {
        acionarWorkflowFaseSeguinte(taskId, rowIdx);
-       moverTarefaParaHistoricoImediato(rowIdx);
+       // ⚡ PERF (QW2): Passa os dados do protocolo diretamente para evitar full-scan em DB_PROTOCOLOS
+       moverTarefaParaHistoricoImediato(rowIdx, { statusEnvio: "ENVIADO", confRecto: "-" });
     }
     reordenarTarefasElite(); 
     invalidarCacheSistema();
@@ -336,7 +340,10 @@ function processarUploadBatchInterno(arquivos, taskId, clienteNome, mensagem, fo
   } catch(e) { 
     registrarLogSistema("UPLOAD_FATAL", e.message);
     throw new Error(e.message); 
-  } finally { lock.releaseLock(); }
+  } finally { 
+    flushLogsSistema(); // ⚡ PERF (QW3): Grava todos os logs em lote no final
+    lock.releaseLock(); 
+  }
 }
 
 // --- SERVIÇOS DE DEMANDA E SOLICITAÇÃO ---

@@ -118,10 +118,7 @@ function acionarWorkflowFaseSeguinte(idTarefaAnterior, rowIdxTarefaAnterior) {
     
     wsTarefas.getRange(wsTarefas.getLastRow(), 4).setNumberFormat("dd/MM/yyyy");
     wsTarefas.getRange(wsTarefas.getLastRow(), 12).setNumberFormat("dd/MM/yyyy");
-    
-    SpreadsheetApp.flush();
-    reordenarTarefasElite();
-    invalidarCacheSistema(); // Garante que a nova fase apareça nas Prioridades
+    // ⚡ PERF: flush/reorder/cache removidos aqui — os callers já executam essas operações após esta função
     
     registrarLogSistema("WORKFLOW_TRIGGER", "De: " + obrigacaoOriginal + " -> Para: " + nomeNovaObrigacao);
 

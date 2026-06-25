@@ -150,6 +150,12 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         models.Tarefa.vencimento <= hoje
     ).count()
 
+    # Protocolos pendentes de leitura
+    protocolos_nao_lidos = db.query(models.Protocolo).filter(
+        models.Protocolo.tenant_id == current_user.tenant_id,
+        models.Protocolo.conf_recto == None
+    ).count()
+
     # --- Desempenho e Ranking (Ativas + Histórico do Mês) ---
     from sqlalchemy import select, union_all
     
@@ -231,6 +237,7 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         "pendentes": pendentes,
         "entregues": entregues,
         "atrasadas": atrasadas,
+        "protocolos_nao_lidos": protocolos_nao_lidos,
         "desempenho_setorial": desempenho_setorial,
         "ranking_equipe": ranking_equipe
     })

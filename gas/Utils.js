@@ -188,14 +188,44 @@ function isDiaUtil(data) {
   return CONFIG_SISTEMA.FERIADOS.indexOf(diaMes) === -1;
 }
 
+var _logBuffer = [];
+var _isLogBuffered = false;
+
+function iniciarBufferLogs() {
+  _isLogBuffered = true;
+  _logBuffer = [];
+}
+
+function flushLogsSistema() {
+  _isLogBuffered = false;
+  if (!_logBuffer || _logBuffer.length === 0) return;
+  try {
+    var ss = getSs();
+    var wsLog = ss.getSheetByName(CONFIG_SISTEMA.ABA_LOGS);
+    if (wsLog) {
+      // Evita getLastRow se possível, mas aqui é seguro fazer uma única vez em lote
+      wsLog.getRange(wsLog.getLastRow() + 1, 1, _logBuffer.length, 4).setValues(_logBuffer);
+    }
+  } catch (e) {} finally {
+    _logBuffer = [];
+  }
+}
+
 function registrarLogSistema(acao, detalhe) {
   try {
     var ignoreList = ["CACHE_INVALIDATED", "PORTAL_AUTH", "GIS_FALLBACK_OK", "PING_SESSION"];
     if (ignoreList.indexOf(acao) > -1) return; // Filtra logs de infraestrutura para preservar performance
 
+    var logEntry = [new Date(), Session.getActiveUser().getEmail() || "SISTEMA", acao, String(detalhe || "")];
+
+    if (_isLogBuffered) {
+      _logBuffer.push(logEntry);
+      return;
+    }
+
     var ss = getSs();
     var wsLog = ss.getSheetByName(CONFIG_SISTEMA.ABA_LOGS);
-    if (wsLog) wsLog.appendRow([new Date(), Session.getActiveUser().getEmail() || "SISTEMA", acao, detalhe]);
+    if (wsLog) wsLog.appendRow(logEntry);
   } catch (e) {}
 }
 
