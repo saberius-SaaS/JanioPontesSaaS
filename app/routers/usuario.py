@@ -83,6 +83,9 @@ async def register_ping(
     else:
         freq.tempo_minutos += 1
         freq.pings += 1
+        
+    from datetime import datetime, timezone
+    freq.atualizado_em = datetime.now(timezone.utc)
     
     db.commit()
     return {"status": "ok"}
