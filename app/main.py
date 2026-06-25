@@ -150,10 +150,18 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         models.Tarefa.vencimento <= hoje
     ).count()
 
-    # Protocolos pendentes de leitura
+    from sqlalchemy import not_, or_
+    
+    # Protocolos pendentes de leitura (Regra idêntica ao GAS)
     protocolos_nao_lidos = db.query(models.Protocolo).filter(
         models.Protocolo.tenant_id == current_user.tenant_id,
-        models.Protocolo.conf_recto == None
+        models.Protocolo.conf_recto == None,
+        models.Protocolo.status_envio == 'ENVIADO',
+        models.Protocolo.acao.ilike('%ENVIAR%'),
+        or_(
+            models.Protocolo.link_arquivo == None,
+            not_(models.Protocolo.link_arquivo.startswith('SEM_ENVIO:'))
+        )
     ).count()
 
     # --- Desempenho e Ranking (Ativas + Histórico do Mês) ---

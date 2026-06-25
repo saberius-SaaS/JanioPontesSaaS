@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request, Form, Query, UploadFile, File, BackgroundTasks
+from sqlalchemy import not_, or_
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -35,7 +36,14 @@ async def list_protocolos_page(
     total_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
 
     protocolos_nao_lidos = db.query(models.Protocolo).filter(
-        models.Protocolo.conf_recto == None
+        models.Protocolo.tenant_id == current_user.tenant_id,
+        models.Protocolo.conf_recto == None,
+        models.Protocolo.status_envio == 'ENVIADO',
+        models.Protocolo.acao.ilike('%ENVIAR%'),
+        or_(
+            models.Protocolo.link_arquivo == None,
+            not_(models.Protocolo.link_arquivo.startswith('SEM_ENVIO:'))
+        )
     ).order_by(models.Protocolo.data.desc()).all()
 
     return templates.TemplateResponse(request, "protocolos.html", {
@@ -61,9 +69,10 @@ async def search_protocolos(
         query = query.filter(
             models.Protocolo.protocolo.ilike(f"%{q}%")
             | models.Protocolo.cliente.ilike(f"%{q}%")
+            | models.Protocolo.obrigacao.ilike(f"%{q}%")
         )
-    protocolos = query.limit(PAGE_SIZE).all()
-    return templates.TemplateResponse(request, "partials/protocolos_table.html", {"protocolos": protocolos})
+    protocolos = query.limit(100).all()
+    return templates.TemplateResponse(request, "partials/protocolos_list.html", {"protocolos": protocolos})
 
 
 @router.post("/protocolos", response_class=HTMLResponse)
