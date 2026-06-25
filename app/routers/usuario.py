@@ -6,7 +6,7 @@ from uuid import UUID
 
 from app import models
 from app.database import get_db
-from app.api.deps import require_admin
+from app.api.deps import require_admin, require_login
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -18,10 +18,64 @@ async def list_usuarios_page(
     current_user: models.Usuario = Depends(require_admin)
 ):
     usuarios = db.query(models.Usuario).order_by(models.Usuario.nome).all()
+    from datetime import date
+    from sqlalchemy import func
+    
+    hoje = date.today()
+    inicio_mes = date(hoje.year, hoje.month, 1)
+
+    telemetria_hoje = db.query(models.FrequenciaAcesso).filter(
+        models.FrequenciaAcesso.tenant_id == current_user.tenant_id,
+        models.FrequenciaAcesso.data == hoje
+    ).all()
+    map_hoje = {t.email: t.tempo_minutos for t in telemetria_hoje}
+
+    telemetria_mes = db.query(
+        models.FrequenciaAcesso.email,
+        func.sum(models.FrequenciaAcesso.tempo_minutos).label('total_minutos')
+    ).filter(
+        models.FrequenciaAcesso.tenant_id == current_user.tenant_id,
+        models.FrequenciaAcesso.data >= inicio_mes
+    ).group_by(models.FrequenciaAcesso.email).all()
+    map_mes = {t.email: t.total_minutos for t in telemetria_mes}
+
     return templates.TemplateResponse(request, "usuarios.html", {
         "usuarios": usuarios,
+        "map_hoje": map_hoje,
+        "map_mes": map_mes,
         "user": current_user
     })
+
+@router.post("/telemetria/ping")
+async def register_ping(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
+    from datetime import date
+    hoje = date.today()
+    freq = db.query(models.FrequenciaAcesso).filter(
+        models.FrequenciaAcesso.tenant_id == current_user.tenant_id,
+        models.FrequenciaAcesso.email == current_user.email,
+        models.FrequenciaAcesso.data == hoje
+    ).first()
+    
+    if not freq:
+        freq = models.FrequenciaAcesso(
+            tenant_id=current_user.tenant_id,
+            data=hoje,
+            email=current_user.email,
+            nome=current_user.nome,
+            tempo_minutos=1,
+            pings=1
+        )
+        db.add(freq)
+    else:
+        freq.tempo_minutos += 1
+        freq.pings += 1
+    
+    db.commit()
+    return {"status": "ok"}
 
 @router.post("/usuarios", response_class=HTMLResponse)
 async def create_usuario(

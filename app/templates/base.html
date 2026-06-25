@@ -753,5 +753,27 @@
 
   {% block modals %}{% endblock %}
   {% block scripts %}{% endblock %}
+  <script>
+    // Telemetria de Uso (Heartbeat)
+    let isActive = false;
+    const pingInterval = 60000; // 1 minuto
+
+    function markActive() { isActive = true; }
+    
+    // Monitora atividade do usuario
+    ['mousemove', 'keydown', 'scroll', 'click'].forEach(evt => 
+        document.addEventListener(evt, markActive, {passive: true})
+    );
+
+    setInterval(() => {
+        if (isActive && document.visibilityState === 'visible') {
+            fetch('/telemetria/ping', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            }).catch(e => console.log('Ping falhou'));
+            isActive = false; // reseta para o proximo ciclo
+        }
+    }, pingInterval);
+  </script>
 </body>
 </html>

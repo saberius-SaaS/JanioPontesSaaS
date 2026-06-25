@@ -11,6 +11,8 @@
             {{ u.nivel }}
         </span>
     </td>
+    <td class="px-4 py-3 text-slate-500 font-semibold">{{ map_hoje.get(u.email, 0) if map_hoje else 0 }}m</td>
+    <td class="px-4 py-3 text-slate-500 font-semibold">{{ ((map_mes.get(u.email, 0) if map_mes else 0) / 60)|round(1) }}h</td>
     <td class="px-4 py-3">
         {% if u.ativo %}
             <span class="text-emerald-500 text-xs font-bold uppercase"><i class="fa-solid fa-circle text-[8px] mr-1"></i> Ativo</span>
@@ -24,6 +26,6 @@
 </tr>
 {% else %}
 <tr>
-    <td colspan="5" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhum usuário encontrado.</td>
+    <td colspan="7" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhum usuário encontrado.</td>
 </tr>
 {% endfor %}

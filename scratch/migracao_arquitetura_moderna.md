@@ -20,6 +20,7 @@ E-mails redirecionados para `janiopontes@janiopontes.com.br`. Para liberar: `EMA
 - [ ] Wipe de Dados Seguro: Executar `python scripts/limpar_carga.py` (evita quebra da Foreign Key `usuarios_equipes` e preserva o Tenant/Admin)
 - [ ] Carga Base de Cadastros: Executar `python scripts/migracao_gas_to_pg.py`
 - [ ] Carga Operacional de Tarefas e Histórico: Executar `python scripts/import_tarefas_historico.py`
+- [ ] Carga de Protocolos: Executar `python scripts/migrar_protocolos.py`
 - [ ] **Validação com Prova Real:** Rodar `python scripts/validacao_migracao.py` para comparar totais do banco contra o GAS (Todos os indicadores devem dar "OK")
 - [ ] Validar Dashboard Web: Confirmar se Pendentes, Entregas e Atrasos refletem a prova real no front-end
 
