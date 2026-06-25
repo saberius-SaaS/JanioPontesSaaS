@@ -1,41 +1,290 @@
 {% extends "portal/base.html" %}
 
-{% block title %}Meu Painel - Portal do Cliente{% endblock %}
+{% block title %}Painel Inteligente - Portal do Cliente{% endblock %}
 
 {% block content %}
-<div class="glass-panel rounded-2xl overflow-hidden p-6 mb-6">
-    <h2 class="text-2xl font-black text-jp-navy mb-2 tracking-tight">Bem-vindo(a) ao seu Portal.</h2>
-    <p class="text-slate-500 text-sm">Aqui você encontra todos os documentos e obrigações enviados pela nossa equipe.</p>
-</div>
+<style>
+/* Estilos Especiais Premium */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
 
-<div class="glass-panel rounded-2xl overflow-hidden">
-    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
-        <h3 class="font-bold text-slate-800"><i class="fa-solid fa-file-invoice mr-2 text-indigo-500"></i> Últimos Arquivos Recebidos</h3>
+.hover-magnetic {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.hover-magnetic:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    border-color: #6366f1; /* indigo-500 */
+}
+
+/* Scrollbar invisível elegante na esquerda */
+.hide-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.hide-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.hide-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #e2e8f0;
+    border-radius: 20px;
+}
+
+/* Pulso animado para documentos Novos */
+.pulse-badge {
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Tooltip Inteligente (Hover Magnético) */
+.smart-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateX(20px) scale(0.9);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.hover-magnetic:hover .smart-tooltip {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    z-index: 50;
+}
+</style>
+
+<!-- HEADER COMPACTO E MODERNO -->
+<div class="glass-panel rounded-2xl overflow-hidden p-5 mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+    <div>
+        <h2 class="text-xl md:text-2xl font-black text-jp-navy tracking-tight">Seus Documentos</h2>
+        <p class="text-slate-500 text-xs md:text-sm">Visualize, leia e baixe suas obrigações rapidamente.</p>
     </div>
     
-    <div class="p-2 space-y-2 bg-slate-50/50">
-        {% for p in protocolos %}
-        <a href="/portal/documento/{{ p.id }}" class="block task-card p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group flex items-center justify-between">
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase">{{ p.protocolo }}</span>
-                    <span class="bg-slate-50 text-slate-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border border-slate-100 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ p.data|brasilia('%d/%m/%Y') }}</span>
-                    {% if not p.conf_recto %}
-                    <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black tracking-widest border border-orange-200 uppercase">NOVO</span>
-                    {% endif %}
-                </div>
-                <div class="text-sm font-bold text-jp-navy group-hover:text-indigo-600 transition-colors">{{ p.obrigacao }}</div>
-            </div>
-            <div class="ml-4 flex-shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors">
-                <i class="fa-solid fa-chevron-right"></i>
-            </div>
-        </a>
-        {% else %}
-        <div class="p-8 text-center text-slate-500">
-            <i class="fa-solid fa-inbox text-4xl mb-3 text-slate-300"></i>
-            <p class="text-sm font-medium">Nenhum documento recente encontrado.</p>
+    <!-- Busca Ultra Rápida -->
+    <div class="relative w-full md:w-80">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fa-solid fa-search text-slate-400"></i>
         </div>
-        {% endfor %}
+        <input type="text" id="searchInput" placeholder="Buscar por documento ou protocolo..." 
+               class="w-full bg-slate-50/50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow outline-none"
+               onkeyup="filtrarDocumentos()">
     </div>
 </div>
+
+<!-- SPLIT VIEW INTERFACE -->
+<div class="flex flex-col lg:flex-row gap-4 h-[calc(100vh-200px)] min-h-[600px]">
+    
+    <!-- LADO ESQUERDO: LISTA TIMELINE -->
+    <div class="w-full lg:w-1/3 flex flex-col glass-panel rounded-2xl overflow-hidden border border-slate-100 shadow-sm relative z-20">
+        <div class="p-4 bg-indigo-50/50 border-b border-indigo-100 flex justify-between items-center">
+            <h3 class="text-[11px] font-bold text-indigo-800 uppercase tracking-widest"><i class="fa-regular fa-folder-open mr-1.5"></i> Fila de Arquivos</h3>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto hide-scrollbar p-3 space-y-6" id="listaDocs">
+            {% for mes, docs in meses_grupos.items() %}
+            <div class="doc-group">
+                <!-- Header do Mês -->
+                <div class="sticky top-0 bg-white/90 backdrop-blur-sm z-10 py-1.5 mb-2 flex items-center gap-3">
+                    <span class="w-2 h-2 rounded-full bg-indigo-300 shrink-0"></span>
+                    <h4 class="text-xs font-black text-slate-800 uppercase tracking-widest">{{ mes }}</h4>
+                    <div class="h-px bg-slate-200 flex-1"></div>
+                </div>
+                
+                <div class="space-y-2 pl-4 border-l-2 border-slate-100 ml-1">
+                    {% for p in docs %}
+                    <div class="doc-item relative group hover-magnetic bg-white border border-slate-100 p-3 rounded-xl cursor-pointer" 
+                         onclick="abrirVisualizador('{{ p.id }}', '{{ p.first_url }}', '{{ p.obrigacao }}')"
+                         data-nome="{{ p.obrigacao | lower }}" data-prot="{{ p.protocolo | lower }}">
+                        
+                        <div class="flex justify-between items-start gap-2">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <span class="text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded tracking-wider uppercase">{{ p.data_obj.strftime('%d/%m') if p.data_obj else '' }}</span>
+                                    
+                                    {% if not p.lido %}
+                                    <span class="pulse-badge bg-red-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase shadow-sm">NOVO</span>
+                                    {% endif %}
+                                </div>
+                                <h5 class="text-xs font-bold text-jp-navy truncate pr-2 group-hover:text-indigo-600 transition-colors" title="{{ p.obrigacao }}">{{ p.obrigacao }}</h5>
+                                <p class="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">Ref: {{ p.protocolo }}</p>
+                            </div>
+                            
+                            <!-- Icone de tipo -->
+                            <div class="shrink-0 w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                {% if p.has_pdf %}
+                                <i class="fa-solid fa-file-pdf"></i>
+                                {% else %}
+                                <i class="fa-solid fa-file-lines"></i>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- THUMBNAIL INTELIGENTE (POPOVER) -->
+                        <div class="smart-tooltip absolute left-[105%] top-0 w-48 bg-jp-navy rounded-xl shadow-2xl p-4 border border-slate-700 pointer-events-none hidden lg:block before:content-[''] before:absolute before:top-4 before:-left-2 before:w-4 before:h-4 before:bg-jp-navy before:rotate-45 before:border-b before:border-l before:border-slate-700">
+                            <div class="relative z-10 text-white">
+                                <div class="w-full h-24 bg-slate-800 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
+                                    <!-- Faux PDF Thumbnail -->
+                                    <div class="absolute inset-2 bg-white rounded flex flex-col p-2 gap-1 opacity-90">
+                                        <div class="w-1/2 h-1 bg-slate-200 rounded"></div>
+                                        <div class="w-3/4 h-1 bg-slate-200 rounded"></div>
+                                        <div class="w-full h-1 bg-slate-100 rounded mt-2"></div>
+                                        <div class="w-full h-1 bg-slate-100 rounded"></div>
+                                        <div class="w-full h-1 bg-slate-100 rounded"></div>
+                                        <div class="mt-auto self-center text-red-500 text-[10px]"><i class="fa-solid fa-file-pdf"></i></div>
+                                    </div>
+                                </div>
+                                <h6 class="text-[10px] font-bold uppercase tracking-widest text-indigo-300 mb-1">Visualização Rápida</h6>
+                                <p class="text-[11px] leading-tight line-clamp-2">{{ p.obrigacao }}</p>
+                                <div class="mt-2 text-[9px] text-slate-400">Clique para abrir no visualizador →</div>
+                            </div>
+                        </div>
+
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center h-full text-slate-400 text-center px-4">
+                <i class="fa-solid fa-inbox text-4xl mb-3 text-slate-300"></i>
+                <p class="text-sm font-medium">Você ainda não recebeu documentos.</p>
+            </div>
+            {% endfor %}
+            
+            <!-- Mensagem de Sem Resultados na Busca -->
+            <div id="noResults" class="hidden flex-col items-center justify-center py-10 text-slate-400 text-center">
+                <i class="fa-solid fa-search-minus text-3xl mb-2 text-slate-300"></i>
+                <p class="text-xs font-bold uppercase tracking-widest">Nenhum documento encontrado.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LADO DIREITO: VIEWER DE ALTA PERFORMANCE -->
+    <div class="w-full lg:w-2/3 flex flex-col glass-panel rounded-2xl overflow-hidden border border-slate-100 shadow-sm relative z-10 bg-slate-50/50">
+        
+        <!-- Empty State Viewer -->
+        <div id="viewerEmpty" class="absolute inset-0 flex flex-col items-center justify-center z-10 bg-slate-50/90 backdrop-blur-sm transition-opacity duration-300">
+            <div class="w-24 h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 border border-slate-100">
+                <i class="fa-solid fa-file-invoice text-4xl text-indigo-200"></i>
+            </div>
+            <h3 class="text-lg font-bold text-jp-navy tracking-tight">Área de Visualização</h3>
+            <p class="text-sm text-slate-500 mt-1 max-w-xs text-center">Selecione um documento na lista ao lado para lê-lo diretamente aqui.</p>
+        </div>
+
+        <!-- Toolbar do Visualizador -->
+        <div id="viewerToolbar" class="p-3 bg-white border-b border-slate-200 flex justify-between items-center opacity-0 transition-opacity duration-300">
+            <div class="flex items-center gap-3 min-w-0">
+                <span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-eye"></i>
+                </span>
+                <h3 class="text-sm font-bold text-jp-navy truncate" id="viewerTitle">Documento</h3>
+            </div>
+            <div class="flex gap-2 shrink-0">
+                <a href="#" id="btnExternal" target="_blank" class="px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5" title="Abrir em nova aba">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> <span class="hidden sm:inline">Nova Aba</span>
+                </a>
+                <a href="#" id="btnDownload" target="_blank" download class="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm flex items-center gap-1.5" title="Baixar Arquivo">
+                    <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Baixar</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- iframe container -->
+        <div class="flex-1 relative bg-slate-100" id="viewerContainer">
+            <!-- Loader -->
+            <div id="viewerLoader" class="absolute inset-0 flex items-center justify-center bg-slate-100 z-10 hidden">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+            <iframe id="docFrame" class="w-full h-full border-0 absolute inset-0 opacity-0 transition-opacity duration-500" title="Visualizador de Documento"></iframe>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ==========================================
+// BUSCA ULTRA-RÁPIDA (Filtro Client-Side)
+// ==========================================
+function filtrarDocumentos() {
+    const termo = document.getElementById('searchInput').value.toLowerCase();
+    const grupos = document.querySelectorAll('.doc-group');
+    let encontrouAlgum = false;
+
+    grupos.forEach(grupo => {
+        const itens = grupo.querySelectorAll('.doc-item');
+        let grupoVisivel = false;
+
+        itens.forEach(item => {
+            const nome = item.getAttribute('data-nome');
+            const prot = item.getAttribute('data-prot');
+            
+            if (nome.includes(termo) || prot.includes(termo)) {
+                item.style.display = 'block';
+                grupoVisivel = true;
+                encontrouAlgum = true;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Esconde o cabeçalho do mês se não tiver nenhum item visível
+        grupo.style.display = grupoVisivel ? 'block' : 'none';
+    });
+
+    document.getElementById('noResults').style.display = encontrouAlgum || grupos.length === 0 ? 'none' : 'flex';
+}
+
+// ==========================================
+// VISUALIZADOR SPLIT-VIEW (iFrame)
+// ==========================================
+function abrirVisualizador(id_protocolo, url, titulo) {
+    if (!url || url === 'None' || url.trim() === '') {
+        alert("Infelizmente este documento não possui um anexo digital, ou o arquivo está indisponível.");
+        return;
+    }
+
+    // UI Updates
+    document.getElementById('viewerEmpty').classList.add('opacity-0', 'pointer-events-none');
+    document.getElementById('viewerToolbar').classList.remove('opacity-0');
+    
+    document.getElementById('viewerTitle').textContent = titulo;
+    document.getElementById('btnExternal').href = url;
+    document.getElementById('btnDownload').href = url;
+    
+    const iframe = document.getElementById('docFrame');
+    const loader = document.getElementById('viewerLoader');
+    
+    // Show loader, hide iframe
+    iframe.classList.remove('opacity-100');
+    loader.classList.remove('hidden');
+    
+    // Set URL
+    iframe.src = url;
+    
+    // When loaded, fade in
+    iframe.onload = () => {
+        loader.classList.add('hidden');
+        iframe.classList.add('opacity-100');
+    };
+
+    // Marca como lido no visual
+    const clickedElement = event.currentTarget;
+    if (clickedElement) {
+        const badge = clickedElement.querySelector('.pulse-badge');
+        if (badge) {
+            badge.style.transition = 'opacity 0.3s';
+            badge.style.opacity = '0';
+            setTimeout(() => badge.remove(), 300);
+            
+            // Chama a rota original silenciosamente para registrar a leitura no BD
+            fetch(`/acesso/${id_protocolo}`, { method: 'GET' }).catch(e => console.log(e));
+        }
+    }
+}
+</script>
 {% endblock %}

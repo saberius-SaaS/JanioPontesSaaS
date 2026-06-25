@@ -103,15 +103,58 @@ async def portal_dashboard(
     except Exception:
         pass
 
-    # Buscar protocolos recentes
-    protocolos = db.query(models.Protocolo).filter(
+    # Buscar protocolos recentes (até 50 para uma timeline legal)
+    protocolos_db = db.query(models.Protocolo).filter(
         models.Protocolo.cliente == cliente_nome
-    ).order_by(models.Protocolo.data.desc()).limit(10).all()
+    ).order_by(models.Protocolo.data.desc()).limit(50).all()
+
+    import re
+    from collections import defaultdict
+    import locale
+
+    protocolos_parsed = []
+    meses_grupos = defaultdict(list)
+    
+    # Dicionário manual de meses em PT-BR para evitar problemas de locale no servidor
+    meses_pt = {
+        1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+        9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+    }
+
+    for p in protocolos_db:
+        link_bruto = p.link_arquivo or ""
+        base_link = re.sub(r'\[.*?\]', '', link_bruto).strip()
+        links = [l.strip() for l in base_link.split(' | ') if l.strip().startswith('http')]
+        
+        # Pega a data real de criação e converte para UTC-3 (Brasília)
+        dt = p.data
+        if dt and dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        if dt:
+            dt = dt.astimezone(_tz_brasilia)
+            mes_nome = meses_pt.get(dt.month, "")
+            grupo_nome = f"{mes_nome} de {dt.year}"
+        else:
+            grupo_nome = "Anteriores"
+
+        # Criar um dicionário com os dados formatados
+        p_dict = {
+            "id": p.id,
+            "protocolo": p.protocolo,
+            "obrigacao": p.obrigacao,
+            "data_obj": dt,
+            "lido": bool(p.conf_recto),
+            "links": links,
+            "has_pdf": len(links) > 0 and any(".pdf" in l.lower() for l in links),
+            "first_url": links[0] if links else None
+        }
+        meses_grupos[grupo_nome].append(p_dict)
 
     return templates.TemplateResponse(request, "portal/dashboard.html", {
         "request": request,
         "cliente": cliente_nome,
-        "protocolos": protocolos
+        "meses_grupos": dict(meses_grupos)
     })
 
 @router.get("/portal/documento/{id}", response_class=HTMLResponse)
