@@ -516,7 +516,7 @@
             {% for membro in ranking_equipe %}
             <div>
               <div class="flex justify-between text-[10px] font-bold text-slate-600 mb-1 tracking-wider uppercase">
-                <span class="truncate max-w-[150px]" title="{{ membro.responsavel }}">{{ loop.index }}º - {{ membro.responsavel.split(',')[0].split('@')[0] }}</span>
+                <span class="truncate max-w-[150px]" title="{{ membro.responsavel }}">{{ loop.index }}º - {{ membro.responsavel }}</span>
                 <span class="text-slate-500">{{ membro.entregues }}/{{ membro.total }} <span class="text-emerald-500">({{ membro.percentual }}%)</span></span>
               </div>
               <div class="h-2.5 w-full bg-emerald-100 rounded-full overflow-hidden">

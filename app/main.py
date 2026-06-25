@@ -207,21 +207,51 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
     # Ranking Equipe
     ranking_raw = db.query(
         subq.c.responsavel,
+        subq.c.departamento,
         func.count(subq.c.id).label('total'),
         func.sum(case((subq.c.status == 'ENTREGUE', 1), else_=0)).label('entregues')
-    ).group_by(subq.c.responsavel).all()
+    ).group_by(subq.c.responsavel, subq.c.departamento).all()
 
-    ranking_equipe = []
+    equipes_db = db.query(models.Equipe).filter(models.Equipe.tenant_id == current_user.tenant_id).all()
+    email_to_equipe = {}
+    dep_to_equipe = {}
+    for eq in equipes_db:
+        if eq.departamento not in dep_to_equipe:
+            dep_to_equipe[eq.departamento] = eq.nome
+        for m in eq.membros:
+            if m.usuario and m.usuario.email:
+                email_to_equipe[m.usuario.email.lower()] = eq.nome
+
+    ranking_equipe_dict = {}
     for r in ranking_raw:
         if not r.responsavel: continue
         total_resp = r.total or 0
         entregues_resp = r.entregues or 0
         if total_resp == 0: continue
-        percentual = int((entregues_resp / total_resp * 100))
+        
+        primeiro_email = r.responsavel.split(',')[0].strip().lower()
+        team_name = None
+        if primeiro_email in email_to_equipe:
+            team_name = email_to_equipe[primeiro_email]
+        elif r.departamento in dep_to_equipe:
+            team_name = dep_to_equipe[r.departamento]
+        else:
+            # Fallback legacy
+            team_name = r.responsavel.split('@')[0].capitalize()
+
+        if team_name not in ranking_equipe_dict:
+            ranking_equipe_dict[team_name] = {"total": 0, "entregues": 0}
+        
+        ranking_equipe_dict[team_name]["total"] += total_resp
+        ranking_equipe_dict[team_name]["entregues"] += entregues_resp
+
+    ranking_equipe = []
+    for team, data in ranking_equipe_dict.items():
+        percentual = int((data["entregues"] / data["total"] * 100)) if data["total"] > 0 else 0
         ranking_equipe.append({
-            "responsavel": r.responsavel,
-            "total": total_resp,
-            "entregues": entregues_resp,
+            "responsavel": team,
+            "total": data["total"],
+            "entregues": data["entregues"],
             "percentual": percentual
         })
     ranking_equipe.sort(key=lambda x: x['total'], reverse=True)
@@ -242,7 +272,7 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
 @app.get("/api/badges")
 async def get_badges(db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
     from sqlalchemy import not_, or_
-    from datetime import datetime
+    from datetime import datetime, timedelta, date
     
     revisoes = db.query(models.Tarefa).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
@@ -265,9 +295,15 @@ async def get_badges(db: Session = Depends(get_db), current_user: models.Usuario
         )
     ).count()
 
-    from app.routers.usuario import _ultimo_ping
     agora = datetime.now()
-    online_count = sum(1 for ts in _ultimo_ping.values() if (agora - ts).total_seconds() < 90)
+    limite_online = agora - timedelta(seconds=90)
+    hoje = date.today()
+    
+    online_count = db.query(models.FrequenciaAcesso).filter(
+        models.FrequenciaAcesso.tenant_id == current_user.tenant_id,
+        models.FrequenciaAcesso.data == hoje,
+        models.FrequenciaAcesso.atualizado_em >= limite_online
+    ).count()
 
     return {
         "revisoes": revisoes,

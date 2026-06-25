@@ -7,14 +7,11 @@ from uuid import UUID
 from app import models
 from app.database import get_db
 from app.api.deps import require_admin, require_login
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from sqlalchemy import func
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
-
-# Rastreio de presença em memória (email -> último ping)
-_ultimo_ping: dict[str, datetime] = {}
 
 @router.get("/usuarios", response_class=HTMLResponse)
 async def list_usuarios_page(
@@ -42,7 +39,13 @@ async def list_usuarios_page(
     map_mes = {t.email: t.total_minutos for t in telemetria_mes}
 
     agora = datetime.now()
-    online_set = {email for email, ts in _ultimo_ping.items() if (agora - ts).total_seconds() < 90}
+    limite_online = agora - timedelta(seconds=90)
+    online_freqs = db.query(models.FrequenciaAcesso.email).filter(
+        models.FrequenciaAcesso.tenant_id == current_user.tenant_id,
+        models.FrequenciaAcesso.data == hoje,
+        models.FrequenciaAcesso.atualizado_em >= limite_online
+    ).all()
+    online_set = {f.email for f in online_freqs}
 
     return templates.TemplateResponse(request, "usuarios.html", {
         "usuarios": usuarios,
@@ -80,7 +83,6 @@ async def register_ping(
         freq.tempo_minutos += 1
         freq.pings += 1
     
-    _ultimo_ping[current_user.email] = datetime.now()
     db.commit()
     return {"status": "ok"}
 
