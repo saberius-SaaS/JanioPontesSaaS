@@ -1,5 +1,5 @@
 {% if erro %}
-<tr class="bg-red-50"><td colspan="5" class="px-4 py-3 text-red-600 text-sm"><i class="fa-solid fa-triangle-exclamation mr-2"></i> {{ erro }}</td></tr>
+<tr class="bg-red-50"><td colspan="8" class="px-4 py-3 text-red-600 text-sm"><i class="fa-solid fa-triangle-exclamation mr-2"></i> {{ erro }}</td></tr>
 {% endif %}
 
 {% for u in usuarios %}
@@ -10,6 +10,18 @@
         <span class="px-2.5 py-1 text-[10px] font-bold rounded-full uppercase {% if u.nivel == 'ADMIN' or u.nivel == 'MASTER' %}bg-purple-100 text-purple-700{% else %}bg-blue-100 text-blue-700{% endif %}">
             {{ u.nivel }}
         </span>
+    </td>
+    <td class="px-4 py-3">
+        {% if online_set and u.email in online_set %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm">
+                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+                Online
+            </span>
+        {% else %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-full bg-slate-100 text-slate-400 border border-slate-200">
+                <i class="fa-solid fa-circle text-[6px]"></i> Offline
+            </span>
+        {% endif %}
     </td>
     <td class="px-4 py-3 text-slate-500 font-semibold">{{ map_hoje.get(u.email, 0) if map_hoje else 0 }}m</td>
     <td class="px-4 py-3 text-slate-500 font-semibold">{{ ((map_mes.get(u.email, 0) if map_mes else 0) / 60)|round(1) }}h</td>
@@ -26,6 +38,6 @@
 </tr>
 {% else %}
 <tr>
-    <td colspan="7" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhum usuário encontrado.</td>
+    <td colspan="8" class="px-4 py-8 text-center text-slate-400 text-sm">Nenhum usuário encontrado.</td>
 </tr>
 {% endfor %}

@@ -152,17 +152,7 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
 
     from sqlalchemy import not_, or_
     
-    # Protocolos pendentes de leitura (Regra idêntica ao GAS)
-    protocolos_nao_lidos = db.query(models.Protocolo).filter(
-        models.Protocolo.tenant_id == current_user.tenant_id,
-        models.Protocolo.conf_recto == None,
-        models.Protocolo.status_envio == 'ENVIADO',
-        models.Protocolo.acao.ilike('%ENVIAR%'),
-        or_(
-            models.Protocolo.link_arquivo == None,
-            not_(models.Protocolo.link_arquivo.startswith('SEM_ENVIO:'))
-        )
-    ).count()
+    # Protocolos pendentes de leitura foram movidos para o endpoint /api/badges
 
     # --- Desempenho e Ranking (Ativas + Histórico do Mês) ---
     from sqlalchemy import select, union_all
@@ -245,10 +235,46 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         "pendentes": pendentes,
         "entregues": entregues,
         "atrasadas": atrasadas,
-        "protocolos_nao_lidos": protocolos_nao_lidos,
         "desempenho_setorial": desempenho_setorial,
         "ranking_equipe": ranking_equipe
     })
+
+@app.get("/api/badges")
+async def get_badges(db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
+    from sqlalchemy import not_, or_
+    from datetime import datetime
+    
+    revisoes = db.query(models.Tarefa).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status == 'REVISAO'
+    ).count()
+
+    solicitacoes = db.query(models.Solicitacao).filter(
+        models.Solicitacao.tenant_id == current_user.tenant_id,
+        models.Solicitacao.status == 'PENDENTE'
+    ).count()
+
+    protocolos = db.query(models.Protocolo).filter(
+        models.Protocolo.tenant_id == current_user.tenant_id,
+        models.Protocolo.conf_recto == None,
+        models.Protocolo.status_envio == 'ENVIADO',
+        models.Protocolo.acao.ilike('%ENVIAR%'),
+        or_(
+            models.Protocolo.link_arquivo == None,
+            not_(models.Protocolo.link_arquivo.startswith('SEM_ENVIO:'))
+        )
+    ).count()
+
+    from app.routers.usuario import _ultimo_ping
+    agora = datetime.now()
+    online_count = sum(1 for ts in _ultimo_ping.values() if (agora - ts).total_seconds() < 90)
+
+    return {
+        "revisoes": revisoes,
+        "solicitacoes": solicitacoes,
+        "protocolos": protocolos,
+        "equipe": online_count
+    }
 
 @app.get("/htmx-test", response_class=HTMLResponse)
 async def htmx_test(request: Request):

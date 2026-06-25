@@ -315,13 +315,15 @@
       {% if user and user.nivel in ['ADMIN', 'MASTER'] %}
       <a href="/revisoes" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
         <i class="fa-solid fa-stamp w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
-        <span class="ml-2.5">Aprovar Revisões</span>
+        <span class="ml-2.5 flex-1">Aprovar Revisões</span>
+        <span id="badge-revisoes" class="hidden bg-purple-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shadow-black/20"></span>
       </a>
       {% endif %}
 
       <a href="/solicitacoes" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
         <i class="fa-solid fa-comments w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
-        <span class="ml-2.5">Solicitações</span>
+        <span class="ml-2.5 flex-1">Solicitações</span>
+        <span id="badge-solicitacoes" class="hidden bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shadow-black/20"></span>
       </a>
 
       <a href="/compliance" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
@@ -339,7 +341,8 @@
 
       <a href="/protocolos" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
         <i class="fa-solid fa-file-signature w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
-        <span class="ml-2.5">Protocolos</span>
+        <span class="ml-2.5 flex-1">Protocolos</span>
+        <span id="badge-protocolos" class="hidden bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shadow-black/20"></span>
       </a>
 
       {% if user and user.nivel in ['ADMIN', 'MASTER'] %}
@@ -363,7 +366,8 @@
 
       <a href="/usuarios" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
         <i class="fa-solid fa-users-gear w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
-        <span class="ml-2.5">Gestão de Equipe</span>
+        <span class="ml-2.5 flex-1">Gestão de Equipe</span>
+        <span id="badge-equipe" class="hidden bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shadow-black/20" title="Usuários Online"></span>
       </a>
 
       <a href="/equipes" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
@@ -455,7 +459,7 @@
 
       {% block content %}
       <!-- KPI Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
         <div class="card-premium p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Obrigações Pendentes</h3>
@@ -480,13 +484,6 @@
           <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ atrasadas }}</p>
         </div>
 
-        <div class="card-premium p-6 border-l-4 border-l-amber-500">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-amber-500 font-semibold text-xs uppercase tracking-wider">Protocolos Pendentes</h3>
-            <div class="bg-amber-50 text-amber-500 p-2.5 rounded-xl"><i class="fa-solid fa-envelope-open-text"></i></div>
-          </div>
-          <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ protocolos_nao_lidos }}</p>
-        </div>
       </div>
 
       <!-- Gráficos -->
@@ -765,15 +762,36 @@
         document.addEventListener(evt, markActive, {passive: true})
     );
 
+    // Heartbeat (Telemetria)
     setInterval(() => {
-        if (isActive && document.visibilityState === 'visible') {
-            fetch('/telemetria/ping', { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            }).catch(e => console.log('Ping falhou'));
-            isActive = false; // reseta para o proximo ciclo
+      fetch('/telemetria/ping', { method: 'POST' }).catch(e => console.error(e));
+    }, 60000);
+
+    // Badges globais do menu
+    async function fetchBadges() {
+      try {
+        const res = await fetch('/api/badges');
+        if(res.ok) {
+          const data = await res.json();
+          const bRevisoes = document.getElementById('badge-revisoes');
+          const bSolicitacoes = document.getElementById('badge-solicitacoes');
+          const bProtocolos = document.getElementById('badge-protocolos');
+          const bEquipe = document.getElementById('badge-equipe');
+
+          if(bRevisoes) { bRevisoes.textContent = data.revisoes; data.revisoes > 0 ? bRevisoes.classList.remove('hidden') : bRevisoes.classList.add('hidden'); }
+          if(bSolicitacoes) { bSolicitacoes.textContent = data.solicitacoes; data.solicitacoes > 0 ? bSolicitacoes.classList.remove('hidden') : bSolicitacoes.classList.add('hidden'); }
+          if(bProtocolos) { bProtocolos.textContent = data.protocolos; data.protocolos > 0 ? bProtocolos.classList.remove('hidden') : bProtocolos.classList.add('hidden'); }
+          if(bEquipe) { bEquipe.textContent = data.equipe; data.equipe > 0 ? bEquipe.classList.remove('hidden') : bEquipe.classList.add('hidden'); }
         }
-    }, pingInterval);
+      } catch(e) {
+        console.error('Falha ao atualizar badges:', e);
+      }
+    }
+
+    // Busca ao iniciar a página
+    fetchBadges();
+    // Atualiza badges a cada 2 minutos
+    setInterval(fetchBadges, 120000);
   </script>
 </body>
 </html>
