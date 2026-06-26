@@ -101,7 +101,7 @@
                     <div class="doc-item relative group hover-magnetic bg-white border border-slate-100 p-3 rounded-xl cursor-pointer" 
                          onclick="abrirVisualizador(this)"
                          data-id="{{ p.id }}" data-url="{{ p.first_url or '' }}" data-titulo="{{ p.obrigacao }}"
-                         data-acao="{{ p.acao }}" data-mensagem="{{ p.mensagem | e }}"
+                         data-acao="{{ p.acao }}" data-mensagem="{{ p.mensagem | e }}" data-data="{{ p.data_obj.strftime('%d/%m/%Y') if p.data_obj else '' }}"
                          data-nome="{{ p.obrigacao | lower }}" data-prot="{{ p.protocolo | lower }}">
                         
                         <div class="flex justify-between items-start gap-2">
@@ -185,19 +185,69 @@
             <p class="text-sm text-slate-500 mt-1 max-w-xs text-center">Selecione um documento na lista ao lado para lê-lo diretamente aqui.</p>
         </div>
 
-        <!-- Message View (COMUNICAR) -->
-        <div id="viewerMessage" class="absolute inset-0 flex items-center justify-center z-10 bg-white hidden">
-            <div class="max-w-lg w-full text-center px-8">
-                <div class="w-20 h-20 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-amber-100 shadow-sm">
-                    <i class="fa-solid fa-bullhorn text-3xl"></i>
+        <!-- Message View (COMUNICAR) PREMIUM -->
+        <div id="viewerMessage" class="absolute inset-0 z-10 hidden bg-gradient-to-br from-slate-50 to-slate-100 overflow-y-auto">
+            <div class="min-h-full flex items-center justify-center p-6">
+                <!-- Premium Card -->
+                <div class="max-w-2xl w-full bg-white rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-slate-100 overflow-hidden relative">
+                    <!-- Top Gradient Accent -->
+                    <div class="h-2 w-full bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400"></div>
+                    
+                    <div class="p-8 sm:p-12">
+                        <!-- Header -->
+                        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-10">
+                            <div class="flex items-center gap-5">
+                                <div class="relative shrink-0">
+                                    <div class="absolute inset-0 bg-amber-400 opacity-20 blur-xl rounded-full"></div>
+                                    <div class="w-14 h-14 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100/50 text-amber-500 rounded-2xl flex items-center justify-center relative shadow-sm">
+                                        <i class="fa-solid fa-bullhorn text-xl"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 class="text-2xl font-extrabold text-slate-800 tracking-tight">Comunicado Oficial</h3>
+                                    <p class="text-sm font-medium text-slate-400 mt-1 flex items-center gap-2">
+                                        <i class="fa-solid fa-shield-check text-emerald-500"></i> <span class="tracking-wide">Mensagem Verificada</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="shrink-0">
+                                <span class="bg-slate-50 text-slate-400 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center" id="msgDateBadge">
+                                    <i class="fa-regular fa-calendar mr-1.5"></i> <span>Recente</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Content Area -->
+                        <div class="bg-slate-50/50 rounded-2xl p-6 sm:p-8 border border-slate-100 relative group transition-colors hover:bg-slate-50">
+                            <!-- Quotation Mark Accent -->
+                            <div class="absolute -top-4 -left-4 w-10 h-10 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-300 shadow-sm group-hover:text-amber-400 transition-colors">
+                                <i class="fa-solid fa-quote-left text-sm"></i>
+                            </div>
+
+                            <h4 class="text-base font-bold text-jp-navy mb-4 border-b border-slate-200/60 pb-3" id="msgSubtitle"></h4>
+                            
+                            <div class="text-[15px] text-slate-600 leading-relaxed whitespace-pre-wrap font-medium" id="msgContent">
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="mt-10 flex flex-col sm:flex-row sm:items-center justify-between border-t border-slate-100 pt-6 gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                                    <i class="fa-solid fa-building"></i>
+                                </div>
+                                <div class="text-xs text-slate-500 font-medium">
+                                    Enviado pela equipe<br>
+                                    <span class="text-jp-navy font-bold text-sm">Jânio Pontes</span>
+                                </div>
+                            </div>
+                            <button onclick="document.getElementById('viewerMessage').classList.add('hidden'); document.getElementById('viewerEmpty').classList.remove('opacity-0', 'pointer-events-none');" 
+                                    class="text-xs font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest transition-colors flex items-center gap-2 px-4 py-2 hover:bg-slate-50 rounded-lg">
+                                Fechar <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <h3 class="text-lg font-bold text-jp-navy mb-1">Comunicado</h3>
-                <p class="text-xs text-slate-400 mb-4">Mensagem informativa da equipe</p>
-                <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 text-left">
-                    <h4 class="text-sm font-bold text-indigo-700 mb-2 border-b border-slate-200 pb-2" id="msgSubtitle"></h4>
-                    <p class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" id="msgContent"></p>
-                </div>
-                <p class="text-[10px] text-slate-400 mt-5 uppercase tracking-widest font-bold"><i class="fa-solid fa-info-circle mr-1"></i> Este é um comunicado — não há arquivo anexo.</p>
             </div>
         </div>
 
@@ -307,6 +357,7 @@ function abrirVisualizador(el) {
     const titulo = el.dataset.titulo;
     const acao = el.dataset.acao;
     const mensagem = el.dataset.mensagem;
+    const data_doc = el.dataset.data;
 
     const viewerEmpty = document.getElementById('viewerEmpty');
     const viewerToolbar = document.getElementById('viewerToolbar');
@@ -324,6 +375,10 @@ function abrirVisualizador(el) {
 
         document.getElementById('msgSubtitle').textContent = titulo;
         document.getElementById('msgContent').textContent = mensagem || "Sem mensagem informada.";
+        
+        if (document.getElementById('msgDateBadge')) {
+            document.getElementById('msgDateBadge').innerHTML = `<i class="fa-regular fa-calendar mr-1.5"></i> <span>${data_doc || 'Recente'}</span>`;
+        }
 
         marcarComoLido(el, id_protocolo);
         return;

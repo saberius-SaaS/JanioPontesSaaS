@@ -95,8 +95,31 @@ async def register_ping(
             
         freq.atualizado_em = dt_class.now(tz.utc)
         db.commit()
-        return {"status": "ok"}
-    except Exception:
+
+        # SLIDING SESSION: Renova o token e o cookie se o usuário estiver ativo
+        from fastapi.responses import JSONResponse
+        from app.core import security
+        from app.core.config import settings
+        from datetime import timedelta
+
+        response = JSONResponse(content={"status": "ok"})
+        
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        new_token = security.create_access_token(current_user.id, expires_delta=access_token_expires)
+        
+        response.set_cookie(
+            key="__session",
+            value=new_token,
+            httponly=True,
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            samesite="lax",
+            secure=True
+        )
+        return response
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Erro no ping: {e}")
         return {"status": "skip", "reason": "db_error"}
 
 @router.post("/usuarios", response_class=HTMLResponse)
