@@ -27,7 +27,7 @@
 
     <div class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-1.5" id="listaHistorico">
         {% for h in historicos %}
-        <div class="task-card flex items-center justify-between p-2.5 bg-white border border-slate-100 rounded-lg shadow-sm hover:shadow hover:bg-slate-50 transition group border-l-4 {% if h.status == 'ENTREGUE' %}border-l-emerald-500{% elif h.status == 'REVISAO' %}border-l-amber-400{% else %}border-l-slate-400{% endif %}">
+        <div class="task-card flex items-center justify-between p-2.5 bg-white border border-slate-100 {% if not h.mensagem_enviada and not h.anexos %}rounded-lg mb-1.5{% else %}rounded-t-lg z-10 relative{% endif %} shadow-sm hover:shadow hover:bg-slate-50 transition group border-l-4 {% if h.status == 'ENTREGUE' %}border-l-emerald-500{% elif h.status == 'REVISAO' %}border-l-amber-400{% else %}border-l-slate-400{% endif %}">
             <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
                 <div class="flex-1 min-w-0 flex items-baseline">
                     <span class="text-[11px] font-bold text-jp-navy uppercase tracking-wider truncate max-w-[40%]">{{ h.cliente }}</span>
@@ -56,6 +56,30 @@
                 {% endif %}
             </div>
         </div>
+        
+        <!-- Conteúdo Extra (Arquivos e Mensagens) -->
+        {% if h.mensagem_enviada or h.anexos %}
+        <div class="bg-slate-50 border border-slate-100 border-t-0 rounded-b-lg -mt-3 mb-3 px-4 pt-4 pb-2 ml-1 mr-1 flex flex-col gap-2">
+            {% if h.mensagem_enviada %}
+            <div class="flex items-start gap-2 text-xs text-slate-600">
+                <i class="fa-solid fa-comment-dots text-slate-400 mt-0.5"></i>
+                <span class="font-medium bg-white px-2 py-1 rounded border border-slate-200 flex-1">{{ h.mensagem_enviada }}</span>
+            </div>
+            {% endif %}
+            {% if h.anexos %}
+            <div class="flex items-start gap-2 text-xs text-slate-600">
+                <i class="fa-solid fa-paperclip text-slate-400 mt-0.5"></i>
+                <div class="flex flex-wrap gap-2">
+                    {% for anexo in h.anexos %}
+                    <a href="{{ anexo }}" target="_blank" class="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 px-2 py-1 rounded transition-colors text-[11px] font-semibold text-slate-600">
+                        <i class="fa-solid fa-file-pdf text-red-500"></i> Arquivo {{ loop.index }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
         {% else %}
         <div class="p-8 text-center text-slate-500">
             <i class="fa-solid fa-box-open text-4xl mb-3 text-slate-300"></i>

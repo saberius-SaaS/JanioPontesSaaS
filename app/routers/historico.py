@@ -18,13 +18,37 @@ async def list_historico(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
-    query = db.query(models.HistoricoTarefa).filter(
+    query = db.query(models.HistoricoTarefa, models.Protocolo.link_arquivo).outerjoin(
+        models.Protocolo,
+        (models.Protocolo.tenant_id == models.HistoricoTarefa.tenant_id) &
+        (models.Protocolo.protocolo == models.HistoricoTarefa.protocolo)
+    ).filter(
         models.HistoricoTarefa.tenant_id == current_user.tenant_id
     )
+    
     if mes:
         query = query.filter(models.HistoricoTarefa.mes_ano == mes)
     
-    historicos = query.order_by(models.HistoricoTarefa.criado_em.desc()).limit(300).all()
+    historicos_raw = query.order_by(models.HistoricoTarefa.criado_em.desc()).limit(300).all()
+    
+    import re
+    historicos = []
+    for h, link in historicos_raw:
+        link = link or ""
+        
+        # Extrai links de URL puros
+        urls = []
+        base_link = re.sub(r'\[(.*?)\]', '', link).strip()
+        if base_link:
+            urls = [l.strip() for l in base_link.split(' | ') if l.strip().startswith('http')]
+            
+        # Extrai mensagens ou justificativas (ex: [COMUNICADO: texto], [ARQUIVADO: justificativa])
+        obs_match = re.search(r'\[(.*?)\]', link)
+        mensagem = obs_match.group(1) if obs_match else ""
+        
+        h.anexos = urls
+        h.mensagem_enviada = mensagem
+        historicos.append(h)
     
     # Busca meses disponíveis para o filtro
     meses_raw = db.query(models.HistoricoTarefa.mes_ano).filter(
