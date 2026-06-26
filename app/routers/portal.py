@@ -139,9 +139,19 @@ async def portal_dashboard(
     }
 
     for p in protocolos_db:
+        acao_tipo = (p.acao or "").upper()
+        
+        # 1. Bloquear ações estritamente internas (justificativas, auditorias)
+        if acao_tipo in ["ARQUIVAR", "AUDITAR"]:
+            continue
+
         link_bruto = p.link_arquivo or ""
         base_link = re.sub(r'\[.*?\]', '', link_bruto).strip()
         links = [l.strip() for l in base_link.split(' | ') if l.strip().startswith('http')]
+        
+        # 2. Se não for comunicado e não tiver link de arquivo, é apenas uma baixa justificada antiga/sem arquivo
+        if acao_tipo != "COMUNICAR" and len(links) == 0:
+            continue
         
         # Pega a data real de criação e converte para UTC-3 (Brasília)
         dt = p.data
@@ -155,7 +165,6 @@ async def portal_dashboard(
             grupo_nome = "Anteriores"
 
         # Dados da ação e mensagem para COMUNICAR
-        acao_tipo = (p.acao or "").upper()
         if acao_tipo == "COMUNICAR":
             mensagem_texto = p.link_arquivo.strip() if p.link_arquivo else "Comunicado informativo"
         else:
