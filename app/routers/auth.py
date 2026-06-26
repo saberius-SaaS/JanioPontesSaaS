@@ -187,8 +187,31 @@ def login_google_oauth(
         if not user.ativo:
             raise HTTPException(status_code=400, detail="Usuário inativo. Contate o administrador.")
 
+        # Preserva sessão do Portal do Cliente caso já exista no mesmo navegador
+        token_atual = request.cookies.get("__session")
+        cliente = None
+        portal_tenant = None
+        if token_atual:
+            try:
+                from jose import jwt
+                payload = jwt.decode(token_atual, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+                cliente = payload.get("cliente")
+                portal_tenant = payload.get("tenant_id")
+            except Exception:
+                pass
+
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        token = security.create_access_token(user.id, expires_delta=access_token_expires)
+        
+        # Gera o payload fundido (Admin + Cliente)
+        from datetime import datetime as dt_class, timezone as tz
+        expire = dt_class.now(tz.utc) + access_token_expires
+        token_data = {"exp": expire, "sub": str(user.id)}
+        if cliente and portal_tenant:
+            token_data["cliente"] = cliente
+            token_data["tenant_id"] = portal_tenant
+            
+        from jose import jwt
+        token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
         response = JSONResponse(content={"ok": True, "message": "Login realizado com sucesso."})
         response.set_cookie(

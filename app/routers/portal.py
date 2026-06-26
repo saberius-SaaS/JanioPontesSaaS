@@ -66,16 +66,30 @@ async def acesso_magico(
         protocolo.conf_recto = datetime.now()
         db.commit()
 
+    # Tenta preservar a sessão de admin (sub) caso o dono do sistema esteja testando o portal
+    token_atual = request.cookies.get("__session")
+    admin_sub = None
+    if token_atual:
+        try:
+            payload = jwt.decode(token_atual, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            admin_sub = payload.get("sub")
+        except Exception:
+            pass
+
     # Gera token de sessão do cliente
     expires = timedelta(days=30)
     expire = datetime.now(timezone.utc) + expires
     token_data = {"exp": expire, "cliente": cliente_nome, "tenant_id": tenant_id_str}
+    
+    if admin_sub:
+        token_data["sub"] = admin_sub
+
     from jose import jwt
     token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     response = RedirectResponse(url=f"/portal/documento/{prot_id}", status_code=status.HTTP_302_FOUND)
     response.set_cookie(
-        key="__portal_session",
+        key="__session",
         value=token,
         httponly=True,
         max_age=30 * 24 * 60 * 60,
@@ -232,7 +246,7 @@ async def portal_documento(
 @router.get("/portal/logout")
 async def portal_logout():
     response = RedirectResponse(url="/portal/login", status_code=status.HTTP_302_FOUND)
-    response.delete_cookie(key="__portal_session")
+    response.delete_cookie(key="__session")
     return response
 
 @router.get("/portal/solicitacoes", response_class=HTMLResponse)

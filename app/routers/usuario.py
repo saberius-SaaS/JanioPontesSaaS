@@ -104,8 +104,28 @@ async def register_ping(
 
         response = JSONResponse(content={"status": "ok"})
         
+        # Preserva os dados do cliente caso o Admin também esteja logado no Portal do Cliente na mesma aba
+        token_atual = request.cookies.get("__session")
+        cliente = None
+        portal_tenant = None
+        if token_atual:
+            try:
+                payload = jwt.decode(token_atual, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+                cliente = payload.get("cliente")
+                portal_tenant = payload.get("tenant_id")
+            except Exception:
+                pass
+        
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        new_token = security.create_access_token(current_user.id, expires_delta=access_token_expires)
+        
+        # Recria o payload base com a nova expiração
+        expire = dt_class.now(tz.utc) + access_token_expires
+        token_data = {"exp": expire, "sub": str(current_user.id)}
+        if cliente and portal_tenant:
+            token_data["cliente"] = cliente
+            token_data["tenant_id"] = portal_tenant
+            
+        new_token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         
         response.set_cookie(
             key="__session",
