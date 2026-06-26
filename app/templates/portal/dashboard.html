@@ -99,13 +99,18 @@
                 <div class="space-y-2 pl-4 border-l-2 border-slate-100 ml-1">
                     {% for p in docs %}
                     <div class="doc-item relative group hover-magnetic bg-white border border-slate-100 p-3 rounded-xl cursor-pointer" 
-                         onclick="abrirVisualizador('{{ p.id }}', '{{ p.first_url }}', '{{ p.obrigacao }}')"
+                         onclick="abrirVisualizador(this)"
+                         data-id="{{ p.id }}" data-url="{{ p.first_url or '' }}" data-titulo="{{ p.obrigacao }}"
+                         data-acao="{{ p.acao }}" data-mensagem="{{ p.mensagem | e }}"
                          data-nome="{{ p.obrigacao | lower }}" data-prot="{{ p.protocolo | lower }}">
                         
                         <div class="flex justify-between items-start gap-2">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 mb-1.5">
                                     <span class="text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded tracking-wider uppercase">{{ p.data_obj.strftime('%d/%m') if p.data_obj else '' }}</span>
+                                    {% if p.mes_ano %}
+                                    <span class="text-[9px] font-bold text-teal-600 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded tracking-wider uppercase" title="Período de referência">{{ p.mes_ano }}</span>
+                                    {% endif %}
                                     
                                     {% if not p.lido %}
                                     <span class="pulse-badge bg-red-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase shadow-sm">NOVO</span>
@@ -116,8 +121,12 @@
                             </div>
                             
                             <!-- Icone de tipo -->
-                            <div class="shrink-0 w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                {% if p.has_pdf %}
+                            <div class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+                                {% if p.acao == 'COMUNICAR' %}bg-amber-50 text-amber-500 group-hover:bg-amber-500 group-hover:text-white
+                                {% else %}bg-indigo-50 text-indigo-500 group-hover:bg-indigo-600 group-hover:text-white{% endif %}">
+                                {% if p.acao == 'COMUNICAR' %}
+                                <i class="fa-solid fa-bullhorn"></i>
+                                {% elif p.has_pdf %}
                                 <i class="fa-solid fa-file-pdf"></i>
                                 {% else %}
                                 <i class="fa-solid fa-file-lines"></i>
@@ -176,6 +185,21 @@
             <p class="text-sm text-slate-500 mt-1 max-w-xs text-center">Selecione um documento na lista ao lado para lê-lo diretamente aqui.</p>
         </div>
 
+        <!-- Message View (COMUNICAR) -->
+        <div id="viewerMessage" class="absolute inset-0 flex items-center justify-center z-10 bg-white hidden">
+            <div class="max-w-lg w-full text-center px-8">
+                <div class="w-20 h-20 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-amber-100 shadow-sm">
+                    <i class="fa-solid fa-bullhorn text-3xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-jp-navy mb-1" id="msgTitle">Comunicado</h3>
+                <p class="text-xs text-slate-400 mb-4">Mensagem informativa da equipe</p>
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 text-left">
+                    <p class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" id="msgContent"></p>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-5 uppercase tracking-widest font-bold"><i class="fa-solid fa-info-circle mr-1"></i> Este é um comunicado — não há arquivo anexo.</p>
+            </div>
+        </div>
+
         <!-- Toolbar do Visualizador -->
         <div id="viewerToolbar" class="p-3 bg-white border-b border-slate-200 flex justify-between items-center opacity-0 transition-opacity duration-300">
             <div class="flex items-center gap-3 min-w-0">
@@ -206,7 +230,42 @@
 
 </div>
 
+<!-- Toast Container -->
+<div id="portal-toast" class="fixed bottom-5 right-5 z-[100] pointer-events-none hidden">
+    <div class="pointer-events-auto bg-white border border-slate-200 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-4 w-80 max-w-[90vw] flex items-start gap-3 transform transition-all duration-300">
+        <div class="shrink-0 mt-0.5" id="toast-icon"></div>
+        <div class="flex-1 min-w-0">
+            <h4 class="text-sm font-bold text-slate-800 mb-0.5" id="toast-title"></h4>
+            <p class="text-xs text-slate-600" id="toast-msg"></p>
+        </div>
+        <button onclick="fecharToast()" class="shrink-0 text-slate-400 hover:text-slate-600 transition-colors p-1"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+</div>
+
 <script>
+// ==========================================
+// TOAST SYSTEM (substitui alerts nativos)
+// ==========================================
+let _toastTimer = null;
+function mostrarToast(titulo, mensagem, tipo = 'info') {
+    const el = document.getElementById('portal-toast');
+    const iconMap = {
+        info:    '<i class="fa-solid fa-info-circle text-lg text-sky-500"></i>',
+        warning: '<i class="fa-solid fa-triangle-exclamation text-lg text-amber-500"></i>',
+        success: '<i class="fa-solid fa-check-circle text-lg text-emerald-500"></i>',
+        error:   '<i class="fa-solid fa-circle-exclamation text-lg text-red-500"></i>'
+    };
+    document.getElementById('toast-icon').innerHTML = iconMap[tipo] || iconMap.info;
+    document.getElementById('toast-title').textContent = titulo;
+    document.getElementById('toast-msg').textContent = mensagem;
+    el.classList.remove('hidden');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(fecharToast, 5000);
+}
+function fecharToast() {
+    document.getElementById('portal-toast').classList.add('hidden');
+}
+
 // ==========================================
 // BUSCA ULTRA-RÁPIDA (Filtro Client-Side)
 // ==========================================
@@ -232,7 +291,6 @@ function filtrarDocumentos() {
             }
         });
 
-        // Esconde o cabeçalho do mês se não tiver nenhum item visível
         grupo.style.display = grupoVisivel ? 'block' : 'none';
     });
 
@@ -240,50 +298,70 @@ function filtrarDocumentos() {
 }
 
 // ==========================================
-// VISUALIZADOR SPLIT-VIEW (iFrame)
+// VISUALIZADOR SPLIT-VIEW (iFrame + COMUNICAR)
 // ==========================================
-function abrirVisualizador(id_protocolo, url, titulo) {
-    if (!url || url === 'None' || url.trim() === '') {
-        alert("Infelizmente este documento não possui um anexo digital, ou o arquivo está indisponível.");
+function abrirVisualizador(el) {
+    const id_protocolo = el.dataset.id;
+    const url = el.dataset.url;
+    const titulo = el.dataset.titulo;
+    const acao = el.dataset.acao;
+    const mensagem = el.dataset.mensagem;
+
+    const viewerEmpty = document.getElementById('viewerEmpty');
+    const viewerToolbar = document.getElementById('viewerToolbar');
+    const viewerMessage = document.getElementById('viewerMessage');
+    const iframe = document.getElementById('docFrame');
+    const loader = document.getElementById('viewerLoader');
+
+    // === COMUNICAR: exibir mensagem no painel ===
+    if (acao === 'COMUNICAR') {
+        viewerEmpty.classList.add('opacity-0', 'pointer-events-none');
+        viewerToolbar.classList.add('opacity-0');
+        viewerMessage.classList.remove('hidden');
+        iframe.src = 'about:blank';
+        iframe.classList.remove('opacity-100');
+
+        document.getElementById('msgTitle').textContent = titulo;
+        document.getElementById('msgContent').textContent = mensagem || titulo;
+
+        marcarComoLido(el, id_protocolo);
         return;
     }
 
-    // UI Updates
-    document.getElementById('viewerEmpty').classList.add('opacity-0', 'pointer-events-none');
-    document.getElementById('viewerToolbar').classList.remove('opacity-0');
-    
+    // === ARQUIVO: verificar URL ===
+    if (!url || url === 'None' || url.trim() === '') {
+        mostrarToast('Arquivo Indisponível', 'Este documento não possui um anexo digital no momento.', 'warning');
+        return;
+    }
+
+    // === ARQUIVO: exibir no iframe ===
+    viewerEmpty.classList.add('opacity-0', 'pointer-events-none');
+    viewerMessage.classList.add('hidden');
+    viewerToolbar.classList.remove('opacity-0');
+
     document.getElementById('viewerTitle').textContent = titulo;
     document.getElementById('btnExternal').href = url;
     document.getElementById('btnDownload').href = url;
-    
-    const iframe = document.getElementById('docFrame');
-    const loader = document.getElementById('viewerLoader');
-    
-    // Show loader, hide iframe
+
     iframe.classList.remove('opacity-100');
     loader.classList.remove('hidden');
-    
-    // Set URL
     iframe.src = url;
-    
-    // When loaded, fade in
+
     iframe.onload = () => {
         loader.classList.add('hidden');
         iframe.classList.add('opacity-100');
     };
 
-    // Marca como lido no visual
-    const clickedElement = event.currentTarget;
-    if (clickedElement) {
-        const badge = clickedElement.querySelector('.pulse-badge');
-        if (badge) {
-            badge.style.transition = 'opacity 0.3s';
-            badge.style.opacity = '0';
-            setTimeout(() => badge.remove(), 300);
-            
-            // Chama a rota original silenciosamente para registrar a leitura no BD
-            fetch(`/acesso/${id_protocolo}`, { method: 'GET' }).catch(e => console.log(e));
-        }
+    marcarComoLido(el, id_protocolo);
+}
+
+function marcarComoLido(el, id_protocolo) {
+    const badge = el.querySelector('.pulse-badge');
+    if (badge) {
+        badge.style.transition = 'opacity 0.3s';
+        badge.style.opacity = '0';
+        setTimeout(() => badge.remove(), 300);
+        fetch(`/acesso/${id_protocolo}`, { method: 'GET' }).catch(() => {});
     }
 }
 </script>

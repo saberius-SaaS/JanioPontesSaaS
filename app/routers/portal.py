@@ -114,6 +114,22 @@ async def portal_dashboard(
 
     protocolos_parsed = []
     meses_grupos = defaultdict(list)
+
+    # Buscar período (mes_ano) das tarefas vinculadas (batch para evitar N+1)
+    id_tarefas = [p.id_tarefa for p in protocolos_db if p.id_tarefa]
+    mes_ano_lookup = {}
+    if id_tarefas:
+        tarefas_ref = db.query(models.Tarefa.id_controle, models.Tarefa.mes_ano).filter(
+            models.Tarefa.id_controle.in_(id_tarefas)
+        ).all()
+        mes_ano_lookup = {t.id_controle: t.mes_ano for t in tarefas_ref}
+        missing = [idt for idt in id_tarefas if idt not in mes_ano_lookup]
+        if missing:
+            hist_ref = db.query(models.HistoricoTarefa.id_controle, models.HistoricoTarefa.mes_ano).filter(
+                models.HistoricoTarefa.id_controle.in_(missing)
+            ).all()
+            for h in hist_ref:
+                mes_ano_lookup[h.id_controle] = h.mes_ano
     
     # Dicionário manual de meses em PT-BR para evitar problemas de locale no servidor
     meses_pt = {
@@ -138,6 +154,13 @@ async def portal_dashboard(
         else:
             grupo_nome = "Anteriores"
 
+        # Dados da ação e mensagem para COMUNICAR
+        acao_tipo = (p.acao or "").upper()
+        if acao_tipo == "COMUNICAR":
+            mensagem_texto = re.sub(r'https?://\S+', '', base_link).strip() or p.obrigacao or "Comunicado informativo"
+        else:
+            mensagem_texto = ""
+
         # Criar um dicionário com os dados formatados
         p_dict = {
             "id": p.id,
@@ -147,7 +170,10 @@ async def portal_dashboard(
             "lido": bool(p.conf_recto),
             "links": links,
             "has_pdf": len(links) > 0 and any(".pdf" in l.lower() for l in links),
-            "first_url": links[0] if links else None
+            "first_url": links[0] if links else None,
+            "mes_ano": mes_ano_lookup.get(p.id_tarefa, ""),
+            "acao": acao_tipo,
+            "mensagem": mensagem_texto,
         }
         meses_grupos[grupo_nome].append(p_dict)
 
