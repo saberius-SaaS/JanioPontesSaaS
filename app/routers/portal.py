@@ -75,7 +75,7 @@ async def acesso_magico(
 
     response = RedirectResponse(url=f"/portal/documento/{prot_id}", status_code=status.HTTP_302_FOUND)
     response.set_cookie(
-        key="__session",
+        key="__portal_session",
         value=token,
         httponly=True,
         max_age=30 * 24 * 60 * 60,
@@ -232,7 +232,7 @@ async def portal_documento(
 @router.get("/portal/logout")
 async def portal_logout():
     response = RedirectResponse(url="/portal/login", status_code=status.HTTP_302_FOUND)
-    response.delete_cookie(key="__session")
+    response.delete_cookie(key="__portal_session")
     return response
 
 @router.get("/portal/solicitacoes", response_class=HTMLResponse)

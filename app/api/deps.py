@@ -119,7 +119,7 @@ def get_cliente_from_cookie(request: Request) -> Optional[dict]:
     Extrai o JWT do cookie '__session' para o Portal do Cliente.
     Retorna um dicionário com tenant_id e cliente_nome, ou None.
     """
-    token = request.cookies.get("__session")
+    token = request.cookies.get("__portal_session")
     if not token:
         return None
     try:
