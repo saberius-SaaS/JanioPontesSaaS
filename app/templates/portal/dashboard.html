@@ -203,10 +203,9 @@
                                         <i class="fa-solid fa-bullhorn text-xl"></i>
                                     </div>
                                 </div>
-                                <div>
-                                    <h3 class="text-2xl font-extrabold text-slate-800 tracking-tight">Comunicado Oficial</h3>
-                                    <p class="text-sm font-medium text-slate-400 mt-1 flex items-center gap-2">
-                                        <i class="fa-solid fa-shield-check text-emerald-500"></i> <span class="tracking-wide">Mensagem Verificada</span>
+                                <div class="flex flex-col justify-center">
+                                    <p class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                        <i class="fa-solid fa-shield-check text-emerald-500 text-lg"></i> <span class="tracking-wide uppercase text-xs">Mensagem Verificada</span>
                                     </p>
                                 </div>
                             </div>
@@ -223,10 +222,8 @@
                             <div class="absolute -top-4 -left-4 w-10 h-10 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-300 shadow-sm group-hover:text-amber-400 transition-colors">
                                 <i class="fa-solid fa-quote-left text-sm"></i>
                             </div>
-
-                            <h4 class="text-base font-bold text-jp-navy mb-4 border-b border-slate-200/60 pb-3" id="msgSubtitle"></h4>
                             
-                            <div class="text-[15px] text-slate-600 leading-relaxed whitespace-pre-wrap font-medium" id="msgContent">
+                            <div class="text-[15px] text-slate-600 leading-relaxed whitespace-pre-wrap font-medium pt-1" id="msgContent">
                             </div>
                         </div>
 
@@ -373,8 +370,7 @@ function abrirVisualizador(el) {
         iframe.src = 'about:blank';
         iframe.classList.remove('opacity-100');
 
-        document.getElementById('msgSubtitle').textContent = titulo;
-        document.getElementById('msgContent').textContent = mensagem || "Sem mensagem informada.";
+        document.getElementById('msgContent').textContent = mensagem || "Nenhuma mensagem fornecida.";
         
         if (document.getElementById('msgDateBadge')) {
             document.getElementById('msgDateBadge').innerHTML = `<i class="fa-regular fa-calendar mr-1.5"></i> <span>${data_doc || 'Recente'}</span>`;

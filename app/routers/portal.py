@@ -166,7 +166,7 @@ async def portal_dashboard(
 
         # Dados da ação e mensagem para COMUNICAR
         if acao_tipo == "COMUNICAR":
-            mensagem_texto = p.link_arquivo.strip() if p.link_arquivo else "Comunicado informativo"
+            mensagem_texto = p.link_arquivo.strip() if p.link_arquivo else ""
         else:
             mensagem_texto = ""
 
