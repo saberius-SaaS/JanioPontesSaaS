@@ -157,7 +157,7 @@ async def portal_dashboard(
         # Dados da ação e mensagem para COMUNICAR
         acao_tipo = (p.acao or "").upper()
         if acao_tipo == "COMUNICAR":
-            mensagem_texto = re.sub(r'https?://\S+', '', base_link).strip() or p.obrigacao or "Comunicado informativo"
+            mensagem_texto = p.link_arquivo.strip() if p.link_arquivo else "Comunicado informativo"
         else:
             mensagem_texto = ""
 
