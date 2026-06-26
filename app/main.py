@@ -105,7 +105,12 @@ app.include_router(webhook.router, prefix="/webhook", tags=["Webhooks"])
 app.include_router(scheduler.router, prefix="/scheduler", tags=["Rotinas Agendadas"])
 
 @app.get("/", response_class=HTMLResponse)
-async def root(request: Request, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
+async def root(
+    request: Request, 
+    departamento: str = None,
+    db: Session = Depends(get_db), 
+    current_user: models.Usuario = Depends(require_login)
+):
     from datetime import date
     hoje = date.today()
     inicio_mes = date(hoje.year, hoje.month, 1)
@@ -115,13 +120,28 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         fim_mes = date(hoje.year, hoje.month + 1, 1)
     mes_ano_ref = f"{hoje.month:02d}/{hoje.year}"
 
+    # Buscar lista de departamentos disponíveis para o filtro
+    departamentos_db = db.query(models.Equipe.departamento).filter(
+        models.Equipe.tenant_id == current_user.tenant_id
+    ).distinct().order_by(models.Equipe.departamento).all()
+    departamentos_lista = [d[0] for d in departamentos_db if d[0]]
+
+    # Preparar filtro base
+    filtro_depto = []
+    if departamento and departamento != 'TODOS':
+        filtro_depto = [models.Tarefa.departamento == departamento]
+        
+    filtro_depto_hist = []
+    if departamento and departamento != 'TODOS':
+        filtro_depto_hist = [models.HistoricoTarefa.departamento == departamento]
+
     # Pendentes do mês: tarefas NÃO-entregues com vencimento <= fim do mês
-    # (Alinhado com GAS DashboardService: inclui PENDENTE, REVISAO, REPROVADO, ATRASADO)
     pendentes = db.query(models.Tarefa).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status.notin_(['ENTREGUE']),
         models.Tarefa.vencimento != None,
-        models.Tarefa.vencimento < fim_mes
+        models.Tarefa.vencimento < fim_mes,
+        *filtro_depto
     ).count()
 
     # Entregas do mês: ENTREGUE na fila ativa + histórico do mês atual
@@ -130,24 +150,26 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         models.Tarefa.status == 'ENTREGUE',
         models.Tarefa.vencimento != None,
         models.Tarefa.vencimento >= inicio_mes,
-        models.Tarefa.vencimento < fim_mes
+        models.Tarefa.vencimento < fim_mes,
+        *filtro_depto
     ).count()
     entregues_historico = db.query(models.HistoricoTarefa).filter(
         models.HistoricoTarefa.tenant_id == current_user.tenant_id,
         models.HistoricoTarefa.status == 'ENTREGUE',
         models.HistoricoTarefa.vencimento != None,
         models.HistoricoTarefa.vencimento >= inicio_mes,
-        models.HistoricoTarefa.vencimento < fim_mes
+        models.HistoricoTarefa.vencimento < fim_mes,
+        *filtro_depto_hist
     ).count()
     entregues = entregues_ativas + entregues_historico
 
     # Risco Legal: tarefas PENDENTE com vencimento <= hoje
-    # (Alinhado com GAS WebAppRoute: apenas status PENDENTE, vencimento vencido)
     atrasadas = db.query(models.Tarefa).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status == 'PENDENTE',
         models.Tarefa.vencimento != None,
-        models.Tarefa.vencimento <= hoje
+        models.Tarefa.vencimento <= hoje,
+        *filtro_depto
     ).count()
 
     from sqlalchemy import not_, or_
@@ -265,7 +287,9 @@ async def root(request: Request, db: Session = Depends(get_db), current_user: mo
         "entregues": entregues,
         "atrasadas": atrasadas,
         "desempenho_setorial": desempenho_setorial,
-        "ranking_equipe": ranking_equipe
+        "ranking_equipe": ranking_equipe,
+        "departamentos": departamentos_lista,
+        "departamento_selecionado": departamento or 'TODOS'
     })
 
 @app.get("/api/badges")
