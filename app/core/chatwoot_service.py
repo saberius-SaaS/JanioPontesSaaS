@@ -13,7 +13,7 @@ class ChatwootService:
         self.account_id = settings.CHATWOOT_ACCOUNT_ID
         
         self.headers = {
-            "api_access_token": self.api_token,
+            "api-access-token": self.api_token,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
@@ -173,7 +173,7 @@ class ChatwootService:
 
         url = f"{self.base_url}/platform/api/v1/users/{user_id}/login"
         headers = {
-            "api_access_token": settings.CHATWOOT_PLATFORM_TOKEN,
+            "api-access-token": settings.CHATWOOT_PLATFORM_TOKEN,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
