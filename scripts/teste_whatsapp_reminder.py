@@ -21,7 +21,7 @@ async def main():
     print("  TESTE DE WHATSAPP REMINDER")
     print("="*60)
     print(f"  Destino: {TELEFONE_TESTE}")
-    print(f"  Template: protocolos")
+    print(f"  Template: automatico_protocolos")
     print(f"  Parametros: ['{NOME_TESTE}', '19']")
     print("="*60)
 
@@ -29,7 +29,7 @@ async def main():
     sucesso = await chatwoot_service.send_template_notification(
         name=NOME_TESTE,
         email=EMAIL_TESTE,
-        template_name="protocolos",
+        template_name="automatico_protocolos",
         phone_number=TELEFONE_TESTE,
         template_params=[NOME_TESTE, "19"]
     )
@@ -40,7 +40,7 @@ async def main():
     else:
         print(f"\n  FALHA ao enviar. Verifique os logs acima.")
         print(f"  Possiveis causas:")
-        print(f"    - Template 'protocolos' nao aprovado no WhatsApp Business")
+        print(f"    - Template 'automatico_protocolos' nao aprovado no WhatsApp Business")
         print(f"    - Inbox do Chatwoot nao configurado para WhatsApp")
         print(f"    - Contato nao encontrado/criado no Chatwoot\n")
 

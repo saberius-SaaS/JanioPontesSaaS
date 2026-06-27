@@ -70,10 +70,12 @@ class ChatwootService:
         if conversations and "data" in conversations and "meta" in conversations["data"]:
             payload_convs = conversations["data"].get("payload", [])
             if payload_convs:
-                # Retorna a conversa mais recente aberta, ou a primeira que encontrar
-                return payload_convs[0].get("id")
+                # Retorna a conversa que pertence ao inbox correto (WhatsApp)
+                for conv in payload_convs:
+                    if conv.get("inbox_id") == settings.CHATWOOT_INBOX_ID:
+                        return conv.get("id")
 
-        # Criar nova conversa
+        # Criar nova conversa no inbox correto
         conv_data = {
             "inbox_id": settings.CHATWOOT_INBOX_ID,
             "contact_id": contact_id,

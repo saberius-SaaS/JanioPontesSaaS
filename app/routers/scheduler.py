@@ -180,7 +180,7 @@ async def send_whatsapp_reminders(
         sucesso = await chatwoot_service.send_template_notification(
             name=nome_cliente,
             email=email,
-            template_name="lembrete_protocolos", # Nome do novo template genérico
+            template_name="automatico_protocolos", # Nome do novo template genérico
             phone_number=wpp,
             template_params=[nome_cliente, str(total)]
         )
@@ -192,4 +192,33 @@ async def send_whatsapp_reminders(
             
     db.commit()
     return {"status": "success", "clientes_notificados": contador_mensagens}
+
+
+@router.post("/backup-database")
+async def backup_database(
+    db: Session = Depends(get_db),
+    _auth: bool = Depends(verify_scheduler_key)
+):
+    """
+    Exporta o banco PostgreSQL como CSVs compactados em ZIP
+    e faz upload na pasta BACKUPS_SISTEMA do Google Drive.
+    Remove backups com mais de 30 dias automaticamente.
+    Protegida por X-Scheduler-Key. Chamada pelo Cloud Scheduler (semanal).
+    """
+    from app.core.backup_service import gerar_backup_zip, upload_backup_drive, limpar_backups_antigos
+
+    try:
+        zip_bytes, nome_arquivo = gerar_backup_zip(db)
+        link = upload_backup_drive(zip_bytes, nome_arquivo)
+        removidos = limpar_backups_antigos(dias_retencao=30)
+
+        return {
+            "status": "success",
+            "arquivo": nome_arquivo,
+            "link": link,
+            "tamanho_kb": round(len(zip_bytes) / 1024, 1),
+            "backups_antigos_removidos": removidos
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
