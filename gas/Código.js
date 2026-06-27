@@ -8,6 +8,13 @@
  */
 function onEdit(e) {
   if (!e) return;
+
+  // 🔒 MODO LEITURA: Bloqueia qualquer edição durante a migração
+  if (CONFIG_SISTEMA.MODO_LEITURA) {
+    if (e.range) e.range.setValue(e.oldValue || "");
+    SpreadsheetApp.getUi().alert("🔒 SISTEMA TEMPORARIAMENTE SUSPENSO\n\nEstamos realizando uma atualização importante.\nNão utilize a planilha nem o sistema até que seja liberado pela administração.");
+    return;
+  }
   
   // Trava de Segurança: impede edição por usuários não cadastrados
   var userEmail = Session.getActiveUser().getEmail().toLowerCase().trim();

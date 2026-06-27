@@ -99,7 +99,7 @@ $ENV_VARS = @(
     "DB_USER=app_user",
     "DB_NAME=postgres",
     "DB_HOST=/cloudsql/jp-saas-producao:us-east1:jpsaas-db-us",
-    "EMAIL_MODE=intercept",
+    "EMAIL_MODE=production",
     "EMAIL_INTERCEPT_ADDRESS=janiopontes@janiopontes.com.br",
     "GMAIL_DELEGATED_USER=janiopontes@janiopontes.com.br",
     "STORAGE_MODE=production",
@@ -110,7 +110,8 @@ $ENV_VARS = @(
     "CHATWOOT_INBOX_ID=1",
     "CHATWOOT_WEB_TOKEN=VD2dxy7b93oDV3ZFvfg28LtK",
     "CHATWOOT_API_TOKEN=EskrAALRW9c8ex8XcdB9iUxZ",
-    "CHATWOOT_PLATFORM_TOKEN=4SdUibmgmgQe7VGRgooDm1a7"
+    "CHATWOOT_PLATFORM_TOKEN=4SdUibmgmgQe7VGRgooDm1a7",
+    "SCHEDULER_API_KEY=jp-saas-cron-key-8a7b6c5d4e3f"
 ) -join ","
 
 gcloud run deploy $CLOUDRUN_SVC `

@@ -4,6 +4,8 @@
  */
 
 var CONFIG_SISTEMA = {
+  // 🔒 MODO LEITURA: true = sistema congelado (migração em andamento). Nenhuma operação de escrita é permitida.
+  MODO_LEITURA: true,
   ID_PLANILHA: "1gey_Q16UVbihSRSLFvD6a7JZtwFaYzLXtTwVKySEijw",
   VERSAO: "v131.20",
   // 🌐 URLs E CONEXÕES

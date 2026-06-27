@@ -157,6 +157,51 @@ function salvarPerfisCliente(rowIdx, perfisStr) {
  */
 function doGet(e) {
   try {
+    // 🔒 MODO LEITURA: Exibe página de manutenção ao invés do Portal
+    if (CONFIG_SISTEMA.MODO_LEITURA) {
+      var htmlMaintenance = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+              .card { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 24px; padding: 60px 40px; max-width: 520px; width: 100%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+              .icon { font-size: 64px; margin-bottom: 24px; }
+              h1 { font-size: 24px; font-weight: 800; color: #f8fafc; margin-bottom: 12px; letter-spacing: -0.5px; }
+              .subtitle { font-size: 14px; color: #94a3b8; line-height: 1.7; margin-bottom: 32px; }
+              .divider { width: 60px; height: 3px; background: linear-gradient(90deg, #f59e0b, #ef4444); border-radius: 2px; margin: 0 auto 32px; }
+              .notice { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 20px; margin-top: 8px; }
+              .notice p { font-size: 13px; color: #fbbf24; font-weight: 600; line-height: 1.6; }
+              .footer { margin-top: 40px; font-size: 11px; color: #475569; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="icon">🔒</div>
+              <h1>Sistema Temporariamente Suspenso</h1>
+              <div class="divider"></div>
+              <p class="subtitle">
+                Estamos realizando uma atualização importante no sistema.<br>
+                Não utilize a planilha nem o portal até que seja liberado.
+              </p>
+              <div class="notice">
+                <p>⚠️ Aguarde a comunicação da administração antes de retomar qualquer operação.</p>
+              </div>
+              <p class="footer">Janio Pontes Contabilidade &bull; Atualização em andamento</p>
+            </div>
+          </body>
+        </html>
+      `;
+      return HtmlService.createHtmlOutput(htmlMaintenance)
+        .setTitle('Sistema em Migração - Janio Pontes')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+
     var params = e.parameter || {};
     var mode = String(params.mode || "").trim();
     var solId = String(params.sol || "").trim().replace(/^["']|["']$/g, "");
@@ -254,6 +299,14 @@ function doGet(e) {
  */
 function doPost(e) {
   try {
+    // 🔒 MODO LEITURA: Bloqueia todas as operações de escrita
+    if (CONFIG_SISTEMA.MODO_LEITURA) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: "🔒 SISTEMA TEMPORARIAMENTE SUSPENSO — Estamos realizando uma atualização importante. Não utilize a planilha nem o sistema até que seja liberado pela administração."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     // ⚡ CENÁRIO A: Retorno de Autenticação GIS (Modo Redirecionamento)
     // O Google envia um POST com Content-Type: application/x-www-form-urlencoded contendo 'credential'
     if (e.parameter && e.parameter.credential) {

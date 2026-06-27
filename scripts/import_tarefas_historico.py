@@ -113,9 +113,9 @@ def migrar_tarefas(db: Session, tenant_id: str, tarefas_sheet: List[Dict]):
             db.add(nova)
             count_inseridos += 1
             
-        if (count_inseridos + count_atualizados) % 200 == 0:
+        if (count_inseridos + count_atualizados) % 50 == 0:
             db.commit()
-            
+            logging.info(f"  ... progresso: {count_inseridos + count_atualizados} tarefas processadas...")
     db.commit()
     logging.info(f"Tarefas: {count_inseridos} inseridas, {count_atualizados} atualizadas.")
 
