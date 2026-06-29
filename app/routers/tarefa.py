@@ -224,14 +224,25 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
     if current_user.nivel not in ['ADMIN', 'MASTER']:
         from sqlalchemy import or_
         nomes_equipes = [eq.equipe.nome for eq in current_user.equipes]
+        deptos_equipes = [eq.equipe.departamento for eq in current_user.equipes if eq.equipe.departamento]
+        
         filtros_resp = [current_user.nome, current_user.email] + nomes_equipes
         filtros_resp = [f for f in filtros_resp if f]
+        
+        condicoes = []
         if filtros_resp:
-            query = query.filter(or_(*[models.Tarefa.responsavel.ilike(f"%{f}%") for f in filtros_resp]))
+            condicoes.append(or_(*[models.Tarefa.responsavel.ilike(f"%{f}%") for f in filtros_resp]))
+        
+        # Também permite ver se a tarefa está no mesmo departamento das equipes do usuário
+        if deptos_equipes:
+            condicoes.append(models.Tarefa.departamento.in_(deptos_equipes))
+            
+        if condicoes:
+            query = query.filter(or_(*condicoes))
         else:
             query = query.filter(models.Tarefa.responsavel == None)  # sem filtro = sem resultado
 
-    tarefas_raw = query.order_by(models.Tarefa.vencimento.asc()).limit(100).all()
+    tarefas_raw = query.order_by(models.Tarefa.vencimento.asc()).limit(400).all()
     
     tarefas = []
     for t, rev in tarefas_raw:

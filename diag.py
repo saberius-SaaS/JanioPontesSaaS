@@ -9,43 +9,24 @@ pwd = quote_plus(os.getenv("DB_PASSWORD", ""))
 host = os.getenv("DB_HOST")
 url = f"postgresql://{os.getenv('DB_USER')}:{pwd}@{host}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 
-print(f"Conectando a: {host}...")
-
 engine = create_engine(url, connect_args={"connect_timeout": 5})
 
 try:
     with engine.connect() as conn:
-        print("Conexao OK!")
+        # Listar TODOS os schemas
+        schemas = conn.execute(text("SELECT schema_name FROM information_schema.schemata")).fetchall()
+        print("Schemas:", [s[0] for s in schemas])
         
-        # 1. Total de tarefas
-        total = conn.execute(text("SELECT count(*) FROM tarefas")).scalar()
-        print(f"\nTotal tarefas: {total}")
-        
-        # 2. Tarefas por status
-        rows = conn.execute(text("SELECT status, count(*) FROM tarefas GROUP BY status")).fetchall()
-        print(f"Por status: {rows}")
-        
-        # 3. Responsaveis unicos em tarefas pendentes
-        resps = conn.execute(text("SELECT DISTINCT responsavel FROM tarefas WHERE status IN ('PENDENTE','ATRASADO') LIMIT 20")).fetchall()
-        print(f"\nResponsaveis em tarefas pendentes:")
-        for r in resps:
-            print(f"  - {r[0]}")
-            
-        # 4. Usuario fiscal
-        user = conn.execute(text("SELECT id, nome, email, nivel FROM usuarios WHERE email = 'fiscal@janiopontes.com.br'")).fetchone()
-        if user:
-            print(f"\nUsuaria fiscal: nome={user[1]}, email={user[2]}, nivel={user[3]}")
-            
-            # Equipes dela
-            equipes = conn.execute(text("""
-                SELECT e.nome, e.departamento 
-                FROM equipes e 
-                JOIN equipe_membros em ON em.equipe_id = e.id 
-                WHERE em.usuario_id = :uid
-            """), {"uid": user[0]}).fetchall()
-            print(f"Equipes: {equipes}")
-        else:
-            print("\nUsuaria fiscal@janiopontes.com.br NAO encontrada!")
+        # Listar TODAS as tabelas do schema public
+        tables = conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename")).fetchall()
+        print(f"\nTabelas em public ({len(tables)}):")
+        for t in tables:
+            count = conn.execute(text(f'SELECT count(*) FROM "{t[0]}"')).scalar()
+            print(f"  {t[0]}: {count} registros")
+
+        # Listar todos os databases
+        dbs = conn.execute(text("SELECT datname FROM pg_database WHERE datistemplate = false")).fetchall()
+        print(f"\nDatabases disponiveis: {[d[0] for d in dbs]}")
             
 except Exception as e:
-    print(f"ERRO de conexao: {e}")
+    print(f"ERRO: {e}")
