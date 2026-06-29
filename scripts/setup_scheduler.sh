@@ -45,4 +45,15 @@ gcloud scheduler jobs create http job-whatsapp-reminders \
     --oidc-service-account-email="${SERVICE_ACCOUNT}" \
     --description="Envia lembrete de protocolos pendentes via WhatsApp"
 
+# 4. Job Mensal: Gerador de Tarefas Automáticas (Roda todo dia 1º do mês às 01:00)
+gcloud scheduler jobs create http job-run-engine \
+    --schedule="0 1 1 * *" \
+    --uri="${SERVICE_URL}/scheduler/run-engine" \
+    --http-method=POST \
+    --time-zone="America/Sao_Paulo" \
+    --location="${LOCATION}" \
+    --project="${PROJECT_ID}" \
+    --oidc-service-account-email="${SERVICE_ACCOUNT}" \
+    --description="Gera as tarefas mensais de todos os clientes baseadas no catálogo de regras"
+
 echo "Jobs do Cloud Scheduler criados com sucesso."
