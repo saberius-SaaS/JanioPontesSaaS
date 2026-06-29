@@ -10,13 +10,14 @@
 PROJECT_ID="jp-saas-producao"
 LOCATION="southamerica-east1"
 SERVICE_URL="https://app.janiopontes.com.br"
-SERVICE_ACCOUNT="saas-scheduler@jp-saas-producao.iam.gserviceaccount.com"
+SERVICE_ACCOUNT="jpsaas-backend@jp-saas-producao.iam.gserviceaccount.com"
 
 # 1. Job Diário: Varredura de Atrasos (Roda todos os dias às 00:01)
 gcloud scheduler jobs create http job-check-overdue \
     --schedule="1 0 * * *" \
     --uri="${SERVICE_URL}/scheduler/check-overdue" \
     --http-method=POST \
+    --headers="X-Scheduler-Key=jp-saas-cron-key-8a7b6c5d4e3f" \
     --time-zone="America/Sao_Paulo" \
     --location="${LOCATION}" \
     --project="${PROJECT_ID}" \
@@ -28,6 +29,7 @@ gcloud scheduler jobs create http job-daily-report \
     --schedule="0 18 * * 1-5" \
     --uri="${SERVICE_URL}/scheduler/daily-report" \
     --http-method=POST \
+    --headers="X-Scheduler-Key=jp-saas-cron-key-8a7b6c5d4e3f" \
     --time-zone="America/Sao_Paulo" \
     --location="${LOCATION}" \
     --project="${PROJECT_ID}" \
@@ -39,6 +41,7 @@ gcloud scheduler jobs create http job-whatsapp-reminders \
     --schedule="0 9 * * *" \
     --uri="${SERVICE_URL}/scheduler/whatsapp-reminders" \
     --http-method=POST \
+    --headers="X-Scheduler-Key=jp-saas-cron-key-8a7b6c5d4e3f" \
     --time-zone="America/Sao_Paulo" \
     --location="${LOCATION}" \
     --project="${PROJECT_ID}" \
@@ -50,6 +53,7 @@ gcloud scheduler jobs create http job-run-engine \
     --schedule="0 1 1 * *" \
     --uri="${SERVICE_URL}/scheduler/run-engine" \
     --http-method=POST \
+    --headers="X-Scheduler-Key=jp-saas-cron-key-8a7b6c5d4e3f" \
     --time-zone="America/Sao_Paulo" \
     --location="${LOCATION}" \
     --project="${PROJECT_ID}" \
