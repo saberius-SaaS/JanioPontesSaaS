@@ -284,3 +284,54 @@ async def debug_buscar_tarefa(
         "historico": {"total": len(resultado_h), "registros": resultado_h},
         "protocolos": {"total": len(resultado_p), "registros": resultado_p}
     })
+
+@router.get("/historico/diag-usuario")
+async def diagnostico_usuario(
+    email: str = Query(default="", description="Email do usuario para diagnosticar"),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
+    if current_user.nivel not in ['ADMIN', 'MASTER']:
+        return JSONResponse(status_code=403, content={"detail": "Somente ADMIN"})
+    
+    if email:
+        user = db.query(models.Usuario).filter(
+            models.Usuario.email == email,
+            models.Usuario.tenant_id == current_user.tenant_id
+        ).first()
+    else:
+        user = current_user
+        
+    if not user:
+        return JSONResponse(content={"erro": f"Usuario {email} nao encontrado"})
+    
+    nomes_equipes = [eq.equipe.nome for eq in user.equipes]
+    filtros = [user.nome, user.email] + nomes_equipes
+    filtros = [f for f in filtros if f]
+    
+    # Amostrar responsaveis unicos das tarefas pendentes
+    from sqlalchemy import distinct
+    responsaveis = db.query(distinct(models.Tarefa.responsavel)).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status.in_(['PENDENTE', 'ATRASADO'])
+    ).limit(50).all()
+    responsaveis_lista = [r[0] for r in responsaveis if r[0]]
+    
+    # Quantas tarefas ela veria com o filtro atual
+    from sqlalchemy import or_
+    if filtros:
+        count = db.query(models.Tarefa).filter(
+            models.Tarefa.tenant_id == current_user.tenant_id,
+            models.Tarefa.status.in_(['PENDENTE', 'ATRASADO']),
+            or_(*[models.Tarefa.responsavel.ilike(f"%{f}%") for f in filtros])
+        ).count()
+    else:
+        count = 0
+    
+    return JSONResponse(content={
+        "usuario": {"nome": user.nome, "email": user.email, "nivel": user.nivel},
+        "equipes": nomes_equipes,
+        "filtros_aplicados": filtros,
+        "tarefas_visiveis": count,
+        "responsaveis_existentes": responsaveis_lista
+    })
