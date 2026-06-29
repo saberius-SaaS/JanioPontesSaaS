@@ -222,11 +222,14 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
 
     # Filtrar por equipe/usuário se não for ADMIN/MASTER
     if current_user.nivel not in ['ADMIN', 'MASTER']:
-        from sqlalchemy import func
+        from sqlalchemy import or_
         nomes_equipes = [eq.equipe.nome for eq in current_user.equipes]
         filtros_resp = [current_user.nome, current_user.email] + nomes_equipes
-        filtros_lower = [str(f).lower().strip() for f in filtros_resp if f]
-        query = query.filter(func.lower(models.Tarefa.responsavel).in_(filtros_lower))
+        filtros_resp = [f for f in filtros_resp if f]
+        if filtros_resp:
+            query = query.filter(or_(*[models.Tarefa.responsavel.ilike(f"%{f}%") for f in filtros_resp]))
+        else:
+            query = query.filter(models.Tarefa.responsavel == None)  # sem filtro = sem resultado
 
     tarefas_raw = query.order_by(models.Tarefa.vencimento.asc()).limit(100).all()
     
@@ -293,11 +296,14 @@ async def pesquisa_tarefas(request: Request, q: str = "", db: Session = Depends(
         
     # Filtrar por equipe/usuário se não for ADMIN/MASTER
     if current_user.nivel not in ['ADMIN', 'MASTER']:
-        from sqlalchemy import func
+        from sqlalchemy import or_
         nomes_equipes = [eq.equipe.nome for eq in current_user.equipes]
         filtros_resp = [current_user.nome, current_user.email] + nomes_equipes
-        filtros_lower = [str(f).lower().strip() for f in filtros_resp if f]
-        query = query.filter(func.lower(models.Tarefa.responsavel).in_(filtros_lower))
+        filtros_resp = [f for f in filtros_resp if f]
+        if filtros_resp:
+            query = query.filter(or_(*[models.Tarefa.responsavel.ilike(f"%{f}%") for f in filtros_resp]))
+        else:
+            query = query.filter(models.Tarefa.responsavel == None)  # sem filtro = sem resultado
 
     tarefas_raw = query.order_by(models.Tarefa.vencimento.asc()).limit(100).all()
     
