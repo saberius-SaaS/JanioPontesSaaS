@@ -84,7 +84,7 @@ async def add_global_template_context_and_security(request: Request, call_next):
     return response
 
 # Inclusão de Rotas
-from app.routers import auth, cliente, regra, protocolo, webhook, scheduler, usuario, equipe, perfil, tarefa, historico, solicitacao, tipo_tarefa, workflow, compliance, portal, ferramentas
+from app.routers import auth, cliente, regra, protocolo, webhook, scheduler, usuario, equipe, perfil, tarefa, historico, solicitacao, tipo_tarefa, workflow, compliance, portal, ferramentas, certificados
 app.include_router(auth.router, tags=["Autenticação"])
 app.include_router(ferramentas.router, tags=["Ferramentas"])
 app.include_router(portal.router, tags=["Portal do Cliente"])
@@ -94,6 +94,7 @@ app.include_router(historico.router, tags=["Histórico"])
 app.include_router(solicitacao.router, tags=["Solicitações"])
 app.include_router(compliance.router, tags=["Compliance"])
 app.include_router(cliente.router, tags=["Clientes"])
+app.include_router(certificados.router, tags=["Certificados"])
 app.include_router(regra.router, tags=["Regras e Obrigações"])
 app.include_router(usuario.router, tags=["Usuários"])
 app.include_router(equipe.router, tags=["Equipes"])

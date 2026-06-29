@@ -12,6 +12,7 @@ from app.models.operacional import Workflow, LogSistema, FrequenciaAcesso, Confi
 from app.models.perfil import Perfil
 from app.models.tipo_tarefa import TipoTarefaAvulsa
 from app.models.equipe import Equipe, UsuarioEquipe
+from app.models.certificado import CertificadoDigital
 
 __all__ = [
     "Base",
@@ -32,5 +33,6 @@ __all__ = [
     "Perfil",
     "TipoTarefaAvulsa",
     "Equipe",
-    "UsuarioEquipe"
+    "UsuarioEquipe",
+    "CertificadoDigital"
 ]
