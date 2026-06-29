@@ -83,6 +83,21 @@ def get_user_from_cookie(request: Request, db: Session = Depends(get_db)) -> Opt
             pass
         user = db.query(models.Usuario).filter(models.Usuario.id == user_id).first()
         if user:
+            # Impersonation support
+            imp_token = request.cookies.get("__impersonate")
+            if imp_token and user.nivel in ["ADMIN", "MASTER"]:
+                try:
+                    imp_payload = jwt.decode(imp_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+                    imp_id = imp_payload.get("sub")
+                    if imp_id:
+                        imp_user = db.query(models.Usuario).filter(models.Usuario.id == imp_id).first()
+                        if imp_user:
+                            imp_user.is_impersonating = True
+                            imp_user.real_admin_id = user.id
+                            user = imp_user
+                except Exception:
+                    pass
+
             # Agora que temos o tenant, ativa o isolamento correto para as queries seguintes
             try:
                 db.execute(text(f"SET LOCAL app.current_tenant = '{str(user.tenant_id)}';"))
