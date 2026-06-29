@@ -206,3 +206,81 @@ async def fix_stuck_tarefas(
             
     db.commit()
     return JSONResponse(content={"message": f"Corrigidas {fixed} tarefas presas!"})
+
+@router.get("/historico/busca-debug")
+async def debug_buscar_tarefa(
+    q: str = Query(default="", description="Termo para buscar na obrigacao ou cliente"),
+    prot: str = Query(default="", description="Busca por protocolo"),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
+    from sqlalchemy import or_
+    
+    # Busca em TAREFAS (todos os status)
+    query_t = db.query(models.Tarefa).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id
+    )
+    if prot:
+        query_t = query_t.filter(models.Tarefa.protocolo == prot)
+    elif q:
+        query_t = query_t.filter(or_(
+            models.Tarefa.obrigacao.ilike(f"%{q}%"),
+            models.Tarefa.cliente.ilike(f"%{q}%")
+        ))
+    tarefas = query_t.order_by(models.Tarefa.id.desc()).limit(30).all()
+    
+    # Busca em HISTORICO
+    query_h = db.query(models.HistoricoTarefa).filter(
+        models.HistoricoTarefa.tenant_id == current_user.tenant_id
+    )
+    if prot:
+        query_h = query_h.filter(models.HistoricoTarefa.protocolo == prot)
+    elif q:
+        query_h = query_h.filter(or_(
+            models.HistoricoTarefa.obrigacao.ilike(f"%{q}%"),
+            models.HistoricoTarefa.cliente.ilike(f"%{q}%")
+        ))
+    historicos = query_h.order_by(models.HistoricoTarefa.id.desc()).limit(30).all()
+    
+    # Busca em PROTOCOLOS
+    query_p = db.query(models.Protocolo).filter(
+        models.Protocolo.tenant_id == current_user.tenant_id
+    )
+    if prot:
+        query_p = query_p.filter(models.Protocolo.protocolo == prot)
+    elif q:
+        query_p = query_p.filter(or_(
+            models.Protocolo.obrigacao.ilike(f"%{q}%"),
+            models.Protocolo.cliente.ilike(f"%{q}%")
+        ))
+    protocolos = query_p.order_by(models.Protocolo.id.desc()).limit(30).all()
+
+    resultado_t = []
+    for t in tarefas:
+        resultado_t.append({
+            "id": str(t.id), "cliente": t.cliente, "obrigacao": t.obrigacao,
+            "status": t.status, "protocolo": t.protocolo, "mes_ano": t.mes_ano,
+            "vencimento": str(t.vencimento) if t.vencimento else None,
+            "id_controle": t.id_controle, "responsavel": t.responsavel
+        })
+    
+    resultado_h = []
+    for h in historicos:
+        resultado_h.append({
+            "id": str(h.id), "cliente": h.cliente, "obrigacao": h.obrigacao,
+            "status": h.status, "protocolo": h.protocolo, "mes_ano": h.mes_ano,
+            "id_controle": h.id_controle
+        })
+
+    resultado_p = []
+    for p in protocolos:
+        resultado_p.append({
+            "protocolo": p.protocolo, "cliente": p.cliente,
+            "obrigacao": p.obrigacao, "status_envio": p.status_envio
+        })
+        
+    return JSONResponse(content={
+        "tarefas": {"total": len(resultado_t), "registros": resultado_t},
+        "historico": {"total": len(resultado_h), "registros": resultado_h},
+        "protocolos": {"total": len(resultado_p), "registros": resultado_p}
+    })
