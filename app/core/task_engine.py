@@ -78,7 +78,10 @@ def run_task_engine(db: Session, tenant_id: str, force_competencia=None):
     mes_ano_ref = inicio_mes.strftime("%m/%Y")
     
     clientes = db.query(models.Cliente).filter(models.Cliente.tenant_id == tenant_id, models.Cliente.status == "ATIVO").all()
-    regras = db.query(models.RegraObrigacao).filter(models.RegraObrigacao.tenant_id == tenant_id).all()
+    regras = db.query(models.RegraObrigacao).filter(
+        models.RegraObrigacao.tenant_id == tenant_id,
+        models.RegraObrigacao.status == "ATIVO"
+    ).all()
     
     novas = 0
     atualizadas = 0

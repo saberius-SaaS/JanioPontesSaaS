@@ -1,1 +1,0 @@
-gcloud compute ssh chatwoot-server --project=jp-saas-producao --zone=southamerica-east1-a --command="sudo bash -c 'cd /home/janiopontes; docker-compose exec -T rails bundle exec rails runner \"app = PlatformApp.find_or_create_by(name: ''JanioPontes SaaS''); puts ''PLATFORM_TOKEN='' + app.access_token\"'"

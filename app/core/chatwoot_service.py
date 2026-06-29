@@ -42,10 +42,14 @@ class ChatwootService:
         Busca um contato por email (ou telefone) no Chatwoot e retorna seu ID.
         Se não existir, cria o contato.
         """
-        # 1. Tentar buscar por email
-        search_result = await self._request("GET", f"contacts/search?q={email}")
-        if search_result and "payload" in search_result and search_result["payload"]:
-            return search_result["payload"][0].get("id")
+        # 1. Tentar buscar por telefone ou email
+        search_query = phone_number if phone_number else email
+        if search_query:
+            if search_query.startswith('+'):
+                search_query = search_query.replace('+', '%2B')
+            search_result = await self._request("GET", f"contacts/search?q={search_query}")
+            if search_result and "payload" in search_result and search_result["payload"]:
+                return search_result["payload"][0].get("id")
 
         # 2. Se não encontrou, criar
         contact_data = {
@@ -139,13 +143,19 @@ class ChatwootService:
                 "parameters": [{"type": "text", "text": str(p)} for p in template_params]
             }]
 
+        processed_params = {}
+        if template_params:
+            for i, p in enumerate(template_params, 1):
+                processed_params[str(i)] = str(p)
+
         msg_data = {
-            "content": f"Envio de template: {template_name}",
-            "message_type": "outgoing",
+            "content": template_name,
+            "message_type": "template",
             "content_attributes": {},
             "template_params": {
                 "name": template_name,
                 "language": "pt_BR",
+                "processed_params": processed_params,
                 "components": components
             }
         }

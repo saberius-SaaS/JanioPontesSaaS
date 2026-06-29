@@ -1,1 +1,0 @@
-gcloud compute ssh chatwoot-server --project=jp-saas-producao --zone=southamerica-east1-a --command="sudo bash -c \"sed -i 's|^FRONTEND_URL=.*|FRONTEND_URL=https://chat.janiopontes.com.br|' /home/janiopontes/.env; cd /home/janiopontes; docker-compose down; docker-compose up -d\""

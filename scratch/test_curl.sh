@@ -1,1 +1,0 @@
-curl -X POST http://127.0.0.1:3000/api/v1/accounts/1/conversations/16/messages -H "api_access_token: bWKNBd4zhtaBUnwdcZ7bT2Bf" -H "Content-Type: application/json" -d '{"content":"Test from curl","message_type":"outgoing"}'

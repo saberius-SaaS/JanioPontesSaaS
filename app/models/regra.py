@@ -29,3 +29,4 @@ class RegraObrigacao(TenantMixin, Base):
 
     # --- Coluna M (adicionada posteriormente) ---
     revisao = Column(String(10), nullable=True, comment="S/N — exige revisão do admin antes de finalizar")
+    status = Column(String(20), nullable=False, default="ATIVO", comment="ATIVO ou INATIVO")

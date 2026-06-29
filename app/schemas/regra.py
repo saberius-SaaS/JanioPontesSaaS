@@ -15,6 +15,7 @@ class RegraObrigacaoBase(BaseModel):
     antecipa_fds: Optional[str] = None
     grupo_regra: Optional[str] = None
     revisao: Optional[str] = None
+    status: Optional[str] = "ATIVO"
 
 class RegraObrigacaoCreate(RegraObrigacaoBase):
     pass

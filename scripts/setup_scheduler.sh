@@ -34,4 +34,15 @@ gcloud scheduler jobs create http job-daily-report \
     --oidc-service-account-email="${SERVICE_ACCOUNT}" \
     --description="Gera e envia o relatório diário de operações para a gerência"
 
+# 3. Job Diário: Lembrete de Protocolos (Roda todos os dias às 09:00)
+gcloud scheduler jobs create http job-whatsapp-reminders \
+    --schedule="0 9 * * *" \
+    --uri="${SERVICE_URL}/scheduler/whatsapp-reminders" \
+    --http-method=POST \
+    --time-zone="America/Sao_Paulo" \
+    --location="${LOCATION}" \
+    --project="${PROJECT_ID}" \
+    --oidc-service-account-email="${SERVICE_ACCOUNT}" \
+    --description="Envia lembrete de protocolos pendentes via WhatsApp"
+
 echo "Jobs do Cloud Scheduler criados com sucesso."

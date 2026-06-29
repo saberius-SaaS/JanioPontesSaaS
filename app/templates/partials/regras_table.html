@@ -15,7 +15,12 @@
             </div>
         </td>
         <td class="py-3 px-4">
-            <span class="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-md tracking-wider">{{ o.departamento or 'GERAL' }}</span>
+            <div class="flex items-center gap-2">
+                <span class="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-md tracking-wider">{{ o.departamento or 'GERAL' }}</span>
+                {% if o.status == 'INATIVO' %}
+                <span class="px-2 py-1 bg-red-100 text-red-600 text-[10px] font-bold rounded-md tracking-wider">INATIVO</span>
+                {% endif %}
+            </div>
         </td>
         <td class="py-3 px-4 text-sm text-slate-600 font-bold">
             {{ o.dia or '-' }}
@@ -24,7 +29,7 @@
             {{ o.acao or '-' }}
         </td>
         <td class="py-3 px-4 text-right">
-            <button onclick='abrirEdicaoObrigacao(JSON.parse(`{{ {"id": o.id|string, "obrigacao": o.obrigacao, "dia": o.dia, "departamento": o.departamento, "regime": o.regime, "acao": o.acao, "meses": o.meses, "tipos": o.tipos, "desloca": o.desloca, "vencimento_legal": o.vencimento_legal, "antecipa_fds": o.antecipa_fds, "grupo_regra": o.grupo_regra, "revisao": o.revisao} | tojson | safe }}`))' class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
+            <button onclick='abrirEdicaoObrigacao(JSON.parse(`{{ {"id": o.id|string, "obrigacao": o.obrigacao, "dia": o.dia, "departamento": o.departamento, "regime": o.regime, "acao": o.acao, "meses": o.meses, "tipos": o.tipos, "desloca": o.desloca, "vencimento_legal": o.vencimento_legal, "antecipa_fds": o.antecipa_fds, "grupo_regra": o.grupo_regra, "revisao": o.revisao, "status": o.status} | tojson | safe }}`))' class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
                 <i class="fa-solid fa-pen-to-square"></i>
             </button>
         </td>

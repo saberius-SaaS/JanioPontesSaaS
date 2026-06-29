@@ -64,6 +64,7 @@ async def create_obrigacao(
     antecipa_fds: str = Form(None),
     grupo_regra: str = Form(None),
     revisao: str = Form(None),
+    status: str = Form("ATIVO"),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_admin)
 ):
@@ -88,7 +89,8 @@ async def create_obrigacao(
         vencimento_legal=vencimento_legal,
         antecipa_fds=antecipa_fds,
         grupo_regra=grupo_regra,
-        revisao=revisao
+        revisao=revisao,
+        status=status
     )
     db.add(nova_obrigacao)
     db.commit()
@@ -113,6 +115,7 @@ async def update_obrigacao(
     antecipa_fds: str = Form(None),
     grupo_regra: str = Form(None),
     revisao: str = Form(None),
+    status: str = Form("ATIVO"),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_admin)
 ):
@@ -132,6 +135,7 @@ async def update_obrigacao(
     obj.antecipa_fds = antecipa_fds
     obj.grupo_regra = grupo_regra
     obj.revisao = revisao
+    obj.status = status
     db.commit()
 
     obrigacoes = db.query(models.RegraObrigacao).order_by(models.RegraObrigacao.obrigacao).limit(PAGE_SIZE).all()
