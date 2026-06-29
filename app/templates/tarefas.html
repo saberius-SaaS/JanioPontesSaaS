@@ -203,6 +203,21 @@
                 <textarea id="txtComunicar" rows="4" placeholder="Digite a mensagem que será enviada ao cliente por e-mail..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow resize-none"></textarea>
             </div>
 
+            <!-- Área de Validação Dupla -->
+            <div id="areaValidacaoDupla" class="hidden bg-red-50 border border-red-200 rounded-lg p-4 mt-2">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-triangle-exclamation text-red-500 mt-0.5"></i>
+                    <div>
+                        <p class="text-xs font-bold text-red-700 uppercase tracking-wider mb-1">Atenção: Competência Futura</p>
+                        <p class="text-xs text-red-600 mb-3">Você está prestes a finalizar uma tarefa de uma competência que <b>ainda não chegou</b> ou do <b>próximo mês</b>. Tem certeza de que não deveria baixar a do mês atual?</p>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="chkValidacaoDupla" class="rounded border-red-300 text-red-600 focus:ring-red-500">
+                            <span class="text-xs font-bold text-red-700">Sim, tenho certeza e quero finalizar esta competência.</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
             <!-- Feedback -->
             <div id="modalFeedback" class="hidden rounded-lg p-3 text-sm font-medium text-center"></div>
         </div>
@@ -288,6 +303,27 @@ function abrirModal(id, cliente, obrigacao, vencimento, acao, depto, mesAno, rev
     } else {
         document.querySelector('#areaUpload label').innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-1 text-indigo-500"></i> Anexar Documento(s)';
     }
+
+    // Regra de Validação Dupla para competência futura
+    const areaValidacao = document.getElementById('areaValidacaoDupla');
+    const chkValidacao = document.getElementById('chkValidacaoDupla');
+    areaValidacao.classList.add('hidden');
+    chkValidacao.checked = false;
+
+    if (mesAno) {
+        const parts = mesAno.split('/');
+        if (parts.length === 2) {
+            const taskMonth = parseInt(parts[0], 10);
+            const taskYear = parseInt(parts[1], 10);
+            const hoje = new Date();
+            const currMonth = hoje.getMonth() + 1;
+            const currYear = hoje.getFullYear();
+            
+            if (taskYear > currYear || (taskYear === currYear && taskMonth > currMonth)) {
+                areaValidacao.classList.remove('hidden');
+            }
+        }
+    }
     
     // Ajustar botão
     const btn = document.getElementById('btnFinalizar');
@@ -349,6 +385,16 @@ async function executarFinalizacao() {
     const ehAuditar = tarefaAtual.acao.indexOf('AUDITAR') > -1;
     const ehRevisao = (tarefaAtual.revisaoFlag === 'S' && nivelUsuario !== 'ADMIN' && nivelUsuario !== 'MASTER');
     
+    const areaValidacao = document.getElementById('areaValidacaoDupla');
+    const chkValidacao = document.getElementById('chkValidacaoDupla');
+    if (!areaValidacao.classList.contains('hidden') && !chkValidacao.checked) {
+        feedback.className = 'rounded-lg p-3 text-sm font-medium text-center bg-red-50 border border-red-200 text-red-600 block';
+        feedback.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Confirme a caixa de validação dupla para competências futuras.';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar Fechamento';
+        return;
+    }
+
     if ((ehAuditar || ehRevisao) && files.length === 0) {
         feedback.className = 'rounded-lg p-3 text-sm font-medium text-center bg-amber-50 border border-amber-200 text-amber-700 block';
         feedback.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Você precisa anexar um arquivo/comprovante obrigatório.';

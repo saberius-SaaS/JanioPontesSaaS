@@ -132,3 +132,46 @@ async def reenviar_historico(
     background_tasks.add_task(email_service.enviar_email, protocolo.email, f"[REENVIO] Documento: {protocolo.obrigacao}", corpo_html)
     
     return HTMLResponse(content='<span class="text-xs font-bold text-emerald-600"><i class="fa-solid fa-check mr-1"></i>Reenviado</span>')
+
+@router.post("/historico/{id}/reverter")
+async def reverter_historico(
+    id: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
+    import datetime
+    
+    historico = db.query(models.HistoricoTarefa).filter(
+        models.HistoricoTarefa.id == id,
+        models.HistoricoTarefa.tenant_id == current_user.tenant_id
+    ).first()
+    
+    if not historico:
+        return JSONResponse(status_code=404, content={"detail": "Histórico não encontrado."})
+        
+    if historico.id_controle:
+        tarefa = db.query(models.Tarefa).filter(
+            models.Tarefa.id_controle == historico.id_controle,
+            models.Tarefa.tenant_id == current_user.tenant_id
+        ).first()
+        
+        if tarefa:
+            if tarefa.vencimento and tarefa.vencimento < datetime.date.today():
+                tarefa.status = 'ATRASADO'
+            else:
+                tarefa.status = 'PENDENTE'
+            
+            tarefa.protocolo = None
+
+    if historico.protocolo:
+        prot = db.query(models.Protocolo).filter(
+            models.Protocolo.protocolo == historico.protocolo,
+            models.Protocolo.tenant_id == current_user.tenant_id
+        ).first()
+        if prot:
+            db.delete(prot)
+            
+    db.delete(historico)
+    db.commit()
+    
+    return HTMLResponse(content='<span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200"><i class="fa-solid fa-rotate-left mr-1"></i>Revertida</span>')
