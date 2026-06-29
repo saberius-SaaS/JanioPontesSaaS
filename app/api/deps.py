@@ -44,6 +44,11 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
         
+    is_imp = payload.get("is_impersonating")
+    if is_imp:
+        user.is_impersonating = True
+        user.real_admin_id = payload.get("real_admin_id")
+        
     # ATIVAÇÃO DO ROW-LEVEL SECURITY (RLS)
     try:
         db.execute(text(f"SET LOCAL app.current_tenant = '{str(user.tenant_id)}';"))
@@ -83,20 +88,11 @@ def get_user_from_cookie(request: Request, db: Session = Depends(get_db)) -> Opt
             pass
         user = db.query(models.Usuario).filter(models.Usuario.id == user_id).first()
         if user:
-            # Impersonation support
-            imp_token = request.cookies.get("__impersonate")
-            if imp_token and user.nivel in ["ADMIN", "MASTER"]:
-                try:
-                    imp_payload = jwt.decode(imp_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-                    imp_id = imp_payload.get("sub")
-                    if imp_id:
-                        imp_user = db.query(models.Usuario).filter(models.Usuario.id == imp_id).first()
-                        if imp_user:
-                            imp_user.is_impersonating = True
-                            imp_user.real_admin_id = user.id
-                            user = imp_user
-                except Exception:
-                    pass
+            # Impersonation support (cleanup)
+            is_imp = payload.get("is_impersonating")
+            if is_imp:
+                user.is_impersonating = True
+                user.real_admin_id = payload.get("real_admin_id")
 
             # Agora que temos o tenant, ativa o isolamento correto para as queries seguintes
             try:

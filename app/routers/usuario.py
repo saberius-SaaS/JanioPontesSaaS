@@ -214,23 +214,51 @@ async def impersonate_user(
         
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     expire = datetime.now(timezone.utc) + access_token_expires
-    token_data = {"exp": expire, "sub": str(target_user.id)}
+    
+    # Store the admin's original token in __admin_session
+    original_token = request.cookies.get("__session")
+    
+    # Create the new token for the target user, adding an impersonating claim
+    token_data = {"exp": expire, "sub": str(target_user.id), "is_impersonating": True}
+    if original_token:
+        token_data["real_admin_id"] = str(current_user.id)
+
     imp_token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     
     response = RedirectResponse(url="/tarefas", status_code=303)
     response.set_cookie(
-        key="__impersonate",
+        key="__session",
         value=imp_token,
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         samesite="lax",
         secure=True
     )
+    if original_token:
+        response.set_cookie(
+            key="__admin_session",
+            value=original_token,
+            httponly=True,
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            samesite="lax",
+            secure=True
+        )
     return response
 
 @router.get("/usuarios/stop-impersonar")
 async def stop_impersonate(request: Request):
     from fastapi.responses import RedirectResponse
+    from app.core.config import settings
     response = RedirectResponse(url="/usuarios", status_code=303)
-    response.delete_cookie(key="__impersonate")
+    admin_token = request.cookies.get("__admin_session")
+    if admin_token:
+        response.set_cookie(
+            key="__session",
+            value=admin_token,
+            httponly=True,
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            samesite="lax",
+            secure=True
+        )
+    response.delete_cookie(key="__admin_session")
     return response
