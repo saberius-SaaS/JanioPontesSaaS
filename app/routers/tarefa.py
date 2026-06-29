@@ -527,7 +527,7 @@ async def finalizar_tarefa(
             protocolo=protocolo,
             acao=tarefa.acao,
             responsavel=current_user.nome,
-            id_controle=str(uuid.uuid4()),
+            id_controle=tarefa.id_controle,
             vencimento_legal=tarefa.vencimento_legal
         )
         db.add(historico)
@@ -593,7 +593,7 @@ async def aprovar_revisao(
         protocolo=tarefa.protocolo,
         acao=tarefa.acao,
         responsavel=tarefa.responsavel,
-        id_controle=str(uuid.uuid4()),
+        id_controle=tarefa.id_controle,
         vencimento_legal=tarefa.vencimento_legal
     )
     db.add(historico)

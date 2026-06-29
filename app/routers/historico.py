@@ -149,9 +149,9 @@ async def reverter_historico(
     if not historico:
         return JSONResponse(status_code=404, content={"detail": "Histórico não encontrado."})
         
-    if historico.id_controle:
+    if historico.protocolo:
         tarefa = db.query(models.Tarefa).filter(
-            models.Tarefa.id_controle == historico.id_controle,
+            models.Tarefa.protocolo == historico.protocolo,
             models.Tarefa.tenant_id == current_user.tenant_id
         ).first()
         
@@ -163,7 +163,6 @@ async def reverter_historico(
             
             tarefa.protocolo = None
 
-    if historico.protocolo:
         prot = db.query(models.Protocolo).filter(
             models.Protocolo.protocolo == historico.protocolo,
             models.Protocolo.tenant_id == current_user.tenant_id
@@ -175,3 +174,35 @@ async def reverter_historico(
     db.commit()
     
     return HTMLResponse(content='<span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200"><i class="fa-solid fa-rotate-left mr-1"></i>Revertida</span>')
+
+@router.get("/historico/fix-tarefas")
+async def fix_stuck_tarefas(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
+    import datetime
+    
+    tarefas_stuck = db.query(models.Tarefa).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status.in_(['ENTREGUE', 'REVISAO'])
+    ).all()
+    
+    fixed = 0
+    for t in tarefas_stuck:
+        h = None
+        if t.protocolo:
+            h = db.query(models.HistoricoTarefa).filter(
+                models.HistoricoTarefa.protocolo == t.protocolo,
+                models.HistoricoTarefa.tenant_id == current_user.tenant_id
+            ).first()
+        
+        if not h:
+            if t.vencimento and t.vencimento < datetime.date.today():
+                t.status = 'ATRASADO'
+            else:
+                t.status = 'PENDENTE'
+            t.protocolo = None
+            fixed += 1
+            
+    db.commit()
+    return JSONResponse(content={"message": f"Corrigidas {fixed} tarefas presas!"})
