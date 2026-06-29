@@ -27,7 +27,8 @@
 
     <div class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-1.5" id="listaHistorico">
         {% for h in historicos %}
-        <div class="task-card flex items-center justify-between p-2.5 bg-white border border-slate-100 {% if not h.mensagem_enviada and not h.anexos %}rounded-lg mb-1.5{% else %}rounded-t-lg z-10 relative{% endif %} shadow-sm hover:shadow hover:bg-slate-50 transition group border-l-4 {% if h.status == 'ENTREGUE' %}border-l-emerald-500{% elif h.status == 'REVISAO' %}border-l-amber-400{% else %}border-l-slate-400{% endif %}">
+        <div class="historico-item">
+            <div class="task-card flex items-center justify-between p-2.5 bg-white border border-slate-100 {% if not h.mensagem_enviada and not h.anexos %}rounded-lg mb-1.5{% else %}rounded-t-lg z-10 relative{% endif %} shadow-sm hover:shadow hover:bg-slate-50 transition group border-l-4 {% if h.status == 'ENTREGUE' %}border-l-emerald-500{% elif h.status == 'REVISAO' %}border-l-amber-400{% else %}border-l-slate-400{% endif %}">
             <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
                 <div class="flex-1 min-w-0 flex items-baseline">
                     <span class="text-[11px] font-bold text-jp-navy uppercase tracking-wider truncate max-w-[40%]">{{ h.cliente }}</span>
@@ -80,6 +81,7 @@
             {% endif %}
         </div>
         {% endif %}
+        </div>
         {% else %}
         <div class="p-8 text-center text-slate-500">
             <i class="fa-solid fa-box-open text-4xl mb-3 text-slate-300"></i>
@@ -97,7 +99,7 @@
 function filtrarCards(inputId, containerId) {
     const filtro = document.getElementById(inputId).value.toLowerCase();
     const container = document.getElementById(containerId);
-    const cards = container.querySelectorAll('.task-card');
+    const cards = container.querySelectorAll('.historico-item');
     cards.forEach(card => {
         card.style.display = card.textContent.toLowerCase().includes(filtro) ? '' : 'none';
     });
