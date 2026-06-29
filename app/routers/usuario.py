@@ -246,19 +246,53 @@ async def impersonate_user(
     return response
 
 @router.get("/usuarios/stop-impersonar")
-async def stop_impersonate(request: Request):
+async def stop_impersonate(request: Request, db: Session = Depends(get_db)):
     from fastapi.responses import RedirectResponse
     from app.core.config import settings
-    response = RedirectResponse(url="/usuarios", status_code=303)
-    admin_token = request.cookies.get("__admin_session")
-    if admin_token:
+    from jose import jwt
+    from datetime import datetime, timedelta, timezone
+
+    current_token = request.cookies.get("__session")
+    if not current_token:
+        return RedirectResponse(url="/logout", status_code=303)
+        
+    try:
+        payload = jwt.decode(current_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        real_admin_id = payload.get("real_admin_id")
+        
+        if not real_admin_id:
+            return RedirectResponse(url="/logout", status_code=303)
+            
+        admin_user = db.query(models.Usuario).filter(models.Usuario.id == real_admin_id).first()
+        if not admin_user or not admin_user.ativo:
+            return RedirectResponse(url="/logout", status_code=303)
+            
+        # Gera novo token de admin
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + access_token_expires
+        
+        token_data = {"exp": expire, "sub": str(admin_user.id)}
+        
+        cliente = payload.get("cliente")
+        tenant_id = payload.get("tenant_id")
+        if cliente and tenant_id:
+            token_data["cliente"] = cliente
+            token_data["tenant_id"] = tenant_id
+            
+        new_token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        
+        response = RedirectResponse(url="/usuarios", status_code=303)
         response.set_cookie(
             key="__session",
-            value=admin_token,
+            value=new_token,
             httponly=True,
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             samesite="lax",
             secure=True
         )
-    response.delete_cookie(key="__admin_session")
-    return response
+        # Limpa o cookie antigo se existir por precaução
+        response.delete_cookie(key="__admin_session", path="/")
+        return response
+
+    except Exception:
+        return RedirectResponse(url="/logout", status_code=303)
