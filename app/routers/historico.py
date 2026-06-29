@@ -25,6 +25,16 @@ async def list_historico(
     ).filter(
         models.HistoricoTarefa.tenant_id == current_user.tenant_id
     )
+
+    if current_user.nivel not in ['ADMIN', 'MASTER']:
+        from sqlalchemy import or_
+        nomes_equipes = [eq.equipe.nome for eq in current_user.equipes]
+        filtros_resp = [current_user.nome, current_user.email] + nomes_equipes
+        filtros_resp = [f for f in filtros_resp if f]
+        if filtros_resp:
+            query = query.filter(or_(*[models.HistoricoTarefa.responsavel.ilike(f"%{f}%") for f in filtros_resp]))
+        else:
+            query = query.filter(models.HistoricoTarefa.responsavel == None)
     
     if mes:
         query = query.filter(models.HistoricoTarefa.mes_ano == mes)

@@ -130,6 +130,21 @@ def run_task_engine(db: Session, tenant_id: str, force_competencia=None):
                     models.Tarefa.obrigacao == reg.obrigacao
                 ).first()
                 
+                if not tarefa_existente:
+                    from sqlalchemy import or_
+                    historico_existente = db.query(models.HistoricoTarefa).filter(
+                        models.HistoricoTarefa.tenant_id == tenant_id,
+                        models.HistoricoTarefa.cliente == cli.cliente,
+                        models.HistoricoTarefa.obrigacao == reg.obrigacao,
+                        or_(
+                            models.HistoricoTarefa.mes_ano == mes_ano_ref,
+                            models.HistoricoTarefa.mes_ano == f"01/{mes_ano_ref}",
+                            models.HistoricoTarefa.mes_ano.endswith(mes_ano_ref)
+                        )
+                    ).first()
+                    if historico_existente:
+                        continue
+                
                 dep_norm = normalize(reg.departamento)
                 resp = cli.responsavel or "SISTEMA"
                 if "FISCAL" in dep_norm: resp = cli.fiscal or resp
