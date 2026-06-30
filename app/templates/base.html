@@ -18,6 +18,9 @@
   <!-- HTMX -->
   <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
   <!-- Tailwind Config (Paleta do Portal) -->
   <script>
     tailwind.config = {
@@ -476,7 +479,7 @@
       <!-- Controle de Filtros da Dashboard -->
       <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5 mt-2">
         <h2 class="text-lg font-extrabold text-jp-navy tracking-tight flex items-center gap-2">
-            <i class="fa-solid fa-chart-pie text-indigo-500"></i> Visão Geral
+            <i class="fa-solid fa-chart-pie text-indigo-500"></i> Visão Geral: Mês
         </h2>
         <form action="/" method="GET" class="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
             <div class="bg-slate-50 text-slate-500 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border border-slate-100">
@@ -543,24 +546,90 @@
         </div>
         <div class="card-premium flex flex-col overflow-hidden">
           <div class="p-4 border-b border-slate-100 bg-slate-50/80">
-            <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[10px]"><i class="fa-solid fa-users mr-2 text-indigo-400"></i> Ranking de Produtividade (Equipe)</h3>
+            <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[10px]"><i class="fa-solid fa-chart-pie mr-2 text-indigo-400"></i> Desempenho Setorial: Gráfico</h3>
           </div>
-          <div class="p-5 space-y-4">
-            {% for membro in ranking_equipe %}
-            <div>
-              <div class="flex justify-between text-[10px] font-bold text-slate-600 mb-1 tracking-wider uppercase">
-                <span class="truncate max-w-[150px]" title="{{ membro.responsavel }}">{{ loop.index }}º - {{ membro.responsavel }}</span>
-                <span class="text-slate-500">{{ membro.entregues }}/{{ membro.total }} <span class="text-emerald-500">({{ membro.percentual }}%)</span></span>
-              </div>
-              <div class="h-2.5 w-full bg-emerald-100 rounded-full overflow-hidden">
-                <div class="h-full bg-emerald-500 transition-all duration-1000 ease-out flex items-center justify-end pr-1 text-[8px] text-white font-bold" style="width: {{ membro.percentual }}%">{% if membro.percentual >= 15 %}{{ membro.percentual }}%{% endif %}</div>
-              </div>
-            </div>
+          <div class="p-5 flex items-center justify-center" style="min-height: 260px;">
+            {% if desempenho_setorial %}
+            <canvas id="chartSetorial" style="max-width: 100%; max-height: 280px;"></canvas>
             {% else %}
-            <div class="text-center text-slate-400 py-6 text-[10px] uppercase font-bold tracking-widest">Nenhum dado de produtividade no momento.</div>
-            {% endfor %}
+            <div class="text-center text-slate-400 py-6 text-[10px] uppercase font-bold tracking-widest">Sem dados para gerar o gráfico.</div>
+            {% endif %}
           </div>
         </div>
+
+        {% if desempenho_setorial %}
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('chartSetorial');
+            if (!ctx) return;
+
+            const labels = [{% for s in desempenho_setorial %}'{{ s.departamento }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+            const dataEntregues = [{% for s in desempenho_setorial %}{{ s.entregues }}{% if not loop.last %}, {% endif %}{% endfor %}];
+            const dataPendentes = [{% for s in desempenho_setorial %}{{ s.total - s.entregues }}{% if not loop.last %}, {% endif %}{% endfor %}];
+            const dataTotais = [{% for s in desempenho_setorial %}{{ s.total }}{% if not loop.last %}, {% endif %}{% endfor %}];
+
+            const palette = [
+              '#6366f1', '#06b6d4', '#f59e0b', '#10b981', '#ef4444',
+              '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#3b82f6'
+            ];
+
+            new Chart(ctx, {
+              type: 'doughnut',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Entregas',
+                  data: dataEntregues,
+                  backgroundColor: palette.slice(0, labels.length),
+                  borderColor: '#fff',
+                  borderWidth: 2.5,
+                  hoverOffset: 12
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                animation: {
+                  animateRotate: true,
+                  duration: 1200,
+                  easing: 'easeOutQuart'
+                },
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                    labels: {
+                      padding: 16,
+                      usePointStyle: true,
+                      pointStyle: 'circle',
+                      font: { family: 'Inter', size: 11, weight: '600' },
+                      color: '#475569'
+                    }
+                  },
+                  tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleFont: { family: 'Inter', size: 12, weight: '700' },
+                    bodyFont: { family: 'Inter', size: 11 },
+                    padding: 12,
+                    cornerRadius: 10,
+                    displayColors: true,
+                    boxPadding: 4,
+                    callbacks: {
+                      label: function(context) {
+                        const idx = context.dataIndex;
+                        const entregues = dataEntregues[idx];
+                        const total = dataTotais[idx];
+                        const pct = total > 0 ? Math.round((entregues / total) * 100) : 0;
+                        return ` ${entregues} de ${total} entregas (${pct}%)`;
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          });
+        </script>
+        {% endif %}
       </div>
 
 

@@ -47,119 +47,170 @@
     </div>
 </div>
 
-<!-- Modal Novo Cliente -->
+<!-- Modal Novo/Editar Cliente — Premium Redesign -->
 <div id="modal-novo-cliente" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h3 id="titulo-modal-cliente" class="font-bold text-jp-navy text-lg"><i class="fa-solid fa-building mr-2 text-indigo-400"></i> Cadastrar Cliente</h3>
-            <button onclick="document.getElementById('modal-novo-cliente').classList.add('hidden')" class="text-slate-400 hover:text-red-500 transition-colors">
-                <i class="fa-solid fa-xmark text-xl"></i>
+        
+        <!-- Header -->
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-indigo-50/30">
+            <div class="flex items-center gap-3">
+                <div id="icone-modal-cliente" class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                    <i class="fa-solid fa-building text-lg"></i>
+                </div>
+                <div>
+                    <h3 id="titulo-modal-cliente" class="font-bold text-jp-navy text-lg leading-tight">Cadastrar Cliente</h3>
+                    <p id="subtitulo-modal-cliente" class="text-[11px] text-slate-400 mt-0.5">Preencha os dados abaixo</p>
+                </div>
+            </div>
+            <button onclick="fecharModalCliente()" class="w-8 h-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all flex items-center justify-center">
+                <i class="fa-solid fa-xmark text-lg"></i>
             </button>
         </div>
         
+        <!-- Body -->
         <div class="p-6 overflow-y-auto custom-scrollbar">
-            <form id="form-cliente" hx-post="/clientes" hx-target="#tabela-clientes" hx-on::after-request="document.getElementById('modal-novo-cliente').classList.add('hidden'); this.reset();">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                    <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Razão Social *</label>
-                        <input type="text" name="cliente" required class="glass-input w-full">
+            <form id="form-cliente" hx-post="/clientes" hx-target="#tabela-clientes" hx-on::after-request="fecharModalCliente(); this.reset();">
+                
+                <!-- ══════ Seção: Dados Cadastrais ══════ -->
+                <div class="mb-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-6 h-6 rounded-md bg-indigo-100 text-indigo-500 flex items-center justify-center">
+                            <i class="fa-solid fa-id-card text-[10px]"></i>
+                        </div>
+                        <h4 class="text-xs font-bold text-jp-navy uppercase tracking-widest">Dados Cadastrais</h4>
                     </div>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">CNPJ</label>
-                        <input type="text" name="cnpj" class="glass-input w-full">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Razão Social <span class="text-red-400">*</span></label>
+                            <input type="text" name="cliente" required class="glass-input w-full" placeholder="Ex: Empresa XYZ Ltda">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ</label>
+                            <input type="text" name="cnpj" class="glass-input w-full" placeholder="00.000.000/0000-00">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Responsável</label>
+                            <input type="text" name="responsavel" class="glass-input w-full" placeholder="Nome do contato">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">E-mail</label>
+                            <input type="text" name="email" placeholder="joao@empresa.com, maria@empresa.com" class="glass-input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Telefone / WhatsApp</label>
+                            <input type="text" name="telefone" class="glass-input w-full" placeholder="(00) 00000-0000">
+                        </div>
                     </div>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Responsável</label>
-                        <input type="text" name="responsavel" class="glass-input w-full">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">E-mail</label>
-                        <input type="text" name="email" placeholder="Ex: joao@gmail.com, maria@gmail.com" class="glass-input w-full">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Telefone / WhatsApp</label>
-                        <input type="text" name="telefone" class="glass-input w-full">
-                    </div>
+                </div>
 
-                    <h4 class="col-span-1 md:col-span-2 text-sm font-bold text-jp-navy mt-4 border-b border-slate-200 pb-2">Departamentos e Roteamento</h4>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Fiscal (Equipe / E-mail)</label>
-                        <div class="flex gap-2">
-                            <select name="fiscal" class="glass-input w-1/2">
-                                <option value="">— Nenhuma —</option>
-                                {% for eq in equipes if eq.departamento == 'FISCAL' %}
-                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <input type="text" name="email_fiscal" placeholder="E-mail do cliente (Fiscal)" class="glass-input w-1/2">
+                <!-- ══════ Seção: Departamentos ══════ -->
+                <div class="mb-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-6 h-6 rounded-md bg-cyan-100 text-cyan-500 flex items-center justify-center">
+                            <i class="fa-solid fa-sitemap text-[10px]"></i>
+                        </div>
+                        <h4 class="text-xs font-bold text-jp-navy uppercase tracking-widest">Departamentos e Roteamento</h4>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Fiscal</label>
+                            <div class="flex gap-2">
+                                <select name="fiscal" class="glass-input w-1/2 text-sm">
+                                    <option value="">— Nenhuma —</option>
+                                    {% for eq in equipes if eq.departamento == 'FISCAL' %}
+                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="email_fiscal" placeholder="E-mail fiscal" class="glass-input w-1/2 text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Contábil</label>
+                            <div class="flex gap-2">
+                                <select name="contabil" class="glass-input w-1/2 text-sm">
+                                    <option value="">— Nenhuma —</option>
+                                    {% for eq in equipes if eq.departamento == 'CONTABIL' %}
+                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="email_contabil" placeholder="E-mail contábil" class="glass-input w-1/2 text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Pessoal</label>
+                            <div class="flex gap-2">
+                                <select name="pessoal" class="glass-input w-1/2 text-sm">
+                                    <option value="">— Nenhuma —</option>
+                                    {% for eq in equipes if eq.departamento == 'PESSOAL' %}
+                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="email_pessoal" placeholder="E-mail pessoal" class="glass-input w-1/2 text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Societário</label>
+                            <div class="flex gap-2">
+                                <select name="societario" class="glass-input w-1/2 text-sm">
+                                    <option value="">— Nenhuma —</option>
+                                    {% for eq in equipes if eq.departamento == 'SOCIETARIO' %}
+                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="email_societario" placeholder="E-mail societário" class="glass-input w-1/2 text-sm">
+                            </div>
                         </div>
                     </div>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Contábil (Equipe / E-mail)</label>
-                        <div class="flex gap-2">
-                            <select name="contabil" class="glass-input w-1/2">
-                                <option value="">— Nenhuma —</option>
-                                {% for eq in equipes if eq.departamento == 'CONTABIL' %}
-                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <input type="text" name="email_contabil" placeholder="E-mail do cliente (Contábil)" class="glass-input w-1/2">
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Pessoal (Equipe / E-mail)</label>
-                        <div class="flex gap-2">
-                            <select name="pessoal" class="glass-input w-1/2">
-                                <option value="">— Nenhuma —</option>
-                                {% for eq in equipes if eq.departamento == 'PESSOAL' %}
-                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <input type="text" name="email_pessoal" placeholder="E-mail do cliente (Pessoal)" class="glass-input w-1/2">
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Societário (Equipe / E-mail)</label>
-                        <div class="flex gap-2">
-                            <select name="societario" class="glass-input w-1/2">
-                                <option value="">— Nenhuma —</option>
-                                {% for eq in equipes if eq.departamento == 'SOCIETARIO' %}
-                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <input type="text" name="email_societario" placeholder="E-mail do cliente (Societário)" class="glass-input w-1/2">
-                        </div>
-                    </div>
+                </div>
 
-                    <h4 class="col-span-1 md:col-span-2 text-sm font-bold text-jp-navy mt-4 border-b border-slate-200 pb-2">Configurações Avançadas</h4>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Regime Tributário</label>
-                        <input type="text" name="regime" placeholder="SIMPLES, LUCRO PRESUMIDO..." class="glass-input w-full">
+                <!-- ══════ Seção: Configurações ══════ -->
+                <div class="mb-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-6 h-6 rounded-md bg-amber-100 text-amber-500 flex items-center justify-center">
+                            <i class="fa-solid fa-sliders text-[10px]"></i>
+                        </div>
+                        <h4 class="text-xs font-bold text-jp-navy uppercase tracking-widest">Configurações</h4>
                     </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Regime Tributário</label>
+                            <input type="text" name="regime" placeholder="SIMPLES, LUCRO PRESUMIDO..." class="glass-input w-full text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Data de Entrada</label>
+                            <input type="date" name="data_entrada" class="glass-input w-full text-sm">
+                            <p class="text-[10px] text-slate-400 mt-1">Tarefas não são geradas antes desta data.</p>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Nível de Prioridade</label>
+                            <input type="number" name="nivel" value="1" min="1" max="10" class="glass-input w-full text-sm">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Exceções de Regras</label>
+                            <input type="text" name="excecoes" placeholder="Ex: REGRA-123, REGRA-456" class="glass-input w-full text-sm">
+                        </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Data de Entrada na Carteira</label>
-                        <input type="date" name="data_entrada" class="glass-input w-full">
-                        <p class="text-[10px] text-slate-400 mt-1">Tarefas não serão geradas para meses anteriores a esta data.</p>
+                        <!-- Status Toggle -->
+                        <div id="campo-status-cliente" class="hidden">
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status do Cliente</label>
+                            <div class="flex items-center gap-3 h-[42px]">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="toggle-status-cliente" class="sr-only peer" checked>
+                                    <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-colors"></div>
+                                </label>
+                                <span id="label-status-cliente" class="text-sm font-bold text-emerald-600">ATIVO</span>
+                                <input type="hidden" name="status" id="input-status-cliente" value="ATIVO">
+                            </div>
+                        </div>
                     </div>
                     
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nível de Prioridade</label>
-                        <input type="number" name="nivel" value="1" class="glass-input w-full">
-                    </div>
-                    
-                    <div class="col-span-1 md:col-span-2">
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Perfis Ativos</label>
-                        <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar p-2 bg-slate-50/50 border border-slate-100 rounded-xl">
+                    <!-- Perfis Ativos -->
+                    <div class="mt-4">
+                        <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Perfis Ativos</label>
+                        <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto custom-scrollbar p-3 bg-slate-50/50 border border-slate-100 rounded-xl">
                             {% for perfil in perfis %}
                             <label class="flex items-center space-x-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all shadow-sm">
                                 <input type="checkbox" name="perfis_ativos" value="{{ perfil.nome }}" class="form-checkbox h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
@@ -171,21 +222,14 @@
                             {% endif %}
                         </div>
                     </div>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Exceções de Regras</label>
-                        <input type="text" name="excecoes" placeholder="Ex: REGRA-123" class="glass-input w-full">
-                    </div>
-                    
-                    <div class="col-span-1 md:col-span-2">
-                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Pasta Google Drive</label>
-                        <input type="text" name="pasta_drive" placeholder="URL da pasta no Drive" class="glass-input w-full">
-                    </div>
                 </div>
                 
-                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                    <button type="button" onclick="document.getElementById('modal-novo-cliente').classList.add('hidden')" class="px-5 py-2 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all">Salvar Cliente</button>
+                <!-- Footer Actions -->
+                <div class="flex justify-end gap-3 pt-5 border-t border-slate-100">
+                    <button type="button" onclick="fecharModalCliente()" class="px-5 py-2.5 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors text-sm">Cancelar</button>
+                    <button type="submit" class="px-6 py-2.5 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Salvar Cliente
+                    </button>
                 </div>
             </form>
         </div>
@@ -193,6 +237,27 @@
 </div>
 
 <script>
+function fecharModalCliente() {
+    document.getElementById('modal-novo-cliente').classList.add('hidden');
+}
+
+// Status Toggle
+const toggleStatus = document.getElementById('toggle-status-cliente');
+const labelStatus = document.getElementById('label-status-cliente');
+const inputStatus = document.getElementById('input-status-cliente');
+
+toggleStatus.addEventListener('change', function() {
+    if (this.checked) {
+        inputStatus.value = 'ATIVO';
+        labelStatus.textContent = 'ATIVO';
+        labelStatus.className = 'text-sm font-bold text-emerald-600';
+    } else {
+        inputStatus.value = 'INATIVO';
+        labelStatus.textContent = 'INATIVO';
+        labelStatus.className = 'text-sm font-bold text-slate-400';
+    }
+});
+
 function abrirNovoCliente() {
     const form = document.getElementById('form-cliente');
     form.reset();
@@ -200,17 +265,29 @@ function abrirNovoCliente() {
     form.setAttribute('hx-post', '/clientes');
     htmx.process(form);
     
-    document.getElementById('titulo-modal-cliente').innerHTML = '<i class="fa-solid fa-building mr-2 text-indigo-400"></i> Cadastrar Cliente';
+    // Header
+    document.getElementById('titulo-modal-cliente').textContent = 'Cadastrar Cliente';
+    document.getElementById('subtitulo-modal-cliente').textContent = 'Preencha os dados do novo cliente';
+    document.getElementById('icone-modal-cliente').innerHTML = '<i class="fa-solid fa-building text-lg"></i>';
+    
+    // Hide status field for new clients (always ATIVO)
+    document.getElementById('campo-status-cliente').classList.add('hidden');
+    toggleStatus.checked = true;
+    inputStatus.value = 'ATIVO';
+    labelStatus.textContent = 'ATIVO';
+    labelStatus.className = 'text-sm font-bold text-emerald-600';
+    
     document.getElementById('modal-novo-cliente').classList.remove('hidden');
 }
 
 function abrirEdicaoCliente(dados) {
     const form = document.getElementById('form-cliente');
+    form.reset();
     form.removeAttribute('hx-post');
     form.setAttribute('hx-put', '/clientes/' + dados.id);
     htmx.process(form);
     
-    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'email_fiscal', 'contabil', 'email_contabil', 'pessoal', 'email_pessoal', 'societario', 'email_societario', 'regime', 'nivel', 'excecoes', 'pasta_drive', 'data_entrada'];
+    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'email_fiscal', 'contabil', 'email_contabil', 'pessoal', 'email_pessoal', 'societario', 'email_societario', 'regime', 'nivel', 'excecoes', 'data_entrada'];
     
     campos.forEach(campo => {
         if(form.elements[campo]) {
@@ -218,6 +295,7 @@ function abrirEdicaoCliente(dados) {
         }
     });
     
+    // Perfis
     const checkboxes = form.querySelectorAll('input[name="perfis_ativos"]');
     checkboxes.forEach(cb => cb.checked = false);
     if(dados.perfis_ativos) {
@@ -229,7 +307,19 @@ function abrirEdicaoCliente(dados) {
         });
     }
     
-    document.getElementById('titulo-modal-cliente').innerHTML = '<i class="fa-solid fa-pen mr-2 text-indigo-400"></i> Editar Cliente';
+    // Status toggle
+    document.getElementById('campo-status-cliente').classList.remove('hidden');
+    const isAtivo = (dados.status || 'ATIVO') === 'ATIVO';
+    toggleStatus.checked = isAtivo;
+    inputStatus.value = isAtivo ? 'ATIVO' : 'INATIVO';
+    labelStatus.textContent = isAtivo ? 'ATIVO' : 'INATIVO';
+    labelStatus.className = isAtivo ? 'text-sm font-bold text-emerald-600' : 'text-sm font-bold text-slate-400';
+    
+    // Header
+    document.getElementById('titulo-modal-cliente').textContent = 'Editar Cliente';
+    document.getElementById('subtitulo-modal-cliente').textContent = dados.cliente || 'Atualizar dados';
+    document.getElementById('icone-modal-cliente').innerHTML = '<i class="fa-solid fa-pen text-lg"></i>';
+    
     document.getElementById('modal-novo-cliente').classList.remove('hidden');
 }
 </script>
