@@ -111,50 +111,69 @@
                         </div>
                         <h4 class="text-xs font-bold text-jp-navy uppercase tracking-widest">Departamentos e Roteamento</h4>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Fiscal (Equipe)</label>
-                            <select name="fiscal" class="glass-input w-full text-sm">
-                                <option value="">— Nenhuma —</option>
-                                {% for eq in equipes if eq.departamento and eq.departamento|upper == 'FISCAL' %}
-                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-3 mb-1">E-mail Específico (Fiscal)</label>
-                            <input type="text" name="email_fiscal" placeholder="Se vazio, usa o e-mail geral" class="glass-input w-full text-xs">
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-end bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Fiscal (Equipe)</label>
+                                <select name="fiscal" class="glass-input w-full text-sm">
+                                    <option value="">— Nenhuma —</option>
+                                    {% for eq in equipes if eq.departamento and eq.departamento|upper == 'FISCAL' %}
+                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Específico (Opcional)</label>
+                                <input type="text" name="email_fiscal" placeholder="Se vazio, usa o e-mail geral" class="glass-input w-full text-sm">
+                            </div>
                         </div>
-                        <div class="bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Contábil (Equipe)</label>
-                            <select name="contabil" class="glass-input w-full text-sm">
-                                <option value="">— Nenhuma —</option>
-                                {% for eq in equipes if eq.departamento and eq.departamento|upper == 'CONTABIL' %}
-                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-3 mb-1">E-mail Específico (Contábil)</label>
-                            <input type="text" name="email_contabil" placeholder="Se vazio, usa o e-mail geral" class="glass-input w-full text-xs">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-end bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Contábil (Equipe)</label>
+                                <select name="contabil" class="glass-input w-full text-sm">
+                                    <option value="">— Nenhuma —</option>
+                                    {% for eq in equipes if eq.departamento and eq.departamento|upper == 'CONTABIL' %}
+                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Específico (Opcional)</label>
+                                <input type="text" name="email_contabil" placeholder="Se vazio, usa o e-mail geral" class="glass-input w-full text-sm">
+                            </div>
                         </div>
-                        <div class="bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Pessoal (Equipe)</label>
-                            <select name="pessoal" class="glass-input w-full text-sm">
-                                <option value="">— Nenhuma —</option>
-                                {% for eq in equipes if eq.departamento and eq.departamento|upper == 'PESSOAL' %}
-                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-3 mb-1">E-mail Específico (Pessoal)</label>
-                            <input type="text" name="email_pessoal" placeholder="Se vazio, usa o e-mail geral" class="glass-input w-full text-xs">
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-end bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Pessoal (Equipe)</label>
+                                <select name="pessoal" class="glass-input w-full text-sm">
+                                    <option value="">— Nenhuma —</option>
+                                    {% for eq in equipes if eq.departamento and eq.departamento|upper == 'PESSOAL' %}
+                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Específico (Opcional)</label>
+                                <input type="text" name="email_pessoal" placeholder="Se vazio, usa o e-mail geral" class="glass-input w-full text-sm">
+                            </div>
                         </div>
-                        <div class="bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                            <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Societário (Equipe)</label>
-                            <select name="societario" class="glass-input w-full text-sm">
-                                <option value="">— Nenhuma —</option>
-                                {% for eq in equipes if eq.departamento and eq.departamento|upper == 'SOCIETARIO' %}
-                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-3 mb-1">E-mail Específico (Societário)</label>
-                            <input type="text" name="email_societario" placeholder="Se vazio, usa o e-mail geral" class="glass-input w-full text-xs">
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-end bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Societário (Equipe)</label>
+                                <select name="societario" class="glass-input w-full text-sm">
+                                    <option value="">— Nenhuma —</option>
+                                    {% for eq in equipes if eq.departamento and eq.departamento|upper == 'SOCIETARIO' %}
+                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Específico (Opcional)</label>
+                                <input type="text" name="email_societario" placeholder="Se vazio, usa o e-mail geral" class="glass-input w-full text-sm">
+                            </div>
                         </div>
                     </div>
                 </div>
