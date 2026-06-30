@@ -64,14 +64,24 @@ async def search_protocolos(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
-    query = db.query(models.Protocolo).order_by(models.Protocolo.data.desc())
+    query = db.query(models.Protocolo).outerjoin(
+        models.HistoricoTarefa,
+        (models.HistoricoTarefa.tenant_id == models.Protocolo.tenant_id) &
+        (models.HistoricoTarefa.protocolo == models.Protocolo.protocolo)
+    ).filter(models.Protocolo.tenant_id == current_user.tenant_id)
+    
     if q:
-        query = query.filter(
-            models.Protocolo.protocolo.ilike(f"%{q}%")
-            | models.Protocolo.cliente.ilike(f"%{q}%")
-            | models.Protocolo.obrigacao.ilike(f"%{q}%")
-        )
-    protocolos = query.limit(100).all()
+        termos = [t.strip() for t in q.split() if t.strip()]
+        for termo in termos:
+            search_term = f"%{termo}%"
+            query = query.filter(
+                models.Protocolo.protocolo.ilike(search_term) |
+                models.Protocolo.cliente.ilike(search_term) |
+                models.Protocolo.obrigacao.ilike(search_term) |
+                models.HistoricoTarefa.departamento.ilike(search_term)
+            )
+            
+    protocolos = query.order_by(models.Protocolo.data.desc()).limit(100).all()
     return templates.TemplateResponse(request, "partials/protocolos_list.html", {"protocolos": protocolos})
 
 
