@@ -114,51 +114,39 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Fiscal</label>
-                            <div class="flex gap-2">
-                                <select name="fiscal" class="glass-input w-1/2 text-sm">
-                                    <option value="">— Nenhuma —</option>
-                                    {% for eq in equipes if eq.departamento == 'FISCAL' %}
-                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                                <input type="text" name="email_fiscal" placeholder="E-mail fiscal" class="glass-input w-1/2 text-sm">
-                            </div>
+                            <select name="fiscal" class="glass-input w-full text-sm">
+                                <option value="">— Nenhuma —</option>
+                                {% for eq in equipes if eq.departamento and eq.departamento|upper == 'FISCAL' %}
+                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Contábil</label>
-                            <div class="flex gap-2">
-                                <select name="contabil" class="glass-input w-1/2 text-sm">
-                                    <option value="">— Nenhuma —</option>
-                                    {% for eq in equipes if eq.departamento == 'CONTABIL' %}
-                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                                <input type="text" name="email_contabil" placeholder="E-mail contábil" class="glass-input w-1/2 text-sm">
-                            </div>
+                            <select name="contabil" class="glass-input w-full text-sm">
+                                <option value="">— Nenhuma —</option>
+                                {% for eq in equipes if eq.departamento and eq.departamento|upper == 'CONTABIL' %}
+                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Pessoal</label>
-                            <div class="flex gap-2">
-                                <select name="pessoal" class="glass-input w-1/2 text-sm">
-                                    <option value="">— Nenhuma —</option>
-                                    {% for eq in equipes if eq.departamento == 'PESSOAL' %}
-                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                                <input type="text" name="email_pessoal" placeholder="E-mail pessoal" class="glass-input w-1/2 text-sm">
-                            </div>
+                            <select name="pessoal" class="glass-input w-full text-sm">
+                                <option value="">— Nenhuma —</option>
+                                {% for eq in equipes if eq.departamento and eq.departamento|upper == 'PESSOAL' %}
+                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Societário</label>
-                            <div class="flex gap-2">
-                                <select name="societario" class="glass-input w-1/2 text-sm">
-                                    <option value="">— Nenhuma —</option>
-                                    {% for eq in equipes if eq.departamento == 'SOCIETARIO' %}
-                                    <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                                <input type="text" name="email_societario" placeholder="E-mail societário" class="glass-input w-1/2 text-sm">
-                            </div>
+                            <select name="societario" class="glass-input w-full text-sm">
+                                <option value="">— Nenhuma —</option>
+                                {% for eq in equipes if eq.departamento and eq.departamento|upper == 'SOCIETARIO' %}
+                                <option value="{{ eq.nome }}" {% if loop.index == 1 %}selected{% endif %}>{{ eq.nome }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -287,7 +275,7 @@ function abrirEdicaoCliente(dados) {
     form.setAttribute('hx-put', '/clientes/' + dados.id);
     htmx.process(form);
     
-    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'email_fiscal', 'contabil', 'email_contabil', 'pessoal', 'email_pessoal', 'societario', 'email_societario', 'regime', 'nivel', 'excecoes', 'data_entrada'];
+    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'contabil', 'pessoal', 'societario', 'regime', 'nivel', 'excecoes', 'data_entrada'];
     
     campos.forEach(campo => {
         if(form.elements[campo]) {
