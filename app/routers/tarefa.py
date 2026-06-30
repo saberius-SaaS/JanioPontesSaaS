@@ -302,7 +302,8 @@ async def pesquisa_tarefas(request: Request, q: str = "", db: Session = Depends(
             models.Tarefa.cliente.ilike(search_term),
             models.Tarefa.obrigacao.ilike(search_term),
             models.Tarefa.responsavel.ilike(search_term),
-            models.Tarefa.departamento.ilike(search_term)
+            models.Tarefa.departamento.ilike(search_term),
+            models.Tarefa.mes_ano.ilike(search_term)
         ))
         
     # Filtrar por equipe/usuário se não for ADMIN/MASTER
