@@ -52,11 +52,14 @@ async def search_clientes(
 ):
     query = db.query(models.Cliente)
     if q:
-        query = query.filter(
-            models.Cliente.cliente.ilike(f"%{q}%")
-            | models.Cliente.cnpj.ilike(f"%{q}%")
-            | models.Cliente.email.ilike(f"%{q}%")
-        )
+        termos = [t.strip() for t in q.split() if t.strip()]
+        for termo in termos:
+            search_term = f"%{termo}%"
+            query = query.filter(
+                models.Cliente.cliente.ilike(search_term)
+                | models.Cliente.cnpj.ilike(search_term)
+                | models.Cliente.email.ilike(search_term)
+            )
     clientes = query.order_by(models.Cliente.cliente).limit(PAGE_SIZE).all()
     return templates.TemplateResponse(request, "partials/clientes_table.html", {"clientes": clientes})
 

@@ -44,7 +44,10 @@ async def search_obrigacoes(
 ):
     query = db.query(models.RegraObrigacao)
     if q:
-        query = query.filter(models.RegraObrigacao.obrigacao.ilike(f"%{q}%"))
+        termos = [t.strip() for t in q.split() if t.strip()]
+        for termo in termos:
+            search_term = f"%{termo}%"
+            query = query.filter(models.RegraObrigacao.obrigacao.ilike(search_term))
     obrigacoes = query.order_by(models.RegraObrigacao.obrigacao).limit(PAGE_SIZE).all()
     return templates.TemplateResponse(request, "partials/regras_table.html", {"obrigacoes": obrigacoes})
 

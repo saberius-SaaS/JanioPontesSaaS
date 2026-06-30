@@ -25,7 +25,7 @@ def gerar_protocolo() -> str:
 
 
 def obter_email_cliente(db: Session, tenant_id: str, nome_cliente: str, departamento: str = None) -> str:
-    """Busca o email do cliente com roteamento por departamento (igual ao sistema legado)."""
+    """Busca o email do cliente (o e-mail principal cadastrado)."""
     cliente = db.query(models.Cliente).filter(
         models.Cliente.tenant_id == tenant_id,
         models.Cliente.cliente == nome_cliente
@@ -33,19 +33,8 @@ def obter_email_cliente(db: Session, tenant_id: str, nome_cliente: str, departam
     if not cliente:
         return ""
     
-    # Roteamento por departamento (emails específicos por setor)
-    if departamento:
-        dep_upper = departamento.upper()
-        if dep_upper == "FISCAL" and cliente.email_fiscal:
-            return cliente.email_fiscal
-        elif dep_upper == "CONTABIL" and cliente.email_contabil:
-            return cliente.email_contabil
-        elif dep_upper == "PESSOAL" and cliente.email_pessoal:
-            return cliente.email_pessoal
-        elif dep_upper == "SOCIETARIO" and cliente.email_societario:
-            return cliente.email_societario
-    
-    # Fallback: email principal
+    # Retorna sempre o e-mail principal do cliente
+    # (As colunas email_fiscal, email_contabil etc. armazenam e-mails internos da equipe)
     return cliente.email or ""
 
 
