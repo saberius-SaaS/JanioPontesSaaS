@@ -291,7 +291,12 @@ function abrirEdicaoCliente(dados) {
     
     campos.forEach(campo => {
         if(form.elements[campo]) {
-            form.elements[campo].value = dados[campo] || '';
+            let val = dados[campo];
+            if (val === null || val === undefined) {
+                if (campo === 'nivel') val = 1;
+                else val = '';
+            }
+            form.elements[campo].value = val;
         }
     });
     

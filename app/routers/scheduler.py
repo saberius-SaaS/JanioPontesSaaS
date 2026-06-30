@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app import models
 from app.database import get_db
@@ -162,6 +165,7 @@ async def send_whatsapp_reminders(
             
         telefone_raw = getattr(cliente_db, 'telefone', None)
         if not telefone_raw:
+            logger.info(f"[WPP] Cliente '{nome_cliente}' sem telefone cadastrado. Ignorando.")
             continue
             
         telefones = re.split(r'[,;/]', telefone_raw)
@@ -175,12 +179,12 @@ async def send_whatsapp_reminders(
             
         total = len(lista_p)
         
-        # Modelo Genérico (Ex: Prezado {{1}}, você tem {{2}} documento(s) não lido(s).)
-        # Se for aprovado com botões, não é necessário passar o link nas variáveis caso seja um link fixo.
+        logger.info(f"[WPP] Enviando para '{nome_cliente}' → tel: {wpp} | {total} protocolo(s)")
+        
         sucesso = await chatwoot_service.send_template_notification(
             name=nome_cliente,
             email=email,
-            template_name="automatico_protocolos", # Nome do novo template genérico
+            template_name="automatico_protocolos",
             phone_number=wpp,
             template_params=[nome_cliente, str(total)]
         )
@@ -189,6 +193,9 @@ async def send_whatsapp_reminders(
             for p in lista_p:
                 p.wpp_notif = agora
             contador_mensagens += 1
+            logger.info(f"[WPP] ✅ Enviado com sucesso para '{nome_cliente}' ({wpp})")
+        else:
+            logger.warning(f"[WPP] ❌ Falha ao enviar para '{nome_cliente}' ({wpp})")
             
     db.commit()
     return {"status": "success", "clientes_notificados": contador_mensagens}

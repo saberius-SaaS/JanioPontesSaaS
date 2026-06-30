@@ -1,10 +1,42 @@
 import httpx
 import logging
+import re
 from typing import Optional, Dict, Any
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_phone(raw: str) -> Optional[str]:
+    """Normaliza telefone para formato E.164 (+5534999999999)."""
+    if not raw:
+        return None
+    digits = re.sub(r'[^0-9]', '', raw)
+    if not digits:
+        return None
+    if digits.startswith('55') and len(digits) >= 12:
+        return f'+{digits}'
+    if len(digits) >= 10:
+        return f'+55{digits}'
+    return None
+
+
+def _phones_match(a: Optional[str], b: Optional[str]) -> bool:
+    """Compara dois telefones ignorando formatação."""
+    if not a or not b:
+        return False
+    da = re.sub(r'[^0-9]', '', a)
+    db = re.sub(r'[^0-9]', '', b)
+    if not da or not db:
+        return False
+    if da == db:
+        return True
+    if da.startswith('55') and da[2:] == db:
+        return True
+    if db.startswith('55') and db[2:] == da:
+        return True
+    return False
 
 class ChatwootService:
     def __init__(self):
@@ -39,29 +71,50 @@ class ChatwootService:
 
     async def get_or_create_contact(self, name: str, email: str, phone_number: Optional[str] = None) -> Optional[int]:
         """
-        Busca um contato por email (ou telefone) no Chatwoot e retorna seu ID.
-        Se não existir, cria o contato.
+        Busca um contato por telefone no Chatwoot e retorna seu ID.
+        Valida que o telefone do contato encontrado corresponde ao esperado.
+        Se não existir ou o telefone não bater, cria/atualiza o contato.
         """
-        # 1. Tentar buscar por telefone ou email
-        search_query = phone_number if phone_number else email
+        normalized_phone = _normalize_phone(phone_number) if phone_number else None
+        
+        # 1. Buscar por telefone (prioridade) ou email
+        search_query = normalized_phone or phone_number or email
         if search_query:
-            if search_query.startswith('+'):
-                search_query = search_query.replace('+', '%2B')
-            search_result = await self._request("GET", f"contacts/search?q={search_query}")
+            safe_query = search_query.replace('+', '%2B') if search_query.startswith('+') else search_query
+            search_result = await self._request("GET", f"contacts/search?q={safe_query}")
             if search_result and "payload" in search_result and search_result["payload"]:
-                return search_result["payload"][0].get("id")
+                # Validação estrita: o contato encontrado DEVE ter o telefone correto
+                for contact in search_result["payload"]:
+                    contact_phone = contact.get("phone_number", "")
+                    if normalized_phone and _phones_match(contact_phone, normalized_phone):
+                        logger.info(f"Contato encontrado com telefone correto: {contact.get('name')} (ID: {contact.get('id')})")
+                        return contact.get("id")
+                
+                # Se encontrou por nome/email mas telefone não bate, atualizar o primeiro com o telefone correto
+                if normalized_phone:
+                    first_contact = search_result["payload"][0]
+                    first_id = first_contact.get("id")
+                    first_phone = first_contact.get("phone_number", "")
+                    logger.warning(
+                        f"Contato '{first_contact.get('name')}' encontrado mas telefone diverge: "
+                        f"esperado={normalized_phone}, encontrado={first_phone}. Criando novo contato."
+                    )
 
-        # 2. Se não encontrou, criar
+        # 2. Criar novo contato com telefone normalizado
         contact_data = {
             "name": name,
             "email": email,
         }
-        if phone_number:
+        if normalized_phone:
+            contact_data["phone_number"] = normalized_phone
+        elif phone_number:
             contact_data["phone_number"] = phone_number
 
         create_result = await self._request("POST", "contacts", {"inbox_id": settings.CHATWOOT_INBOX_ID, **contact_data})
         if create_result and "payload" in create_result and create_result["payload"].get("contact"):
-            return create_result["payload"]["contact"].get("id")
+            new_id = create_result["payload"]["contact"].get("id")
+            logger.info(f"Novo contato criado: {name} / {normalized_phone or phone_number} (ID: {new_id})")
+            return new_id
             
         return None
 
