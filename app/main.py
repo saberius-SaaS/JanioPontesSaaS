@@ -130,23 +130,12 @@ async def root(
         
     periodo_selecionado = periodo if periodo else f"{hoje.month:02d}/{hoje.year}"
     
-    if periodo_selecionado == 'todos':
-        inicio_mes = None
-        fim_mes = None
-    else:
-        try:
-            m, y = map(int, periodo_selecionado.split('/'))
-            inicio_mes = date(y, m, 1)
-            if m == 12:
-                fim_mes = date(y + 1, 1, 1)
-            else:
-                fim_mes = date(y, m + 1, 1)
-        except:
-            inicio_mes = date(hoje.year, hoje.month, 1)
-            if hoje.month == 12:
-                fim_mes = date(hoje.year + 1, 1, 1)
-            else:
-                fim_mes = date(hoje.year, hoje.month + 1, 1)
+    filtro_periodo = []
+    filtro_periodo_hist = []
+    
+    if periodo_selecionado != 'todos':
+        filtro_periodo = [models.Tarefa.mes_ano == periodo_selecionado]
+        filtro_periodo_hist = [models.HistoricoTarefa.mes_ano == periodo_selecionado]
 
     # Buscar lista de departamentos disponíveis para o filtro
     departamentos_db = db.query(models.Equipe.departamento).filter(
@@ -166,11 +155,8 @@ async def root(
     # Pendentes do período
     filtro_pendentes = [
         models.Tarefa.tenant_id == current_user.tenant_id,
-        models.Tarefa.status.notin_(['ENTREGUE']),
-        models.Tarefa.vencimento != None
-    ]
-    if fim_mes:
-        filtro_pendentes.append(models.Tarefa.vencimento < fim_mes)
+        models.Tarefa.status.notin_(['ENTREGUE'])
+    ] + filtro_periodo
         
     pendentes = db.query(models.Tarefa).filter(
         *filtro_pendentes,
@@ -180,13 +166,8 @@ async def root(
     # Entregas do período: ENTREGUE na fila ativa + histórico
     filtro_entregues = [
         models.Tarefa.tenant_id == current_user.tenant_id,
-        models.Tarefa.status == 'ENTREGUE',
-        models.Tarefa.vencimento != None
-    ]
-    if inicio_mes:
-        filtro_entregues.append(models.Tarefa.vencimento >= inicio_mes)
-    if fim_mes:
-        filtro_entregues.append(models.Tarefa.vencimento < fim_mes)
+        models.Tarefa.status == 'ENTREGUE'
+    ] + filtro_periodo
 
     entregues_ativas = db.query(models.Tarefa).filter(
         *filtro_entregues,
@@ -195,13 +176,8 @@ async def root(
     
     filtro_entregues_hist = [
         models.HistoricoTarefa.tenant_id == current_user.tenant_id,
-        models.HistoricoTarefa.status == 'ENTREGUE',
-        models.HistoricoTarefa.vencimento != None
-    ]
-    if inicio_mes:
-        filtro_entregues_hist.append(models.HistoricoTarefa.vencimento >= inicio_mes)
-    if fim_mes:
-        filtro_entregues_hist.append(models.HistoricoTarefa.vencimento < fim_mes)
+        models.HistoricoTarefa.status == 'ENTREGUE'
+    ] + filtro_periodo_hist
 
     entregues_historico = db.query(models.HistoricoTarefa).filter(
         *filtro_entregues_hist,
@@ -215,7 +191,8 @@ async def root(
         models.Tarefa.status == 'PENDENTE',
         models.Tarefa.vencimento != None,
         models.Tarefa.vencimento <= hoje,
-        *filtro_depto
+        *filtro_depto,
+        *filtro_periodo
     ).count()
 
     from sqlalchemy import not_, or_
@@ -225,11 +202,7 @@ async def root(
     # --- Desempenho e Ranking (Ativas + Histórico do Período) ---
     from sqlalchemy import select, union_all
     
-    filtro_desempenho_ativa = [models.Tarefa.tenant_id == current_user.tenant_id]
-    if inicio_mes:
-        filtro_desempenho_ativa.append(models.Tarefa.vencimento >= inicio_mes)
-    if fim_mes:
-        filtro_desempenho_ativa.append(models.Tarefa.vencimento < fim_mes)
+    filtro_desempenho_ativa = [models.Tarefa.tenant_id == current_user.tenant_id] + filtro_periodo
         
     stmt1 = select(
         models.Tarefa.tenant_id,
@@ -239,11 +212,7 @@ async def root(
         models.Tarefa.id
     ).where(*filtro_desempenho_ativa)
     
-    filtro_desempenho_hist = [models.HistoricoTarefa.tenant_id == current_user.tenant_id]
-    if inicio_mes:
-        filtro_desempenho_hist.append(models.HistoricoTarefa.vencimento >= inicio_mes)
-    if fim_mes:
-        filtro_desempenho_hist.append(models.HistoricoTarefa.vencimento < fim_mes)
+    filtro_desempenho_hist = [models.HistoricoTarefa.tenant_id == current_user.tenant_id] + filtro_periodo_hist
         
     stmt2 = select(
         models.HistoricoTarefa.tenant_id,
