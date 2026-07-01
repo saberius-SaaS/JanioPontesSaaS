@@ -242,6 +242,20 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
         else:
             query = query.filter(models.Tarefa.responsavel == None)  # sem filtro = sem resultado
 
+    # === LÓGICA DE PERÍODOS (MÊS/ANO) ===
+    # Obter lista de períodos distintos disponíveis para o usuário
+    periodos_raw = [p[0] for p in query.with_entities(models.Tarefa.mes_ano).distinct().all() if p[0]]
+    # Ordenar por Ano+Mês (ex: 06/2026 -> 202606)
+    periodos = sorted(periodos_raw, key=lambda x: x.split('/')[1] + x.split('/')[0] if '/' in x else x)
+    
+    periodo_selecionado = request.query_params.get("periodo")
+    # Se não foi escolhido nenhum período, pegar o mais antigo que tiver tarefa pendente
+    if not periodo_selecionado and periodos:
+        periodo_selecionado = periodos[0]
+        
+    if periodo_selecionado and periodo_selecionado != "todos":
+        query = query.filter(models.Tarefa.mes_ano == periodo_selecionado)
+
     tarefas_raw = query.order_by(models.Tarefa.vencimento.asc()).limit(400).all()
     
     tarefas = []
@@ -278,13 +292,15 @@ async def list_tarefas(request: Request, db: Session = Depends(get_db), current_
         "equipes": equipes,
         "tipos_avulsa": tipos_avulsa,
         "departamentos": departamentos,
+        "periodos": periodos,
+        "periodo_selecionado": periodo_selecionado or "todos",
         "chatwoot_token": getattr(request.state, "chatwoot_token", ""),
         "chatwoot_base_url": getattr(request.state, "chatwoot_base_url", "")
     })
 
 
 @router.get("/tarefas/pesquisa", response_class=HTMLResponse)
-async def pesquisa_tarefas(request: Request, q: str = "", db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
+async def pesquisa_tarefas(request: Request, q: str = "", periodo: str = "", db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
     from sqlalchemy import or_
     
     query = db.query(models.Tarefa, models.RegraObrigacao.revisao).outerjoin(
@@ -318,6 +334,9 @@ async def pesquisa_tarefas(request: Request, q: str = "", db: Session = Depends(
             query = query.filter(or_(*[models.Tarefa.responsavel.ilike(f"%{f}%") for f in filtros_resp]))
         else:
             query = query.filter(models.Tarefa.responsavel == None)  # sem filtro = sem resultado
+
+    if periodo and periodo != "todos":
+        query = query.filter(models.Tarefa.mes_ano == periodo)
 
     tarefas_raw = query.order_by(models.Tarefa.vencimento.asc()).limit(100).all()
     

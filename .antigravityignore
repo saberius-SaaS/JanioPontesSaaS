@@ -1,25 +1,45 @@
-# Dependências e ferramentas de build
-node_modules/
-.clasp.json
-.claspignore
-package-lock.json
+# Python
+venv/
+__pycache__/
+*.pyc
+*.py[cod]
+.pytest_cache/
 
-# Logs e ficheiros temporários do Apps Script
-logs/
-*.log
+# Node / Build
+node_modules/
+package-lock.json
 .build/
 dist/
 
-# Documentação pesada que a IA não precisa ler toda vez
+# Git / Cache
+.git/
+.firebase/
+
+# Google Drive / Apps Script
+*.gsheet
+*.gdoc
+*.gslides
+gas/
+
+# Credenciais / Segurança
+.env
+credentials.json
+creds.json
+client_secret*.json
+
+# Logs / Backups
+logs/
+*.log
+*.bak
+backup/
+
+# Build configs desnecessários
+.clasp.json
+.claspignore
+
+# Docs pesados
 docs/
 *.md
 !README.md
-
-# Ficheiros de credenciais (Segurança e Economia)
-creds.json
-client_secret*.json
-.env
-
-# Backups de versões antigas
-*.bak
-backup/
+!.agents/memory/MEMORY.md
+!.agents/memory/SESSION_RULES.md
