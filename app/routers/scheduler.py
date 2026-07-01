@@ -173,9 +173,9 @@ async def send_whatsapp_reminders(
         if not wpp:
             continue
             
-        email = getattr(cliente_db, 'email', None)
-        if not email:
-            email = f"wpp_{re.sub(r'[^0-9]', '', wpp)}@cliente.local"
+        # Forçar email único baseado no telefone para evitar que o Chatwoot mescle contatos 
+        # distintos que compartilham o mesmo email cadastrado (ex: email da gerência/contador).
+        email = f"wpp_{re.sub(r'[^0-9]', '', wpp)}@cliente.local"
             
         total = len(lista_p)
         

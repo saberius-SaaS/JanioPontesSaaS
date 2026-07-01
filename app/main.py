@@ -109,17 +109,44 @@ app.include_router(scheduler.router, prefix="/scheduler", tags=["Rotinas Agendad
 async def root(
     request: Request, 
     departamento: str = None,
+    periodo: str = None,
     db: Session = Depends(get_db), 
     current_user: models.Usuario = Depends(require_login)
 ):
     from datetime import date
     hoje = date.today()
-    inicio_mes = date(hoje.year, hoje.month, 1)
-    if hoje.month == 12:
-        fim_mes = date(hoje.year + 1, 1, 1)
+    
+    periodos = []
+    for i in [-1, 0, 1]:
+        m = hoje.month + i
+        y = hoje.year
+        if m < 1:
+            m += 12
+            y -= 1
+        elif m > 12:
+            m -= 12
+            y += 1
+        periodos.append(f"{m:02d}/{y}")
+        
+    periodo_selecionado = periodo if periodo else f"{hoje.month:02d}/{hoje.year}"
+    
+    if periodo_selecionado == 'todos':
+        inicio_mes = None
+        fim_mes = None
     else:
-        fim_mes = date(hoje.year, hoje.month + 1, 1)
-    mes_ano_ref = f"{hoje.month:02d}/{hoje.year}"
+        try:
+            m, y = map(int, periodo_selecionado.split('/'))
+            inicio_mes = date(y, m, 1)
+            if m == 12:
+                fim_mes = date(y + 1, 1, 1)
+            else:
+                fim_mes = date(y, m + 1, 1)
+        except:
+            inicio_mes = date(hoje.year, hoje.month, 1)
+            if hoje.month == 12:
+                fim_mes = date(hoje.year + 1, 1, 1)
+            else:
+                fim_mes = date(hoje.year, hoje.month + 1, 1)
 
     # Buscar lista de departamentos disponíveis para o filtro
     departamentos_db = db.query(models.Equipe.departamento).filter(
@@ -136,30 +163,48 @@ async def root(
     if departamento and departamento != 'TODOS':
         filtro_depto_hist = [models.HistoricoTarefa.departamento == departamento]
 
-    # Pendentes do mês: tarefas NÃO-entregues com vencimento <= fim do mês
-    pendentes = db.query(models.Tarefa).filter(
+    # Pendentes do período
+    filtro_pendentes = [
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status.notin_(['ENTREGUE']),
-        models.Tarefa.vencimento != None,
-        models.Tarefa.vencimento < fim_mes,
+        models.Tarefa.vencimento != None
+    ]
+    if fim_mes:
+        filtro_pendentes.append(models.Tarefa.vencimento < fim_mes)
+        
+    pendentes = db.query(models.Tarefa).filter(
+        *filtro_pendentes,
         *filtro_depto
     ).count()
 
-    # Entregas do mês: ENTREGUE na fila ativa + histórico do mês atual
-    entregues_ativas = db.query(models.Tarefa).filter(
+    # Entregas do período: ENTREGUE na fila ativa + histórico
+    filtro_entregues = [
         models.Tarefa.tenant_id == current_user.tenant_id,
         models.Tarefa.status == 'ENTREGUE',
-        models.Tarefa.vencimento != None,
-        models.Tarefa.vencimento >= inicio_mes,
-        models.Tarefa.vencimento < fim_mes,
+        models.Tarefa.vencimento != None
+    ]
+    if inicio_mes:
+        filtro_entregues.append(models.Tarefa.vencimento >= inicio_mes)
+    if fim_mes:
+        filtro_entregues.append(models.Tarefa.vencimento < fim_mes)
+
+    entregues_ativas = db.query(models.Tarefa).filter(
+        *filtro_entregues,
         *filtro_depto
     ).count()
-    entregues_historico = db.query(models.HistoricoTarefa).filter(
+    
+    filtro_entregues_hist = [
         models.HistoricoTarefa.tenant_id == current_user.tenant_id,
         models.HistoricoTarefa.status == 'ENTREGUE',
-        models.HistoricoTarefa.vencimento != None,
-        models.HistoricoTarefa.vencimento >= inicio_mes,
-        models.HistoricoTarefa.vencimento < fim_mes,
+        models.HistoricoTarefa.vencimento != None
+    ]
+    if inicio_mes:
+        filtro_entregues_hist.append(models.HistoricoTarefa.vencimento >= inicio_mes)
+    if fim_mes:
+        filtro_entregues_hist.append(models.HistoricoTarefa.vencimento < fim_mes)
+
+    entregues_historico = db.query(models.HistoricoTarefa).filter(
+        *filtro_entregues_hist,
         *filtro_depto_hist
     ).count()
     entregues = entregues_ativas + entregues_historico
@@ -177,32 +222,36 @@ async def root(
     
     # Protocolos pendentes de leitura foram movidos para o endpoint /api/badges
 
-    # --- Desempenho e Ranking (Ativas + Histórico do Mês) ---
+    # --- Desempenho e Ranking (Ativas + Histórico do Período) ---
     from sqlalchemy import select, union_all
     
+    filtro_desempenho_ativa = [models.Tarefa.tenant_id == current_user.tenant_id]
+    if inicio_mes:
+        filtro_desempenho_ativa.append(models.Tarefa.vencimento >= inicio_mes)
+    if fim_mes:
+        filtro_desempenho_ativa.append(models.Tarefa.vencimento < fim_mes)
+        
     stmt1 = select(
         models.Tarefa.tenant_id,
         models.Tarefa.departamento,
         models.Tarefa.responsavel,
         models.Tarefa.status,
         models.Tarefa.id
-    ).where(
-        models.Tarefa.tenant_id == current_user.tenant_id,
-        models.Tarefa.vencimento >= inicio_mes,
-        models.Tarefa.vencimento < fim_mes
-    )
+    ).where(*filtro_desempenho_ativa)
     
+    filtro_desempenho_hist = [models.HistoricoTarefa.tenant_id == current_user.tenant_id]
+    if inicio_mes:
+        filtro_desempenho_hist.append(models.HistoricoTarefa.vencimento >= inicio_mes)
+    if fim_mes:
+        filtro_desempenho_hist.append(models.HistoricoTarefa.vencimento < fim_mes)
+        
     stmt2 = select(
         models.HistoricoTarefa.tenant_id,
         models.HistoricoTarefa.departamento,
         models.HistoricoTarefa.responsavel,
         models.HistoricoTarefa.status,
         models.HistoricoTarefa.id
-    ).where(
-        models.HistoricoTarefa.tenant_id == current_user.tenant_id,
-        models.HistoricoTarefa.vencimento >= inicio_mes,
-        models.HistoricoTarefa.vencimento < fim_mes
-    )
+    ).where(*filtro_desempenho_hist)
     
     subq = union_all(stmt1, stmt2).subquery()
     
@@ -290,7 +339,9 @@ async def root(
         "desempenho_setorial": desempenho_setorial,
         "ranking_equipe": ranking_equipe,
         "departamentos": departamentos_lista,
-        "departamento_selecionado": departamento or 'TODOS'
+        "departamento_selecionado": departamento or 'TODOS',
+        "periodos": periodos,
+        "periodo_selecionado": periodo_selecionado
     })
 
 @app.get("/api/badges")

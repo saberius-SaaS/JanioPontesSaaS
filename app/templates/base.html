@@ -477,20 +477,37 @@
       {% block content %}
       
       <!-- Controle de Filtros da Dashboard -->
-      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5 mt-2">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-5 mt-2">
         <h2 class="text-lg font-extrabold text-jp-navy tracking-tight flex items-center gap-2">
-            <i class="fa-solid fa-chart-pie text-indigo-500"></i> Visão Geral: Mês
+            <i class="fa-solid fa-chart-pie text-indigo-500"></i> Visão Geral: {% if periodo_selecionado == 'todos' %}Todos os Períodos{% else %}{{ periodo_selecionado }}{% endif %}
         </h2>
-        <form action="/" method="GET" class="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-            <div class="bg-slate-50 text-slate-500 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border border-slate-100">
-                <i class="fa-solid fa-filter"></i> Departamento
-            </div>
-            <select name="departamento" id="departamento" onchange="this.form.submit()" class="bg-transparent border-none text-sm text-slate-700 font-semibold py-1 px-2 min-w-[220px] focus:ring-0 cursor-pointer outline-none">
-                <option value="TODOS" {% if departamento_selecionado == 'TODOS' %}selected{% endif %}>🟢 Todos os Departamentos (Global)</option>
-                {% for depto in departamentos %}
-                <option value="{{ depto }}" {% if departamento_selecionado == depto %}selected{% endif %}>🔹 {{ depto }}</option>
+        <form action="/" method="GET" id="filterForm" class="flex flex-col sm:flex-row items-center gap-3">
+            <input type="hidden" name="periodo" id="periodoInput" value="{{ periodo_selecionado }}">
+            
+            <!-- Seletor de Período -->
+            <div class="flex bg-white rounded-xl p-1 border border-slate-200 shadow-sm">
+                {% for p in periodos %}
+                <button type="button" onclick="document.getElementById('periodoInput').value='{{ p }}'; document.getElementById('filterForm').submit();" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors {{ 'bg-indigo-50 text-indigo-700' if p == periodo_selecionado else 'text-slate-500 hover:bg-slate-50 hover:text-slate-700' }}">
+                    {{ p }}
+                </button>
                 {% endfor %}
-            </select>
+                <button type="button" onclick="document.getElementById('periodoInput').value='todos'; document.getElementById('filterForm').submit();" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ml-1 {{ 'bg-indigo-50 text-indigo-700' if periodo_selecionado == 'todos' else 'text-slate-500 hover:bg-slate-50 hover:text-slate-700' }}">
+                    Todos
+                </button>
+            </div>
+            
+            <!-- Seletor de Departamento -->
+            <div class="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                <div class="bg-slate-50 text-slate-500 rounded-lg px-2 py-1.5 text-xs font-bold uppercase tracking-wider flex items-center gap-1 border border-slate-100">
+                    <i class="fa-solid fa-filter"></i> Dept
+                </div>
+                <select name="departamento" id="departamento" onchange="document.getElementById('filterForm').submit();" class="bg-transparent border-none text-sm text-slate-700 font-semibold py-1 px-1 min-w-[180px] focus:ring-0 cursor-pointer outline-none">
+                    <option value="TODOS" {% if departamento_selecionado == 'TODOS' %}selected{% endif %}>🟢 Todos (Global)</option>
+                    {% for depto in departamentos %}
+                    <option value="{{ depto }}" {% if departamento_selecionado == depto %}selected{% endif %}>🔹 {{ depto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </form>
       </div>
 
