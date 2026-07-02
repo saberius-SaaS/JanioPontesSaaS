@@ -36,10 +36,13 @@
             {% set idx = loop.index %}
             {% set is_pdf = '.pdf' in link.lower() %}
             {% set is_img = ('.png' in link.lower() or '.jpg' in link.lower() or '.jpeg' in link.lower() or '.webp' in link.lower() or '.gif' in link.lower()) %}
-            <div class="file-card group relative rounded-2xl border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 overflow-hidden">
+            <div class="file-card group relative rounded-2xl border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 overflow-hidden"
+                 data-preview-url="{{ link }}"
+                 data-is-pdf="{% if is_pdf %}1{% else %}0{% endif %}"
+                 data-is-img="{% if is_img %}1{% else %}0{% endif %}">
 
                 <!-- Thumbnail / ícone -->
-                <div class="h-36 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-slate-100 relative">
+                <div class="h-36 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-slate-100 overflow-hidden">
                     {% if is_pdf %}
                     <i class="fa-solid fa-file-pdf text-5xl text-red-400"></i>
                     {% elif is_img %}
@@ -47,13 +50,6 @@
                     {% else %}
                     <i class="fa-solid fa-file text-5xl text-slate-400"></i>
                     {% endif %}
-
-                    <!-- Overlay de preview ao hover -->
-                    <div class="preview-overlay absolute inset-0 bg-indigo-900/70 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
-                         onclick="openPreview('{{ link }}', {% if is_pdf %}true{% else %}false{% endif %}, {% if is_img %}true{% else %}false{% endif %}, {{ idx }})">
-                        <i class="fa-solid fa-magnifying-glass text-white text-2xl mb-2"></i>
-                        <span class="text-white text-xs font-bold uppercase tracking-widest">Pré-visualizar</span>
-                    </div>
                 </div>
 
                 <!-- Rodapé do card -->
@@ -95,110 +91,86 @@
     </div>
 </div>
 
-<!-- ======= MODAL DE PRÉ-VISUALIZAÇÃO ======= -->
-<div id="preview-modal" class="fixed inset-0 z-[200] hidden" role="dialog" aria-modal="true" aria-label="Pré-visualização do arquivo">
-    <!-- Backdrop -->
-    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closePreview()"></div>
 
-    <!-- Container do modal -->
-    <div class="relative z-10 flex flex-col h-full max-w-5xl mx-auto p-4">
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-3 flex-shrink-0">
-            <div class="flex items-center gap-2">
-                <span id="preview-icon" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white"></span>
-                <span id="preview-title" class="text-white font-bold text-sm"></span>
-            </div>
-            <div class="flex items-center gap-2">
-                <a id="preview-download" href="#" target="_blank"
-                   class="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-white/20 transition-colors">
-                    <i class="fa-solid fa-cloud-arrow-down"></i> Baixar
-                </a>
-                <button onclick="closePreview()"
-                        class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors border border-white/20">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
+<script>
+// Hover preview para cards de arquivo
+let _hpTimer = null, _hpUrl = null;
+
+function scheduleHp(url, rect) {
+    clearTimeout(_hpTimer);
+    if (!url || !url.startsWith('http')) return;
+    _hpTimer = setTimeout(() => _showHp(url, rect), 400);
+}
+function cancelHp() {
+    clearTimeout(_hpTimer);
+    document.getElementById('hover-panel').classList.add('hidden');
+}
+function _showHp(url, rect) {
+    const panel  = document.getElementById('hover-panel');
+    const iframe = document.getElementById('hp-iframe');
+    const img    = document.getElementById('hp-img');
+    const fall   = document.getElementById('hp-fallback');
+    const loader = document.getElementById('hp-loader');
+    const icon   = document.getElementById('hp-icon');
+    const isPdf  = url.toLowerCase().includes('.pdf');
+    const isImg  = /\.(png|jpe?g|webp|gif)/i.test(url.split('?')[0]);
+
+    if (url !== _hpUrl) {
+        _hpUrl = url;
+        iframe.src = ''; img.src = '';
+        [iframe, img, fall].forEach(el => el.classList.add('hidden'));
+        loader.classList.remove('hidden');
+        if (isPdf) {
+            icon.innerHTML = '<i class="fa-solid fa-file-pdf text-red-400"></i>';
+            iframe.onload = () => loader.classList.add('hidden');
+            iframe.src = url; iframe.classList.remove('hidden');
+        } else if (isImg) {
+            icon.innerHTML = '<i class="fa-solid fa-image text-sky-400"></i>';
+            img.onload = () => loader.classList.add('hidden');
+            img.src = url; img.classList.remove('hidden');
+        } else {
+            icon.innerHTML = '<i class="fa-solid fa-file text-slate-300"></i>';
+            fall.classList.remove('hidden'); loader.classList.add('hidden');
+        }
+    }
+
+    const pw = 300, ph = 250, gap = 14;
+    let left = rect.right + gap;
+    let top  = rect.top + rect.height / 2 - ph / 2;
+    if (left + pw > window.innerWidth - gap) left = rect.left - pw - gap;
+    if (top < gap) top = gap;
+    if (top + ph > window.innerHeight - gap) top = window.innerHeight - ph - gap;
+    panel.style.left = left + 'px';
+    panel.style.top  = top + 'px';
+    panel.classList.remove('hidden');
+}
+
+document.querySelectorAll('.file-card').forEach(card => {
+    card.addEventListener('mouseenter', () => scheduleHp(card.dataset.previewUrl, card.getBoundingClientRect()));
+    card.addEventListener('mouseleave', cancelHp);
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cancelHp(); });
+</script>
+
+<!-- Hover Preview Panel -->
+<div id="hover-panel" class="fixed z-[300] hidden pointer-events-none" style="width:300px">
+    <div class="bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-700/60 ring-1 ring-white/5">
+        <div class="px-3 py-1.5 bg-slate-800 flex items-center gap-2">
+            <span id="hp-icon" class="text-xs"></span>
+            <span class="text-[10px] font-bold text-white/40 uppercase tracking-widest">Pré-visualização</span>
         </div>
-
-        <!-- Área de conteúdo -->
-        <div class="flex-1 rounded-xl overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center min-h-0">
-            <!-- PDF -->
-            <iframe id="preview-iframe"
-                    src="" title="Visualizador PDF"
-                    class="w-full h-full border-0 hidden"
-                    allowfullscreen></iframe>
-
-            <!-- Imagem -->
-            <img id="preview-img" src="" alt="Pré-visualização"
-                 class="max-w-full max-h-full object-contain hidden rounded-lg shadow-xl" />
-
-            <!-- Fallback -->
-            <div id="preview-fallback" class="hidden flex-col items-center justify-center text-center p-10">
-                <i class="fa-solid fa-file-lines text-5xl text-white/30 mb-4"></i>
-                <p class="text-white/70 text-sm font-medium mb-1">Pré-visualização não disponível</p>
-                <p class="text-white/40 text-xs mb-6">Este tipo de arquivo não pode ser exibido diretamente no navegador.</p>
-                <a id="preview-fallback-link" href="#" target="_blank"
-                   class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
-                    <i class="fa-solid fa-cloud-arrow-down"></i> Baixar Arquivo
-                </a>
+        <div class="relative bg-slate-900" style="height:210px">
+            <div id="hp-loader" class="absolute inset-0 flex items-center justify-center">
+                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-400"></div>
+            </div>
+            <iframe id="hp-iframe" src="" class="w-full h-full border-0 absolute inset-0 hidden" title="Preview"></iframe>
+            <img id="hp-img" src="" alt="" class="w-full h-full object-contain absolute inset-0 hidden">
+            <div id="hp-fallback" class="hidden absolute inset-0 flex flex-col items-center justify-center text-white/30 gap-2">
+                <i class="fa-solid fa-file text-3xl"></i>
+                <span class="text-xs">Sem pré-visualização</span>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-function openPreview(url, isPdf, isImg, idx) {
-    const modal      = document.getElementById('preview-modal');
-    const iframe     = document.getElementById('preview-iframe');
-    const img        = document.getElementById('preview-img');
-    const fallback   = document.getElementById('preview-fallback');
-    const title      = document.getElementById('preview-title');
-    const icon       = document.getElementById('preview-icon');
-    const dlBtn      = document.getElementById('preview-download');
-    const fallbackLk = document.getElementById('preview-fallback-link');
-
-    // Reset
-    iframe.classList.add('hidden');   iframe.src = '';
-    img.classList.add('hidden');      img.src = '';
-    fallback.classList.add('hidden');
-    fallback.classList.remove('flex');
-
-    dlBtn.href = url;
-    fallbackLk.href = url;
-    title.textContent = 'Arquivo ' + idx;
-
-    if (isPdf) {
-        icon.innerHTML = '<i class="fa-solid fa-file-pdf text-red-400"></i>';
-        iframe.src = url;
-        iframe.classList.remove('hidden');
-    } else if (isImg) {
-        icon.innerHTML = '<i class="fa-solid fa-image text-sky-400"></i>';
-        img.src = url;
-        img.classList.remove('hidden');
-    } else {
-        icon.innerHTML = '<i class="fa-solid fa-file text-slate-300"></i>';
-        fallback.classList.remove('hidden');
-        fallback.classList.add('flex');
-    }
-
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-}
-
-function closePreview() {
-    const modal  = document.getElementById('preview-modal');
-    const iframe = document.getElementById('preview-iframe');
-    const img    = document.getElementById('preview-img');
-
-    modal.classList.add('hidden');
-    document.body.style.overflow = '';
-    iframe.src = '';
-    img.src = '';
-}
-
-// Fechar com ESC
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closePreview();
-});
-</script>
 {% endblock %}

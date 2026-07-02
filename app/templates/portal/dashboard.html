@@ -135,25 +135,6 @@
                             </div>
                         </div>
 
-                        <!-- THUMBNAIL INTELIGENTE (POPOVER) -->
-                        <div class="smart-tooltip absolute left-[105%] top-0 w-48 bg-jp-navy rounded-xl shadow-2xl p-4 border border-slate-700 pointer-events-none hidden lg:block before:content-[''] before:absolute before:top-4 before:-left-2 before:w-4 before:h-4 before:bg-jp-navy before:rotate-45 before:border-b before:border-l before:border-slate-700">
-                            <div class="relative z-10 text-white">
-                                <div class="w-full h-24 bg-slate-800 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
-                                    <!-- Faux PDF Thumbnail -->
-                                    <div class="absolute inset-2 bg-white rounded flex flex-col p-2 gap-1 opacity-90">
-                                        <div class="w-1/2 h-1 bg-slate-200 rounded"></div>
-                                        <div class="w-3/4 h-1 bg-slate-200 rounded"></div>
-                                        <div class="w-full h-1 bg-slate-100 rounded mt-2"></div>
-                                        <div class="w-full h-1 bg-slate-100 rounded"></div>
-                                        <div class="w-full h-1 bg-slate-100 rounded"></div>
-                                        <div class="mt-auto self-center text-red-500 text-[10px]"><i class="fa-solid fa-file-pdf"></i></div>
-                                    </div>
-                                </div>
-                                <h6 class="text-[10px] font-bold uppercase tracking-widest text-indigo-300 mb-1">Visualização Rápida</h6>
-                                <p class="text-[11px] leading-tight line-clamp-2">{{ p.obrigacao }}</p>
-                                <div class="mt-2 text-[9px] text-slate-400">Clique para abrir no visualizador →</div>
-                            </div>
-                        </div>
 
                     </div>
                     {% endfor %}
@@ -462,10 +443,6 @@ function abrirVisualizador(el) {
             card.innerHTML = `
                 <div class="h-32 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-slate-100 relative overflow-hidden">
                     ${iconHtml}
-                    <div class="preview-overlay absolute inset-0 bg-indigo-900/70 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer">
-                        <i class="fa-solid fa-magnifying-glass text-white text-xl mb-1"></i>
-                        <span class="text-white text-[10px] font-bold uppercase tracking-widest">Pré-visualizar</span>
-                    </div>
                 </div>
                 <div class="px-3 py-2.5 flex items-center justify-between">
                     <div>
@@ -478,9 +455,8 @@ function abrirVisualizador(el) {
                     </a>
                 </div>`;
 
-            card.querySelector('.preview-overlay').addEventListener('click', () => {
-                openDashPreview(lnk, isPdf, isImg, i + 1);
-            });
+            card.addEventListener('mouseenter', () => scheduleHp(lnk, card.getBoundingClientRect()));
+            card.addEventListener('mouseleave', cancelHp);
             multiGrid.appendChild(card);
         });
 
@@ -560,5 +536,96 @@ function closeDashPreview() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDashPreview(); });
+
+// ==========================================
+// HOVER PREVIEW PANEL
+// ==========================================
+let _hpTimer = null, _hpUrl = null;
+
+function scheduleHp(url, rect, badge) {
+    clearTimeout(_hpTimer);
+    if (!url || url === 'None' || !url.startsWith('http')) return;
+    _hpTimer = setTimeout(() => _showHp(url, rect, badge || null), 400);
+}
+function cancelHp() {
+    clearTimeout(_hpTimer);
+    document.getElementById('hover-panel').classList.add('hidden');
+}
+function _showHp(url, rect, badge) {
+    const panel  = document.getElementById('hover-panel');
+    const iframe = document.getElementById('hp-iframe');
+    const img    = document.getElementById('hp-img');
+    const fall   = document.getElementById('hp-fallback');
+    const loader = document.getElementById('hp-loader');
+    const icon   = document.getElementById('hp-icon');
+    const bdg    = document.getElementById('hp-badge');
+    const isPdf  = url.toLowerCase().includes('.pdf');
+    const isImg  = /\.(png|jpe?g|webp|gif)/i.test(url.split('?')[0]);
+
+    if (url !== _hpUrl) {
+        _hpUrl = url;
+        iframe.src = ''; img.src = '';
+        [iframe, img, fall].forEach(el => el.classList.add('hidden'));
+        loader.classList.remove('hidden');
+        if (isPdf) {
+            icon.innerHTML = '<i class="fa-solid fa-file-pdf text-red-400"></i>';
+            iframe.onload = () => loader.classList.add('hidden');
+            iframe.src = url; iframe.classList.remove('hidden');
+        } else if (isImg) {
+            icon.innerHTML = '<i class="fa-solid fa-image text-sky-400"></i>';
+            img.onload = () => loader.classList.add('hidden');
+            img.src = url; img.classList.remove('hidden');
+        } else {
+            icon.innerHTML = '<i class="fa-solid fa-file text-slate-300"></i>';
+            fall.classList.remove('hidden'); loader.classList.add('hidden');
+        }
+    }
+    bdg.textContent = badge || '';
+    badge ? bdg.classList.remove('hidden') : bdg.classList.add('hidden');
+
+    const pw = 300, ph = 250, gap = 14;
+    let left = rect.right + gap;
+    let top  = rect.top + rect.height / 2 - ph / 2;
+    if (left + pw > window.innerWidth - gap) left = rect.left - pw - gap;
+    if (top < gap) top = gap;
+    if (top + ph > window.innerHeight - gap) top = window.innerHeight - ph - gap;
+    panel.style.left = left + 'px';
+    panel.style.top  = top + 'px';
+    panel.classList.remove('hidden');
+}
+
+// Attach hover to left-list doc-items
+document.querySelectorAll('.doc-item').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+        if (el.dataset.acao === 'COMUNICAR') return;
+        const url = el.dataset.url;
+        const count = parseInt(el.dataset.count || '1', 10);
+        const badge = count > 1 ? `${count} arquivos` : null;
+        scheduleHp(url, el.getBoundingClientRect(), badge);
+    });
+    el.addEventListener('mouseleave', cancelHp);
+});
 </script>
+
+<!-- Hover Preview Panel -->
+<div id="hover-panel" class="fixed z-[300] hidden pointer-events-none" style="width:300px">
+    <div class="bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-700/60 ring-1 ring-white/5">
+        <div class="px-3 py-1.5 bg-slate-800 flex items-center gap-2">
+            <span id="hp-icon" class="text-xs"></span>
+            <span class="text-[10px] font-bold text-white/40 uppercase tracking-widest">Pré-visualização</span>
+            <span id="hp-badge" class="hidden ml-auto text-[9px] font-black text-indigo-300 bg-indigo-900/50 px-2 py-0.5 rounded-full"></span>
+        </div>
+        <div class="relative bg-slate-900" style="height:210px">
+            <div id="hp-loader" class="absolute inset-0 flex items-center justify-center">
+                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-400"></div>
+            </div>
+            <iframe id="hp-iframe" src="" class="w-full h-full border-0 absolute inset-0 hidden" title="Preview"></iframe>
+            <img id="hp-img" src="" alt="" class="w-full h-full object-contain absolute inset-0 hidden">
+            <div id="hp-fallback" class="hidden absolute inset-0 flex flex-col items-center justify-center text-white/30 gap-2">
+                <i class="fa-solid fa-file text-3xl"></i>
+                <span class="text-xs">Sem pré-visualização</span>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
