@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Painel de Gestão - Janio Pontes SaaS{% endblock %}
+{% block page_title %}Acompanhamento de Trabalhos{% endblock %}
+
+{% block content %}
+<div class="card-premium p-6 mb-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+            <h2 class="text-xl font-bold text-jp-navy"><i class="fa-solid fa-chart-gantt text-indigo-500 mr-2"></i> Painel de Gestão</h2>
+            <p class="text-sm text-slate-500">Acompanhamento detalhado das obrigações e prazos.</p>
+        </div>
+        <div class="flex items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+            <label class="text-xs font-bold text-slate-500 uppercase ml-2"><i class="fa-solid fa-calendar mr-1"></i> Período:</label>
+            <select id="filtroMesAno" class="bg-white border border-slate-200 rounded-lg text-sm font-semibold py-1.5 px-3 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer" onchange="carregarDados()">
+                <option value="todos">Todos os Períodos</option>
+                {% for p in periodos %}
+                <option value="{{ p }}">{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Menus Superiores (Abas) -->
+    <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-200 pb-3" id="tab-container">
+        <button onclick="mudarVisao('cliente')" class="tab-btn active px-4 py-2 rounded-lg text-sm font-bold transition-all bg-indigo-50 text-indigo-700 border border-indigo-100"><i class="fa-solid fa-building mr-1"></i> Por Cliente</button>
+        <button onclick="mudarVisao('tarefa')" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-slate-50"><i class="fa-solid fa-list-check mr-1"></i> Por Tarefa</button>
+        <button onclick="mudarVisao('periodo')" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-slate-50"><i class="fa-solid fa-calendar-day mr-1"></i> Por Período</button>
+        <button onclick="mudarVisao('responsavel')" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-slate-50"><i class="fa-solid fa-user-tie mr-1"></i> Por Responsável</button>
+    </div>
+
+    <!-- Loader -->
+    <div id="loader" class="hidden py-12 flex justify-center items-center">
+        <i class="fa-solid fa-circle-notch fa-spin text-indigo-500 text-3xl"></i>
+        <span class="ml-3 text-slate-500 font-semibold">Carregando dados...</span>
+    </div>
+
+    <!-- Container de Dados -->
+    <div id="dados-container" class="space-y-6">
+        <!-- O conteúdo será injetado via JavaScript -->
+    </div>
+</div>
+
+<script>
+    let visaoAtual = 'cliente';
+
+    function mudarVisao(visao) {
+        visaoAtual = visao;
+        
+        // Atualizar abas visuais
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('bg-indigo-50', 'text-indigo-700', 'border', 'border-indigo-100', 'active');
+            btn.classList.add('text-slate-500', 'hover:bg-slate-50');
+        });
+        
+        const eventBtn = event.currentTarget || document.querySelector(`button[onclick="mudarVisao('${visao}')"]`);
+        if (eventBtn) {
+            eventBtn.classList.remove('text-slate-500', 'hover:bg-slate-50');
+            eventBtn.classList.add('bg-indigo-50', 'text-indigo-700', 'border', 'border-indigo-100', 'active');
+        }
+
+        carregarDados();
+    }
+
+    async function carregarDados() {
+        const mesAno = document.getElementById('filtroMesAno').value;
+        const loader = document.getElementById('loader');
+        const container = document.getElementById('dados-container');
+        
+        container.innerHTML = '';
+        loader.classList.remove('hidden');
+
+        try {
+            const url = `/painel-gestao/dados?visao=${visaoAtual}&mes_ano=${mesAno}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Falha ao carregar dados");
+            
+            const data = await response.json();
+            renderizarDados(data.dados);
+        } catch (error) {
+            console.error(error);
+            showToast("Erro", "Não foi possível carregar os dados. Tente novamente.", "error");
+        } finally {
+            loader.classList.add('hidden');
+        }
+    }
+
+    function renderizarDados(agrupado) {
+        const container = document.getElementById('dados-container');
+        
+        if (Object.keys(agrupado).length === 0) {
+            container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold uppercase tracking-widest bg-slate-50 rounded-xl border border-slate-100">Nenhum registro encontrado para este período.</div>`;
+            return;
+        }
+
+        let html = '';
+        
+        for (const [chave, itens] of Object.entries(agrupado)) {
+            html += `
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                    <h3 class="font-bold text-jp-navy flex items-center gap-2">
+                        <i class="fa-solid fa-folder-open text-amber-500"></i> ${chave}
+                    </h3>
+                    <span class="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded-lg">${itens.length} obrigações</span>
+                </div>
+                <div class="overflow-x-auto p-4 hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                                <th class="pb-2 font-bold w-1/4">Obrigação / Tarefa</th>
+                                <th class="pb-2 font-bold text-center">Competência</th>
+                                <th class="pb-2 font-bold text-center">Vcto Interno</th>
+                                <th class="pb-2 font-bold text-center">Vcto Legal</th>
+                                <th class="pb-2 font-bold text-center">Entrega</th>
+                                <th class="pb-2 font-bold text-center">Leitura</th>
+                                <th class="pb-2 font-bold text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-xs">
+            `;
+
+            itens.forEach(item => {
+                // Definir Badge baseado no status
+                let badgeClass = '';
+                let badgeText = '';
+                
+                if (item.status_visual === 'NO_PRAZO') {
+                    badgeClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                    badgeText = 'No Prazo';
+                } else if (item.status_visual === 'ATRASADA_INTERNO') {
+                    badgeClass = 'bg-amber-100 text-amber-700 border-amber-200';
+                    badgeText = 'Atraso Interno';
+                } else if (item.status_visual === 'ATRASADA_LEGAL') {
+                    badgeClass = 'bg-red-100 text-red-700 border-red-200';
+                    badgeText = 'Atraso Legal';
+                } else if (item.status_visual === 'ENTREGUE') {
+                    badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+                    badgeText = 'Entregue';
+                }
+
+                const clienteNome = visaoAtual !== 'cliente' ? `<div class="text-[10px] text-slate-400 truncate max-w-[200px] mt-0.5" title="${item.cliente}"><i class="fa-regular fa-building"></i> ${item.cliente}</div>` : '';
+                const obrigNome = visaoAtual !== 'tarefa' ? `<div class="font-bold text-slate-700">${item.obrigacao}</div>` : `<div class="font-bold text-slate-700">${item.cliente}</div>`; // se visão for tarefa, mostra cliente na coluna principal
+
+                html += `
+                    <tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                        <td class="py-2.5">
+                            ${obrigNome}
+                            ${clienteNome}
+                        </td>
+                        <td class="py-2.5 text-center text-slate-500 font-medium">${item.mes_ano}</td>
+                        <td class="py-2.5 text-center text-slate-600 font-medium">${item.vencimento_interno}</td>
+                        <td class="py-2.5 text-center text-slate-600 font-medium">${item.vencimento_legal}</td>
+                        <td class="py-2.5 text-center text-slate-500">${item.data_entrega}</td>
+                        <td class="py-2.5 text-center text-slate-500">${item.data_leitura}</td>
+                        <td class="py-2.5 text-center">
+                            <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${badgeClass}">
+                                ${badgeText}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            `;
+        }
+
+        container.innerHTML = html;
+        
+        // Expandir a primeira aba por padrão
+        const firstHiddenDiv = container.querySelector('.hidden');
+        if (firstHiddenDiv) {
+            firstHiddenDiv.classList.remove('hidden');
+        }
+    }
+
+    // Inicializar na carga
+    document.addEventListener("DOMContentLoaded", () => {
+        carregarDados();
+    });
+</script>
+{% endblock %}

@@ -34,7 +34,7 @@ from fastapi.staticfiles import StaticFiles
 # Montar diretório de arquivos estáticos (CSS Tailwind, JS, Imagens)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request, Depends
 
@@ -104,6 +104,9 @@ app.include_router(tipo_tarefa.router, tags=["Tipos de Tarefa"])
 app.include_router(protocolo.router, tags=["Protocolos"])
 app.include_router(webhook.router, prefix="/webhook", tags=["Webhooks"])
 app.include_router(scheduler.router, prefix="/scheduler", tags=["Rotinas Agendadas"])
+
+from app.routers import painel_gestao
+app.include_router(painel_gestao.router, tags=["Painel de Gestão"])
 
 @app.get("/", response_class=HTMLResponse)
 async def root(
@@ -207,7 +210,6 @@ async def root(
         *filtro_periodo
     ).count()
 
-    from sqlalchemy import not_, or_
     
     # Protocolos pendentes de leitura foram movidos para o endpoint /api/badges
 
