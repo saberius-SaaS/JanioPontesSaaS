@@ -69,6 +69,17 @@ async def create_certificado(
     except ValueError:
         raise HTTPException(status_code=400, detail="Data inválida")
 
+    # Verifica duplicidade
+    existente = db.query(models.CertificadoDigital).filter(
+        models.CertificadoDigital.tenant_id == current_user.tenant_id,
+        models.CertificadoDigital.cliente_id == cliente_id,
+        models.CertificadoDigital.tipo == tipo,
+        models.CertificadoDigital.vencimento == dt_venc
+    ).first()
+    
+    if existente:
+        return HTMLResponse("<script>window.location.reload();</script>")
+
     novo_cert = models.CertificadoDigital(
         tenant_id=current_user.tenant_id,
         cliente_id=cliente_id,
