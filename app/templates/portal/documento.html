@@ -23,32 +23,68 @@
             <p class="text-indigo-200 text-sm">Disponibilizado por: {{ protocolo.responsavel }}</p>
         </div>
     </div>
-    
+
     <div class="p-8 bg-white">
-        <div class="flex flex-col items-center justify-center py-10">
-            <div class="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-indigo-100">
-                <i class="fa-solid fa-file-pdf text-4xl"></i>
-            </div>
-            
-            <h3 class="text-lg font-bold text-slate-800 mb-2 text-center">Seus arquivos estão prontos para visualização</h3>
-            <p class="text-sm text-slate-500 text-center max-w-md mb-8">O acesso aos documentos originais é seguro e os links são gerados temporariamente para a sua proteção.</p>
-            
-            <div class="flex flex-col gap-4 w-full max-w-xs">
-                {% if links %}
-                    {% for link in links %}
-                    <a href="{{ link }}" target="_blank" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-cloud-arrow-down"></i> Baixar / Visualizar Arquivo {{ loop.index }}
-                    </a>
-                    {% endfor %}
-                {% else %}
-                    <div class="bg-slate-50 border border-slate-200 text-slate-600 text-sm p-4 rounded-xl text-center font-medium">
-                        Não há arquivos anexados (Apenas Comunicado).
+        {% if links %}
+        <div class="mb-6 text-center">
+            <h3 class="text-lg font-bold text-slate-800 mb-1">Seus arquivos estão prontos para visualização</h3>
+            <p class="text-sm text-slate-500 max-w-md mx-auto">Passe o mouse sobre um arquivo para pré-visualizá-lo, ou clique em <strong>Baixar</strong> para salvar.</p>
+        </div>
+
+        <div class="grid gap-4 {% if links|length == 1 %}max-w-xs mx-auto{% elif links|length == 2 %}grid-cols-1 sm:grid-cols-2 max-w-xl mx-auto{% else %}grid-cols-1 sm:grid-cols-2 lg:grid-cols-3{% endif %}">
+            {% for link in links %}
+            {% set idx = loop.index %}
+            {% set is_pdf = '.pdf' in link.lower() %}
+            {% set is_img = ('.png' in link.lower() or '.jpg' in link.lower() or '.jpeg' in link.lower() or '.webp' in link.lower() or '.gif' in link.lower()) %}
+            <div class="file-card group relative rounded-2xl border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 overflow-hidden">
+
+                <!-- Thumbnail / ícone -->
+                <div class="h-36 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-slate-100 relative">
+                    {% if is_pdf %}
+                    <i class="fa-solid fa-file-pdf text-5xl text-red-400"></i>
+                    {% elif is_img %}
+                    <img src="{{ link }}" alt="Pré-visualização" class="h-full w-full object-cover" onerror="this.parentElement.innerHTML='<i class=\'fa-solid fa-image text-5xl text-slate-300\'></i>'">
+                    {% else %}
+                    <i class="fa-solid fa-file text-5xl text-slate-400"></i>
+                    {% endif %}
+
+                    <!-- Overlay de preview ao hover -->
+                    <div class="preview-overlay absolute inset-0 bg-indigo-900/70 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                         onclick="openPreview('{{ link }}', {% if is_pdf %}true{% else %}false{% endif %}, {% if is_img %}true{% else %}false{% endif %}, {{ idx }})">
+                        <i class="fa-solid fa-magnifying-glass text-white text-2xl mb-2"></i>
+                        <span class="text-white text-xs font-bold uppercase tracking-widest">Pré-visualizar</span>
                     </div>
-                {% endif %}
+                </div>
+
+                <!-- Rodapé do card -->
+                <div class="px-4 py-3 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-700">Arquivo {{ idx }}</p>
+                        <p class="text-[10px] text-slate-400 uppercase">
+                            {% if is_pdf %}PDF{% elif is_img %}Imagem{% else %}Documento{% endif %}
+                        </p>
+                    </div>
+                    <a href="{{ link }}" target="_blank"
+                       class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Baixar
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-10">
+            <div class="w-20 h-20 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-slate-100">
+                <i class="fa-solid fa-file text-4xl"></i>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 text-slate-600 text-sm p-4 rounded-xl text-center font-medium">
+                Não há arquivos anexados (Apenas Comunicado).
             </div>
         </div>
+        {% endif %}
     </div>
-    
+
     <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
         <div class="text-xs text-slate-400">
             <strong>Status de Leitura:</strong> Confirmada
@@ -58,4 +94,111 @@
         </div>
     </div>
 </div>
+
+<!-- ======= MODAL DE PRÉ-VISUALIZAÇÃO ======= -->
+<div id="preview-modal" class="fixed inset-0 z-[200] hidden" role="dialog" aria-modal="true" aria-label="Pré-visualização do arquivo">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closePreview()"></div>
+
+    <!-- Container do modal -->
+    <div class="relative z-10 flex flex-col h-full max-w-5xl mx-auto p-4">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-3 flex-shrink-0">
+            <div class="flex items-center gap-2">
+                <span id="preview-icon" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white"></span>
+                <span id="preview-title" class="text-white font-bold text-sm"></span>
+            </div>
+            <div class="flex items-center gap-2">
+                <a id="preview-download" href="#" target="_blank"
+                   class="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-white/20 transition-colors">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Baixar
+                </a>
+                <button onclick="closePreview()"
+                        class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors border border-white/20">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Área de conteúdo -->
+        <div class="flex-1 rounded-xl overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center min-h-0">
+            <!-- PDF -->
+            <iframe id="preview-iframe"
+                    src="" title="Visualizador PDF"
+                    class="w-full h-full border-0 hidden"
+                    allowfullscreen></iframe>
+
+            <!-- Imagem -->
+            <img id="preview-img" src="" alt="Pré-visualização"
+                 class="max-w-full max-h-full object-contain hidden rounded-lg shadow-xl" />
+
+            <!-- Fallback -->
+            <div id="preview-fallback" class="hidden flex-col items-center justify-center text-center p-10">
+                <i class="fa-solid fa-file-lines text-5xl text-white/30 mb-4"></i>
+                <p class="text-white/70 text-sm font-medium mb-1">Pré-visualização não disponível</p>
+                <p class="text-white/40 text-xs mb-6">Este tipo de arquivo não pode ser exibido diretamente no navegador.</p>
+                <a id="preview-fallback-link" href="#" target="_blank"
+                   class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Baixar Arquivo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openPreview(url, isPdf, isImg, idx) {
+    const modal      = document.getElementById('preview-modal');
+    const iframe     = document.getElementById('preview-iframe');
+    const img        = document.getElementById('preview-img');
+    const fallback   = document.getElementById('preview-fallback');
+    const title      = document.getElementById('preview-title');
+    const icon       = document.getElementById('preview-icon');
+    const dlBtn      = document.getElementById('preview-download');
+    const fallbackLk = document.getElementById('preview-fallback-link');
+
+    // Reset
+    iframe.classList.add('hidden');   iframe.src = '';
+    img.classList.add('hidden');      img.src = '';
+    fallback.classList.add('hidden');
+    fallback.classList.remove('flex');
+
+    dlBtn.href = url;
+    fallbackLk.href = url;
+    title.textContent = 'Arquivo ' + idx;
+
+    if (isPdf) {
+        icon.innerHTML = '<i class="fa-solid fa-file-pdf text-red-400"></i>';
+        iframe.src = url;
+        iframe.classList.remove('hidden');
+    } else if (isImg) {
+        icon.innerHTML = '<i class="fa-solid fa-image text-sky-400"></i>';
+        img.src = url;
+        img.classList.remove('hidden');
+    } else {
+        icon.innerHTML = '<i class="fa-solid fa-file text-slate-300"></i>';
+        fallback.classList.remove('hidden');
+        fallback.classList.add('flex');
+    }
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePreview() {
+    const modal  = document.getElementById('preview-modal');
+    const iframe = document.getElementById('preview-iframe');
+    const img    = document.getElementById('preview-img');
+
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+    iframe.src = '';
+    img.src = '';
+}
+
+// Fechar com ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closePreview();
+});
+</script>
 {% endblock %}
