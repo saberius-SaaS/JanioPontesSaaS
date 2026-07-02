@@ -103,7 +103,7 @@
                          data-id="{{ p.id }}" data-url="{{ p.first_url or '' }}" data-titulo="{{ p.obrigacao }}"
                          data-acao="{{ p.acao }}" data-mensagem="{{ p.mensagem | e }}" data-data="{{ p.data_obj.strftime('%d/%m/%Y') if p.data_obj else '' }}"
                          data-nome="{{ p.obrigacao | lower }}" data-prot="{{ p.protocolo | lower }}"
-                         data-links="{{ p.links | tojson | e }}" data-count="{{ p.links | length }}">
+                         data-links='{{ p.links | tojson }}' data-count="{{ p.links | length }}">
                         
                         <div class="flex justify-between items-start gap-2">
                             <div class="flex-1 min-w-0">
