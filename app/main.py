@@ -116,17 +116,29 @@ async def root(
     from datetime import date
     hoje = date.today()
     
-    periodos = []
-    for i in [-1, 0, 1]:
-        m = hoje.month + i
-        y = hoje.year
-        if m < 1:
-            m += 12
-            y -= 1
-        elif m > 12:
-            m -= 12
-            y += 1
-        periodos.append(f"{m:02d}/{y}")
+    # Buscar meses que possuem tarefas pendentes
+    periodos_db = db.query(models.Tarefa.mes_ano).filter(
+        models.Tarefa.tenant_id == current_user.tenant_id,
+        models.Tarefa.status.notin_(['ENTREGUE'])
+    ).distinct().all()
+    
+    periodos_lista = [p[0] for p in periodos_db if p[0]]
+    
+    # Garantir que o mês atual sempre esteja na lista para não ficar vazia
+    mes_atual_str = f"{hoje.month:02d}/{hoje.year}"
+    if mes_atual_str not in periodos_lista:
+        periodos_lista.append(mes_atual_str)
+        
+    # Ordenar cronologicamente (Ano, depois Mês)
+    def parse_mes_ano(ma):
+        try:
+            m, y = map(int, ma.split('/'))
+            return (y, m)
+        except:
+            return (0, 0)
+            
+    periodos_lista.sort(key=parse_mes_ano)
+    periodos = periodos_lista
         
     periodo_selecionado = periodo if periodo else f"{hoje.month:02d}/{hoje.year}"
     
