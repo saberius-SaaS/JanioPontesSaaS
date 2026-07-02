@@ -46,12 +46,19 @@ async def obter_dados_painel(
 
     hoje = date.today()
     
-    # Montar base query (Tarefas)
-    base_query = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id)
+    # Query Tarefas
+    q_tarefas = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id)
     if mes_ano and mes_ano != "todos":
-        base_query = base_query.filter(models.Tarefa.mes_ano == mes_ano)
+        q_tarefas = q_tarefas.filter(models.Tarefa.mes_ano == mes_ano)
+    tarefas_ativas = q_tarefas.all()
 
-    tarefas = base_query.all()
+    # Query Historico
+    q_hist = db.query(models.HistoricoTarefa).filter(models.HistoricoTarefa.tenant_id == current_user.tenant_id)
+    if mes_ano and mes_ano != "todos":
+        q_hist = q_hist.filter(models.HistoricoTarefa.mes_ano == mes_ano)
+    tarefas_hist = q_hist.all()
+
+    tarefas = tarefas_ativas + tarefas_hist
 
     # Pre-fetch protocolos para otimizar a query (evitar N+1)
     protocolos_ids = [t.protocolo for t in tarefas if t.protocolo]
