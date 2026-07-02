@@ -123,9 +123,14 @@ class ChatwootService:
         Obtém ou cria uma conversa para o contato no inbox padrão.
         """
         # Listar conversas do contato
-        conversations = await self._request("GET", f"conversations?status=all&contact_id={contact_id}")
-        if conversations and "data" in conversations and "meta" in conversations["data"]:
-            payload_convs = conversations["data"].get("payload", [])
+        conversations = await self._request("GET", f"contacts/{contact_id}/conversations")
+        if conversations:
+            payload_convs = []
+            if "payload" in conversations:
+                payload_convs = conversations["payload"]
+            elif "data" in conversations and "payload" in conversations["data"]:
+                payload_convs = conversations["data"]["payload"]
+                
             if payload_convs:
                 # Retorna a conversa que pertence ao inbox correto (WhatsApp)
                 for conv in payload_convs:
@@ -201,8 +206,13 @@ class ChatwootService:
             for i, p in enumerate(template_params, 1):
                 processed_params[str(i)] = str(p)
 
+        # Texto que aparecerá na interface do Chatwoot para os atendentes
+        preview_text = f"📱 [Notificação Automática WhatsApp]\nTemplate: {template_name}"
+        if template_params:
+            preview_text += f"\nVariáveis preenchidas: {', '.join(str(p) for p in template_params)}"
+
         msg_data = {
-            "content": template_name,
+            "content": preview_text,
             "message_type": "template",
             "content_attributes": {},
             "template_params": {
