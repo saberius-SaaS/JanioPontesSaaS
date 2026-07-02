@@ -64,6 +64,7 @@
                     {% if p.link_arquivo and p.link_arquivo != 'Não anexado' %}
                     <button onclick="abrirArquivo('{{ p.id }}')" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1 bg-indigo-50 rounded-md" title="Ver Anexo"><i class="fa-solid fa-paperclip text-xs"></i></button>
                     {% endif %}
+                    <button hx-post="/protocolos/{{ p.id }}/reenviar" hx-swap="outerHTML" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1 bg-indigo-50 hover:bg-indigo-100 rounded-md" title="Reenviar E-mail"><i class="fa-solid fa-paper-plane text-xs"></i></button>
                     <button hx-post="/protocolos/{{ p.id }}/baixa" hx-swap="delete" hx-target="closest .task-card" hx-confirm="Confirma a baixa manual deste protocolo?" class="text-emerald-600 hover:text-emerald-800 transition-colors p-1 bg-emerald-50 hover:bg-emerald-100 rounded-md" title="Dar Baixa"><i class="fa-solid fa-check-double text-xs"></i></button>
                     <span class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border bg-orange-100 text-orange-700 border-orange-200">Não Lido</span>
                 </div>
@@ -112,6 +113,7 @@
                     {% if p.link_arquivo and p.link_arquivo != 'Não anexado' and not p.link_arquivo.startswith('SEM_ENVIO:') %}
                     <button onclick="abrirArquivo('{{ p.id }}')" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1 bg-indigo-50 rounded-md" title="Ver Anexo"><i class="fa-solid fa-paperclip text-xs"></i></button>
                     {% endif %}
+                    <button hx-post="/protocolos/{{ p.id }}/reenviar" hx-swap="outerHTML" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1 bg-indigo-50 hover:bg-indigo-100 rounded-md" title="Reenviar E-mail"><i class="fa-solid fa-paper-plane text-xs"></i></button>
                 </div>
             </div>
             {% else %}
