@@ -9,16 +9,19 @@ from app import models
 from app.database import get_db
 from app.api.deps import require_login
 
-router = APIRouter(prefix="/painel-gestao")
+router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
-@router.get("/", response_class=HTMLResponse)
-async def painel_gestao_view(request: Request, current_user: models.Usuario = Depends(require_login)):
+@router.get("/painel-gestao", response_class=HTMLResponse)
+async def painel_gestao_view(
+    request: Request, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
     if current_user.nivel not in ['ADMIN', 'MASTER']:
         raise HTTPException(status_code=403, detail="Acesso negado")
     
     # Buscar periodos disponíveis
-    db = next(get_db())
     periodos_db = db.query(models.Tarefa.mes_ano).filter(
         models.Tarefa.tenant_id == current_user.tenant_id
     ).distinct().all()
@@ -31,7 +34,7 @@ async def painel_gestao_view(request: Request, current_user: models.Usuario = De
         "page_title": "Painel de Acompanhamento de Trabalhos"
     })
 
-@router.get("/dados")
+@router.get("/painel-gestao/dados")
 async def obter_dados_painel(
     visao: str = Query("cliente", description="cliente | tarefa | periodo | responsavel"),
     mes_ano: Optional[str] = Query(None, description="Filtro de competencia"),
