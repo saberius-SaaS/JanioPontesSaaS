@@ -102,6 +102,7 @@ $ENV_VARS = @(
     "EMAIL_MODE=production",
     "EMAIL_INTERCEPT_ADDRESS=janiopontes@janiopontes.com.br",
     "GMAIL_DELEGATED_USER=janiopontes@janiopontes.com.br",
+    "GMAIL_SENDER_ADDRESS=sac@janiopontes.com.br",
     "STORAGE_MODE=production",
     "GCS_BUCKET_NAME=janio-pontes-saas-docs-us",
     "GOOGLE_CLIENT_ID=471313311249-sda2g2e9m40l6ui02m1vut9i3glgu40m.apps.googleusercontent.com",

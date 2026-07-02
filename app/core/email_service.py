@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 EMAIL_MODE = os.getenv("EMAIL_MODE", "intercept")  # "mock", "intercept" ou "production"
 EMAIL_INTERCEPT_ADDRESS = os.getenv("EMAIL_INTERCEPT_ADDRESS", "janiopontes@janiopontes.com.br")
 GMAIL_DELEGATED_USER = os.getenv("GMAIL_DELEGATED_USER", "janiopontes@janiopontes.com.br")
+GMAIL_SENDER_ADDRESS = os.getenv("GMAIL_SENDER_ADDRESS", GMAIL_DELEGATED_USER)
 CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "/secrets/credentials.json" if os.path.exists("/secrets/credentials.json") else "credentials.json")
 
 
@@ -48,7 +49,7 @@ class EmailService:
         """Monta o objeto EmailMessage codificado em base64 para a Gmail API."""
         message = EmailMessage()
         message['To'] = para
-        message['From'] = GMAIL_DELEGATED_USER
+        message['From'] = f"Janio Pontes <{GMAIL_SENDER_ADDRESS}>"
         message['Subject'] = assunto
 
         message.set_content("Por favor, ative a visualização em HTML para ler esta mensagem.")
