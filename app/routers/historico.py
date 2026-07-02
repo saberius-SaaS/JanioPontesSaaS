@@ -18,7 +18,7 @@ async def list_historico(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
-    query = db.query(models.HistoricoTarefa, models.Protocolo.link_arquivo).outerjoin(
+    query = db.query(models.HistoricoTarefa, models.Protocolo.link_arquivo, models.Protocolo.conf_recto).outerjoin(
         models.Protocolo,
         (models.Protocolo.tenant_id == models.HistoricoTarefa.tenant_id) &
         (models.Protocolo.protocolo == models.HistoricoTarefa.protocolo)
@@ -43,7 +43,7 @@ async def list_historico(
     
     import re
     historicos = []
-    for h, link in historicos_raw:
+    for h, link, conf_recto in historicos_raw:
         link = link or ""
         
         # Extrai links de URL puros
@@ -58,6 +58,7 @@ async def list_historico(
         
         h.anexos = urls
         h.mensagem_enviada = mensagem
+        h.conf_recto_proto = conf_recto
         historicos.append(h)
     
     # Busca meses disponíveis para o filtro

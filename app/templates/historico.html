@@ -56,6 +56,13 @@
                 {% else %}
                 <span class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border bg-slate-100 text-slate-600 border-slate-200">{{ h.status }}</span>
                 {% endif %}
+                {% if h.protocolo %}
+                    {% if h.conf_recto_proto %}
+                    <span class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border bg-emerald-50 text-emerald-600 border-emerald-100"><i class="fa-solid fa-check-double mr-1"></i>Lido {{ h.conf_recto_proto.strftime('%d/%m') }}</span>
+                    {% else %}
+                    <span class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border bg-orange-100 text-orange-700 border-orange-200"><i class="fa-solid fa-eye-slash mr-1"></i>Não Lido</span>
+                    {% endif %}
+                {% endif %}
             </div>
         </div>
         
