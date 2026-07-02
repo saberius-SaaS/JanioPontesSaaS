@@ -37,7 +37,7 @@
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
                     {% if h.protocolo %}
-                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden lg:inline-flex"><i class="fa-solid fa-hashtag mr-1"></i>{{ h.protocolo[:12] }}</span>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden lg:inline-flex"><i class="fa-solid fa-hashtag mr-1"></i>{{ h.protocolo }}</span>
                     {% endif %}
                     <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-indigo-100 uppercase">{{ (h.departamento or 'GERAL')[:4] }}</span>
                     <span class="bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-slate-200 uppercase"><i class="fa-regular fa-calendar mr-1"></i>{{ h.vencimento.strftime('%d/%m') if h.vencimento else '-' }}</span>
