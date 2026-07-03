@@ -82,7 +82,7 @@
                 <i class="fa-solid fa-paperclip text-slate-400 mt-0.5"></i>
                 <div class="flex flex-wrap gap-2">
                     {% for anexo in h.anexos %}
-                    <div class="relative group">
+                    <div class="relative group" onmouseenter="carregarPrevia(this)">
                         <a href="{{ anexo }}" target="_blank" class="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 px-3 py-1.5 rounded-md transition-colors text-[11px] font-semibold text-slate-600 shadow-sm relative z-10">
                             <i class="fa-solid fa-file-pdf text-red-500"></i> Arquivo {{ loop.index }}
                         </a>
@@ -95,7 +95,7 @@
                                 <div class="absolute inset-0 flex items-center justify-center text-slate-300">
                                     <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
                                 </div>
-                                <iframe src="https://docs.google.com/gview?url={{ anexo | urlencode }}&embedded=true" class="w-full h-full border-0 relative z-10 bg-white"></iframe>
+                                <iframe data-src="https://docs.google.com/gview?url={{ anexo | urlencode }}&embedded=true" class="w-full h-full border-0 relative z-10 bg-white previa-iframe"></iframe>
                             </div>
                         </div>
                     </div>
@@ -127,6 +127,13 @@ function filtrarCards(inputId, containerId) {
     cards.forEach(card => {
         card.style.display = card.textContent.toLowerCase().includes(filtro) ? '' : 'none';
     });
+}
+
+function carregarPrevia(elemento) {
+    const iframe = elemento.querySelector('.previa-iframe');
+    if (iframe && !iframe.src && iframe.dataset.src) {
+        iframe.src = iframe.dataset.src;
+    }
 }
 </script>
 {% endblock %}
