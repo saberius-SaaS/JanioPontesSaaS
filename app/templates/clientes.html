@@ -69,7 +69,7 @@
         
         <!-- Body -->
         <div class="p-6 overflow-y-auto custom-scrollbar">
-            <form id="form-cliente" hx-post="/clientes" hx-target="#tabela-clientes" hx-on::after-request="fecharModalCliente(); this.reset();">
+            <form id="form-cliente" hx-post="/clientes" hx-target="#tabela-clientes" hx-on::after-request="fecharModalCliente(); this.reset();" onsubmit="prepararFormularioRoteamento()">
                 
                 <!-- ══════ Seção: Dados Cadastrais ══════ -->
                 <div class="mb-6">
@@ -378,6 +378,17 @@ function abrirEdicaoCliente(dados) {
 
 // ========== Regras de Roteamento ==========
 let _regrasRoteamento = {};
+
+function prepararFormularioRoteamento() {
+    const selObrigacao = document.getElementById('sel-roteamento-obrigacao');
+    const inpEmail = document.getElementById('inp-roteamento-email');
+    if (selObrigacao && inpEmail && selObrigacao.value.trim() && inpEmail.value.trim()) {
+        _regrasRoteamento[selObrigacao.value.trim()] = inpEmail.value.trim();
+        selObrigacao.value = '';
+        inpEmail.value = '';
+        renderizarRegrasRoteamento();
+    }
+}
 
 function sincronizarRegrasHidden() {
     const hidden = document.getElementById('input-regras-roteamento');

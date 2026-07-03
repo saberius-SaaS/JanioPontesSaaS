@@ -50,6 +50,7 @@ def get_current_user(
         user.real_admin_id = payload.get("real_admin_id")
         
     # ATIVAÇÃO DO ROW-LEVEL SECURITY (RLS)
+    db.info["tenant_id"] = str(user.tenant_id)
     try:
         db.execute(text(f"SET LOCAL app.current_tenant = '{str(user.tenant_id)}';"))
         db.execute(text("SET LOCAL app.bypass_rls = 'off';"))
@@ -82,6 +83,7 @@ def get_user_from_cookie(request: Request, db: Session = Depends(get_db)) -> Opt
         if not user_id:
             return None
         # Bypass RLS para buscar o usuário pelo ID do JWT (ainda não temos tenant_id)
+        db.info["bypass_rls"] = True
         try:
             db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
         except Exception:
@@ -95,6 +97,8 @@ def get_user_from_cookie(request: Request, db: Session = Depends(get_db)) -> Opt
                 user.real_admin_id = payload.get("real_admin_id")
 
             # Agora que temos o tenant, ativa o isolamento correto para as queries seguintes
+            db.info["bypass_rls"] = False
+            db.info["tenant_id"] = str(user.tenant_id)
             try:
                 db.execute(text(f"SET LOCAL app.current_tenant = '{str(user.tenant_id)}';"))
                 db.execute(text("SET LOCAL app.bypass_rls = 'off';"))
