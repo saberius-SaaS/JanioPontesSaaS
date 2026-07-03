@@ -80,14 +80,14 @@
     <!-- Acessos e Credenciais -->
     <div class="card-premium p-6">
         <h3 class="font-bold text-jp-navy border-b border-slate-100 pb-3 mb-4 text-sm uppercase tracking-widest flex items-center gap-2">
-            <i class="fa-solid fa-key text-indigo-500"></i> 4. Acessos, Credenciais e Deploy
+            <i class="fa-solid fa-key text-indigo-500"></i> 4. Acessos, Credenciais e Co-Propriedade
         </h3>
-        <p class="text-sm text-slate-600 mb-3">Para assumir o projeto, são necessários os seguintes acessos e configurações:</p>
+        <p class="text-sm text-slate-600 mb-3">Para evitar pontos únicos de falha, a infraestrutura deve sempre possuir mais de uma conta administrativa (Co-Propriedade). Os acessos fundamentais são:</p>
         <ul class="space-y-2 text-sm text-slate-600 ml-5 list-decimal mb-4">
-            <li>Administrador do projeto <strong>Google Cloud</strong> (<code>jp-saas-producao</code>).</li>
-            <li>Acesso ao <strong>Repositório de Código</strong> e provedor de domínio (app.janiopontes.com.br).</li>
-            <li>Acesso Root ao <strong>Chatwoot</strong>.</li>
-            <li>Acesso aos E-mails Administrativos: <code>sac@janiopontes.com.br</code> e <code>janiopontes@janiopontes.com.br</code>.</li>
+            <li>Administrador e Proprietário (Owner) no <strong>Google Cloud (IAM)</strong> do projeto <code>jp-saas-producao</code>. Estão configurados como proprietários o e-mail principal (janiopontes@janiopontes.com.br) e o e-mail de contingência oficial (<code>tecnologia@janiopontes.com.br</code>).</li>
+            <li>Acesso Técnico/Administrativo ao <strong>Registro.br</strong> (domínio janiopontes.com.br). O acesso de contingência está vinculado ao ID <strong>JAPTE25</strong>.</li>
+            <li>Acesso Root (Administrador) na plataforma do <strong>Chatwoot</strong> (utilizando a conta tecnologia@janiopontes.com.br).</li>
+            <li>Acesso ao provedor onde o <strong>Código Fonte</strong> está hospedado (Google Drive / Repositório Git).</li>
         </ul>
         
         <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
