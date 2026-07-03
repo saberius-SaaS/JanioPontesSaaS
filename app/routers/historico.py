@@ -109,7 +109,7 @@ async def reenviar_historico(
             <p style="margin: 8px 0 0; opacity: 0.8; font-size: 12px; font-weight: bold; text-transform: uppercase;">REENVIO DE DOCUMENTOS</p>
         </div>
         <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
-            <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a),</p>
+            <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a) {protocolo.cliente},</p>
             <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Estamos reenviando o documento abaixo, que já se encontra disponível:</p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 20px;">
                 <tr>

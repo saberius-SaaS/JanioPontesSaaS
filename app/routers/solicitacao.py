@@ -87,7 +87,7 @@ async def create_solicitacao(
                 <p style="margin: 8px 0 0; opacity: 0.8; font-size: 12px; font-weight: bold; text-transform: uppercase;">Nova Solicitação / Mensagem</p>
             </div>
             <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
-                <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a),</p>
+                <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a) {cliente},</p>
                 <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Uma nova solicitação foi registrada para <strong>{cliente}</strong>:</p>
                 <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                     <p style="margin: 0; font-size: 14px; color: #1e293b; white-space: pre-wrap;">{pedido}</p>
@@ -136,7 +136,7 @@ async def cobrar_solicitacao(
                     <p style="margin: 8px 0 0; opacity: 0.8; font-size: 12px; font-weight: bold; text-transform: uppercase;">Aviso / Lembrete</p>
                 </div>
                 <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none;">
-                    <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a),</p>
+                    <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Prezado(a) {cli_nome},</p>
                     <p style="color: #334155; font-size: 14px; margin: 0 0 20px;">Gostaríamos de relembrar a seguinte solicitação pendente para <strong>{cli_nome}</strong>:</p>
                     <div style="background: #fffbeb; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fde68a;">
                         <p style="margin: 0; font-size: 14px; color: #92400e; white-space: pre-wrap;">{ped}</p>
