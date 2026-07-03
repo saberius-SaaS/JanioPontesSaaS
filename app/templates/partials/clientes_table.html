@@ -29,7 +29,7 @@
             {% endif %}
         </td>
         <td class="py-3 px-4 text-right">
-            <button onclick='abrirEdicaoCliente(JSON.parse(`{{ {"id": c.id|string, "cliente": c.cliente, "cnpj": c.cnpj, "responsavel": c.responsavel, "email": c.email, "telefone": c.telefone, "fiscal": c.fiscal, "contabil": c.contabil, "pessoal": c.pessoal, "societario": c.societario, "email_fiscal": c.email_fiscal, "email_contabil": c.email_contabil, "email_pessoal": c.email_pessoal, "email_societario": c.email_societario, "regime": c.regime, "nivel": c.nivel, "perfis_ativos": c.perfis_ativos, "excecoes": c.excecoes, "status": c.status, "data_entrada": c.data_entrada.strftime('%Y-%m-%d') if c.data_entrada else ''} | tojson | safe }}`))' class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
+            <button onclick='abrirEdicaoCliente(JSON.parse(`{{ {"id": c.id|string, "cliente": c.cliente, "cnpj": c.cnpj, "responsavel": c.responsavel, "email": c.email, "telefone": c.telefone, "fiscal": c.fiscal, "contabil": c.contabil, "pessoal": c.pessoal, "societario": c.societario, "email_fiscal": c.email_fiscal, "email_contabil": c.email_contabil, "email_pessoal": c.email_pessoal, "email_societario": c.email_societario, "regras_roteamento": c.regras_roteamento, "regime": c.regime, "nivel": c.nivel, "perfis_ativos": c.perfis_ativos, "excecoes": c.excecoes, "status": c.status, "data_entrada": c.data_entrada.strftime('%Y-%m-%d') if c.data_entrada else ''} | tojson | safe }}`))' class="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Editar">
                 <i class="fa-solid fa-pen-to-square"></i>
             </button>
         </td>

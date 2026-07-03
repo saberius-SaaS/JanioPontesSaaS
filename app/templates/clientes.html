@@ -222,11 +222,26 @@
                         </div>
                     </div>
                     
-                    <!-- Regras de Roteamento -->
+                    <!-- Regras de Roteamento Customizado -->
                     <div class="mt-4">
-                        <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Regras de Roteamento Específicas (JSON)</label>
-                        <textarea name="regras_roteamento" rows="2" class="glass-input w-full text-sm font-mono" placeholder='Ex: {"Folha de Pagamento": "financeiro@empresa.com"}'></textarea>
-                        <p class="text-[10px] text-slate-400 mt-1">Redireciona o e-mail de conclusão de tarefas específicas. Formato JSON.</p>
+                        <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Regras de Roteamento por Tarefa</label>
+                        <div class="bg-slate-50/50 border border-slate-100 rounded-xl p-3">
+                            <div class="flex flex-col sm:flex-row gap-2 mb-3">
+                                <select id="sel-roteamento-obrigacao" class="glass-input flex-1 text-sm">
+                                    <option value="">— Selecione a obrigação —</option>
+                                    {% for ob in obrigacoes %}
+                                    <option value="{{ ob }}">{{ ob }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" id="inp-roteamento-email" class="glass-input flex-1 text-sm" placeholder="E-mail de destino">
+                                <button type="button" onclick="adicionarRegraRoteamento()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1">
+                                    <i class="fa-solid fa-plus"></i> Adicionar
+                                </button>
+                            </div>
+                            <div id="lista-regras-roteamento" class="space-y-1.5"></div>
+                            <p class="text-[10px] text-slate-400 mt-2">Quando a tarefa for concluída, o e-mail será enviado ao destino configurado aqui (ao invés do e-mail departamental ou geral).</p>
+                        </div>
+                        <input type="hidden" name="regras_roteamento" id="input-regras-roteamento" value="">
                     </div>
                     
                     <!-- Perfis Ativos -->
@@ -287,6 +302,10 @@ function abrirNovoCliente() {
     form.setAttribute('hx-post', '/clientes');
     htmx.process(form);
     
+    // Reset regras de roteamento
+    _regrasRoteamento = {};
+    renderizarRegrasRoteamento();
+    
     // Header
     document.getElementById('titulo-modal-cliente').textContent = 'Cadastrar Cliente';
     document.getElementById('subtitulo-modal-cliente').textContent = 'Preencha os dados do novo cliente';
@@ -309,7 +328,7 @@ function abrirEdicaoCliente(dados) {
     form.setAttribute('hx-put', '/clientes/' + dados.id);
     htmx.process(form);
     
-    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'contabil', 'pessoal', 'societario', 'regime', 'nivel', 'excecoes', 'data_entrada', 'email_fiscal', 'email_contabil', 'email_pessoal', 'email_societario', 'regras_roteamento'];
+    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'contabil', 'pessoal', 'societario', 'regime', 'nivel', 'excecoes', 'data_entrada', 'email_fiscal', 'email_contabil', 'email_pessoal', 'email_societario'];
     
     campos.forEach(campo => {
         if(form.elements[campo]) {
@@ -321,6 +340,13 @@ function abrirEdicaoCliente(dados) {
             form.elements[campo].value = val;
         }
     });
+    
+    // Regras de Roteamento
+    _regrasRoteamento = {};
+    if (dados.regras_roteamento) {
+        try { _regrasRoteamento = JSON.parse(dados.regras_roteamento); } catch(e) {}
+    }
+    renderizarRegrasRoteamento();
     
     // Perfis
     const checkboxes = form.querySelectorAll('input[name="perfis_ativos"]');
@@ -348,6 +374,59 @@ function abrirEdicaoCliente(dados) {
     document.getElementById('icone-modal-cliente').innerHTML = '<i class="fa-solid fa-pen text-lg"></i>';
     
     document.getElementById('modal-novo-cliente').classList.remove('hidden');
+}
+
+// ========== Regras de Roteamento ==========
+let _regrasRoteamento = {};
+
+function sincronizarRegrasHidden() {
+    const hidden = document.getElementById('input-regras-roteamento');
+    hidden.value = Object.keys(_regrasRoteamento).length > 0 ? JSON.stringify(_regrasRoteamento) : '';
+}
+
+function renderizarRegrasRoteamento() {
+    const container = document.getElementById('lista-regras-roteamento');
+    container.innerHTML = '';
+    const entries = Object.entries(_regrasRoteamento);
+    if (entries.length === 0) {
+        container.innerHTML = '<p class="text-[11px] text-slate-400 italic">Nenhuma regra de roteamento configurada.</p>';
+    } else {
+        entries.forEach(([obrigacao, email]) => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm';
+            row.innerHTML = `
+                <div class="flex-1 min-w-0">
+                    <span class="text-xs font-bold text-jp-navy">${obrigacao}</span>
+                    <span class="text-[10px] text-slate-400 mx-2">→</span>
+                    <span class="text-xs text-indigo-600 font-medium">${email}</span>
+                </div>
+                <button type="button" onclick="removerRegraRoteamento('${obrigacao.replace(/'/g, "\\'")}')"
+                        class="ml-2 w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors flex-shrink-0">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            `;
+            container.appendChild(row);
+        });
+    }
+    sincronizarRegrasHidden();
+}
+
+function adicionarRegraRoteamento() {
+    const selObrigacao = document.getElementById('sel-roteamento-obrigacao');
+    const inpEmail = document.getElementById('inp-roteamento-email');
+    const obrigacao = selObrigacao.value.trim();
+    const email = inpEmail.value.trim();
+    if (!obrigacao) { selObrigacao.focus(); return; }
+    if (!email) { inpEmail.focus(); return; }
+    _regrasRoteamento[obrigacao] = email;
+    selObrigacao.value = '';
+    inpEmail.value = '';
+    renderizarRegrasRoteamento();
+}
+
+function removerRegraRoteamento(obrigacao) {
+    delete _regrasRoteamento[obrigacao];
+    renderizarRegrasRoteamento();
 }
 </script>
 {% endblock %}

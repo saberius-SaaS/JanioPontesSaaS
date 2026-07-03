@@ -32,10 +32,17 @@ async def list_clientes_page(
         models.Equipe.tenant_id == current_user.tenant_id
     ).order_by(models.Equipe.departamento, models.Equipe.nome).all()
 
+    obrigacoes = db.query(models.RegraObrigacao.obrigacao).filter(
+        models.RegraObrigacao.tenant_id == current_user.tenant_id,
+        models.RegraObrigacao.status == 'ATIVO'
+    ).distinct().order_by(models.RegraObrigacao.obrigacao).all()
+    lista_obrigacoes = [o[0] for o in obrigacoes if o[0]]
+
     return templates.TemplateResponse(request, "clientes.html", {
         "clientes": clientes,
         "perfis": perfis,
         "equipes": equipes,
+        "obrigacoes": lista_obrigacoes,
         "page": page,
         "total_pages": total_pages,
         "total": total,
