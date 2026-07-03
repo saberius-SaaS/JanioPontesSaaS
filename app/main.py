@@ -62,8 +62,14 @@ def ensure_schema_updates():
                 conn.execute(text("ALTER TABLE clientes ADD COLUMN data_entrada DATE"))
                 conn.commit()
                 logger.info("[SCHEMA] Coluna 'data_entrada' adicionada à tabela 'clientes'.")
+        
+        if "regras_roteamento" not in colunas:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE clientes ADD COLUMN regras_roteamento TEXT"))
+                conn.commit()
+                logger.info("[SCHEMA] Coluna 'regras_roteamento' adicionada à tabela 'clientes'.")
     except Exception as e:
-        logger.warning(f"[SCHEMA] Não foi possível verificar/criar coluna data_entrada: {e}")
+        logger.warning(f"[SCHEMA] Não foi possível verificar/criar coluna data_entrada ou regras_roteamento: {e}")
 
 # Middleware para injetar variáveis globais nos templates e Headers de Segurança
 @app.middleware("http")

@@ -182,6 +182,61 @@ def processar_workflow(db: Session, tarefa: models.Tarefa):
 
 # ==================== ENDPOINTS ====================
 
+@router.get("/tarefas/simular-roteamento", response_class=JSONResponse)
+async def simular_roteamento(
+    request: Request,
+    cliente: str = "",
+    departamento: str = "",
+    obrigacao: str = "",
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_login)
+):
+    """Simula o roteamento de email sem enviar nada. Retorna o email que seria usado."""
+    if not cliente:
+        return JSONResponse(content={"erro": "Informe o nome do cliente."})
+    
+    obj = db.query(models.Cliente).filter(
+        models.Cliente.tenant_id == current_user.tenant_id,
+        models.Cliente.cliente == cliente
+    ).first()
+    if not obj:
+        return JSONResponse(content={"erro": f"Cliente '{cliente}' não encontrado."})
+    
+    origem = "geral"
+    email_resolvido = obj.email or ""
+    
+    # 1. Regra customizada
+    if obrigacao and getattr(obj, "regras_roteamento", None):
+        try:
+            regras = json.loads(obj.regras_roteamento)
+            if obrigacao in regras and regras[obrigacao].strip():
+                email_resolvido = regras[obrigacao].strip()
+                origem = "regra_customizada"
+        except Exception:
+            pass
+    
+    # 2. Departamental (só se não achou customizada)
+    if origem == "geral" and departamento:
+        dep_upper = departamento.upper()
+        mapa = {
+            "FISCAL": obj.email_fiscal,
+            "CONTABIL": obj.email_contabil,
+            "PESSOAL": obj.email_pessoal,
+            "SOCIETARIO": obj.email_societario,
+        }
+        if dep_upper in mapa and mapa[dep_upper]:
+            email_resolvido = mapa[dep_upper]
+            origem = "departamental"
+    
+    return JSONResponse(content={
+        "cliente": cliente,
+        "obrigacao": obrigacao or "(nenhuma)",
+        "departamento": departamento or "(nenhum)",
+        "email_destino": email_resolvido or "(vazio)",
+        "origem": origem,
+        "regras_cadastradas": obj.regras_roteamento or "{}"
+    })
+
 @router.get("/revisoes", response_class=HTMLResponse)
 async def list_revisoes(request: Request, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
     if current_user.nivel not in ['ADMIN', 'MASTER']:
