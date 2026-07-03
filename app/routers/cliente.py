@@ -86,6 +86,7 @@ async def create_cliente(
     email_contabil: str = Form(None),
     email_pessoal: str = Form(None),
     email_societario: str = Form(None),
+    regras_roteamento: str = Form(None),
     data_entrada: str = Form(None),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_admin)
@@ -128,6 +129,7 @@ async def create_cliente(
         email_contabil=email_contabil,
         email_pessoal=email_pessoal,
         email_societario=email_societario,
+        regras_roteamento=regras_roteamento,
         data_entrada=dt_entrada
     )
     db.add(novo_cliente)
@@ -160,6 +162,7 @@ async def update_cliente(
     email_contabil: str = Form(None),
     email_pessoal: str = Form(None),
     email_societario: str = Form(None),
+    regras_roteamento: str = Form(None),
     data_entrada: str = Form(None),
     status: str = Form("ATIVO"),
     db: Session = Depends(get_db),
@@ -188,6 +191,7 @@ async def update_cliente(
     obj.email_contabil = email_contabil
     obj.email_pessoal = email_pessoal
     obj.email_societario = email_societario
+    obj.regras_roteamento = regras_roteamento
     obj.status = status
     if data_entrada:
         try:

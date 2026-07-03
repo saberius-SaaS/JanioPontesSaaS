@@ -222,6 +222,13 @@
                         </div>
                     </div>
                     
+                    <!-- Regras de Roteamento -->
+                    <div class="mt-4">
+                        <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Regras de Roteamento Específicas (JSON)</label>
+                        <textarea name="regras_roteamento" rows="2" class="glass-input w-full text-sm font-mono" placeholder='Ex: {"Folha de Pagamento": "financeiro@empresa.com"}'></textarea>
+                        <p class="text-[10px] text-slate-400 mt-1">Redireciona o e-mail de conclusão de tarefas específicas. Formato JSON.</p>
+                    </div>
+                    
                     <!-- Perfis Ativos -->
                     <div class="mt-4">
                         <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Perfis Ativos</label>
@@ -302,7 +309,7 @@ function abrirEdicaoCliente(dados) {
     form.setAttribute('hx-put', '/clientes/' + dados.id);
     htmx.process(form);
     
-    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'contabil', 'pessoal', 'societario', 'regime', 'nivel', 'excecoes', 'data_entrada', 'email_fiscal', 'email_contabil', 'email_pessoal', 'email_societario'];
+    const campos = ['cliente', 'cnpj', 'responsavel', 'email', 'telefone', 'fiscal', 'contabil', 'pessoal', 'societario', 'regime', 'nivel', 'excecoes', 'data_entrada', 'email_fiscal', 'email_contabil', 'email_pessoal', 'email_societario', 'regras_roteamento'];
     
     campos.forEach(campo => {
         if(form.elements[campo]) {
