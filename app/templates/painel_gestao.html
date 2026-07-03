@@ -2,188 +2,428 @@
 {% block title %}Painel de Gestão - Janio Pontes SaaS{% endblock %}
 {% block page_title %}Acompanhamento de Trabalhos{% endblock %}
 
+{% block head %}
+<style>
+    .tooltip-status { position: relative; cursor: help; }
+    .tooltip-status::after {
+        content: attr(data-tip);
+        position: absolute; bottom: calc(100% + 6px); left: 50%;
+        transform: translateX(-50%) scale(0.95); opacity: 0;
+        background: #1e293b; color: #f1f5f9; padding: 5px 10px;
+        border-radius: 6px; font-size: 10px; white-space: nowrap;
+        pointer-events: none; z-index: 20; font-weight: 600;
+        transition: all 0.15s ease;
+    }
+    .tooltip-status:hover::after { opacity: 1; transform: translateX(-50%) scale(1); }
+    .sort-header { cursor: pointer; user-select: none; transition: color 0.15s; }
+    .sort-header:hover { color: #6366f1; }
+    .sort-header .sort-icon { opacity: 0.3; font-size: 9px; margin-left: 3px; transition: opacity 0.15s; }
+    .sort-header.active .sort-icon { opacity: 1; color: #6366f1; }
+    .progress-bar-animated { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+    .kpi-card { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
+    .grupo-container { animation: crossfadeIn 0.3s ease forwards; }
+    @keyframes countUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .kpi-value-anim { animation: countUp 0.4s ease forwards; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="card-premium p-6 mb-6">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-            <h2 class="text-xl font-bold text-jp-navy"><i class="fa-solid fa-chart-gantt text-indigo-500 mr-2"></i> Painel de Gestão</h2>
-            <p class="text-sm text-slate-500">Acompanhamento detalhado das obrigações e prazos.</p>
+<!-- Safelist Tailwind CDN -->
+<div class="hidden bg-emerald-100 text-emerald-700 border-emerald-200 bg-emerald-50 text-emerald-600 bg-emerald-500 border-l-emerald-500
+    bg-amber-100 text-amber-700 border-amber-200 bg-amber-50 text-amber-600 bg-amber-500 border-l-amber-500
+    bg-red-100 text-red-700 border-red-200 bg-red-50 text-red-600 bg-red-500 border-l-red-500
+    bg-slate-100 text-slate-600 border-slate-200 bg-sky-50 text-sky-600 bg-sky-100 text-sky-500 bg-sky-500 border-l-sky-500
+    border-l-4 text-emerald-500 text-red-500 text-amber-500 text-sky-500"></div>
+
+<!-- Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div>
+        <h2 class="text-xl font-bold text-jp-navy"><i class="fa-solid fa-chart-gantt text-sky-500 mr-2"></i> Painel de Gestão</h2>
+        <p class="text-sm text-slate-500">Acompanhamento detalhado das obrigações e prazos.</p>
+    </div>
+    <div class="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
+        <label class="text-xs font-bold text-slate-500 uppercase ml-2"><i class="fa-solid fa-calendar mr-1"></i> Período:</label>
+        <select id="filtroMesAno" class="bg-white border border-slate-200 rounded-lg text-sm font-semibold py-1.5 px-3 focus:ring-2 focus:ring-sky-500 outline-none cursor-pointer" onchange="carregarDados()">
+            <option value="todos">Todos os Períodos</option>
+            {% for p in periodos %}
+            <option value="{{ p }}">{{ p }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div id="kpi-container" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+
+<!-- Charts Row -->
+<div id="charts-container" class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6 hidden">
+    <div class="card-premium flex flex-col overflow-hidden">
+        <div class="p-4 border-b border-slate-100 bg-slate-50/80">
+            <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[10px]"><i class="fa-solid fa-chart-pie mr-2 text-sky-400"></i> Distribuição por Status</h3>
         </div>
-        <div class="flex items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-            <label class="text-xs font-bold text-slate-500 uppercase ml-2"><i class="fa-solid fa-calendar mr-1"></i> Período:</label>
-            <select id="filtroMesAno" class="bg-white border border-slate-200 rounded-lg text-sm font-semibold py-1.5 px-3 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer" onchange="carregarDados()">
-                <option value="todos">Todos os Períodos</option>
-                {% for p in periodos %}
-                <option value="{{ p }}">{{ p }}</option>
-                {% endfor %}
-            </select>
+        <div class="p-5 flex items-center justify-center" style="min-height:220px;">
+            <canvas id="chartDonut" style="max-width:100%;max-height:240px;"></canvas>
         </div>
     </div>
+    <div class="card-premium flex flex-col overflow-hidden">
+        <div class="p-4 border-b border-slate-100 bg-slate-50/80">
+            <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[10px]"><i class="fa-solid fa-ranking-star mr-2 text-amber-400"></i> Top 5 — Clientes com Atrasos</h3>
+        </div>
+        <div class="p-5 space-y-3" id="topAtrasosContainer">
+            <div class="text-center text-slate-400 py-6 text-[10px] uppercase font-bold tracking-widest">Carregando...</div>
+        </div>
+    </div>
+</div>
 
-    <!-- Menus Superiores (Abas) -->
-    <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-200 pb-3" id="tab-container">
-        <button onclick="mudarVisao('cliente')" class="tab-btn active px-4 py-2 rounded-lg text-sm font-bold transition-all bg-indigo-50 text-indigo-700 border border-indigo-100"><i class="fa-solid fa-building mr-1"></i> Por Cliente</button>
+<!-- Tabs -->
+<div class="card-premium p-6">
+    <div class="flex flex-wrap gap-2 mb-5 border-b border-slate-200 pb-3" id="tab-container">
+        <button onclick="mudarVisao('cliente')" class="tab-btn active px-4 py-2 rounded-lg text-sm font-bold transition-all bg-sky-50 text-sky-700 border border-sky-100"><i class="fa-solid fa-building mr-1"></i> Por Cliente</button>
         <button onclick="mudarVisao('tarefa')" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-slate-50"><i class="fa-solid fa-list-check mr-1"></i> Por Tarefa</button>
         <button onclick="mudarVisao('periodo')" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-slate-50"><i class="fa-solid fa-calendar-day mr-1"></i> Por Período</button>
         <button onclick="mudarVisao('responsavel')" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-slate-50"><i class="fa-solid fa-user-tie mr-1"></i> Por Responsável</button>
     </div>
 
+    <!-- Search + Controls -->
+    <div class="flex flex-col sm:flex-row items-center gap-3 mb-5">
+        <div class="relative flex-1 w-full">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input type="text" id="buscaGrupo" placeholder="Buscar cliente, tarefa ou responsável..." oninput="filtrarGrupos(this.value)"
+                class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-300 outline-none transition-all">
+        </div>
+        <button onclick="toggleTodos()" id="btnToggle" class="shrink-0 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all">
+            <i class="fa-solid fa-arrows-up-down mr-1"></i> Expandir Todos
+        </button>
+    </div>
+
     <!-- Loader -->
     <div id="loader" class="hidden py-12 flex justify-center items-center">
-        <i class="fa-solid fa-circle-notch fa-spin text-indigo-500 text-3xl"></i>
+        <i class="fa-solid fa-circle-notch fa-spin text-sky-500 text-3xl"></i>
         <span class="ml-3 text-slate-500 font-semibold">Carregando dados...</span>
     </div>
 
-    <!-- Safelist de Cores do Tailwind para as Badges (necessário para o CDN funcionar com classes injetadas via JS) -->
-    <div class="hidden bg-emerald-100 text-emerald-700 border-emerald-200 bg-amber-100 text-amber-700 border-amber-200 bg-red-100 text-red-700 border-red-200 bg-slate-100 text-slate-600 border-slate-200"></div>
-
-    <!-- Container de Dados -->
-    <div id="dados-container" class="space-y-6">
-        <!-- O conteúdo será injetado via JavaScript -->
-    </div>
+    <!-- Data Container -->
+    <div id="dados-container" class="space-y-4"></div>
 </div>
 
 <script>
-    let visaoAtual = 'cliente';
+let visaoAtual = 'cliente';
+let sortField = null;
+let sortDir = 'asc';
+let dadosAtuais = null;
+let donutChart = null;
+let todosExpandidos = false;
 
-    function mudarVisao(visao) {
-        visaoAtual = visao;
-        
-        // Atualizar abas visuais
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('bg-indigo-50', 'text-indigo-700', 'border', 'border-indigo-100', 'active');
-            btn.classList.add('text-slate-500', 'hover:bg-slate-50');
-        });
-        
-        const eventBtn = event.currentTarget || document.querySelector(`button[onclick="mudarVisao('${visao}')"]`);
-        if (eventBtn) {
-            eventBtn.classList.remove('text-slate-500', 'hover:bg-slate-50');
-            eventBtn.classList.add('bg-indigo-50', 'text-indigo-700', 'border', 'border-indigo-100', 'active');
-        }
-
-        carregarDados();
+// === Tab Management ===
+function mudarVisao(visao) {
+    visaoAtual = visao;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-sky-50', 'text-sky-700', 'border', 'border-sky-100', 'active');
+        btn.classList.add('text-slate-500', 'hover:bg-slate-50');
+    });
+    const btn = event.currentTarget || document.querySelector(`button[onclick="mudarVisao('${visao}')"]`);
+    if (btn) {
+        btn.classList.remove('text-slate-500', 'hover:bg-slate-50');
+        btn.classList.add('bg-sky-50', 'text-sky-700', 'border', 'border-sky-100', 'active');
     }
+    sortField = null;
+    sortDir = 'asc';
+    carregarDados();
+}
 
-    async function carregarDados() {
-        const mesAno = document.getElementById('filtroMesAno').value;
-        const loader = document.getElementById('loader');
-        const container = document.getElementById('dados-container');
-        
-        container.innerHTML = '';
-        loader.classList.remove('hidden');
+// === Data Loading ===
+async function carregarDados() {
+    const mesAno = document.getElementById('filtroMesAno').value;
+    const loader = document.getElementById('loader');
+    const container = document.getElementById('dados-container');
+    container.innerHTML = '';
+    loader.classList.remove('hidden');
 
-        try {
-            const url = `/painel-gestao/dados?visao=${visaoAtual}&mes_ano=${mesAno}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error("Falha ao carregar dados");
-            
-            const data = await response.json();
-            renderizarDados(data.dados);
-        } catch (error) {
-            console.error(error);
-            showToast("Erro", "Não foi possível carregar os dados. Tente novamente.", "error");
-        } finally {
-            loader.classList.add('hidden');
-        }
+    try {
+        const res = await fetch(`/painel-gestao/dados?visao=${visaoAtual}&mes_ano=${mesAno}`);
+        if (!res.ok) throw new Error("Falha ao carregar dados");
+        const data = await res.json();
+        dadosAtuais = data;
+        renderizarKPIs(data.resumo);
+        renderizarGraficos(data.resumo, data.top_atrasos);
+        renderizarDados(data.dados);
+    } catch (err) {
+        console.error(err);
+        showToast("Erro", "Não foi possível carregar os dados.", "error");
+    } finally {
+        loader.classList.add('hidden');
     }
+}
 
-    function renderizarDados(agrupado) {
-        const container = document.getElementById('dados-container');
-        
-        if (Object.keys(agrupado).length === 0) {
-            container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold uppercase tracking-widest bg-slate-50 rounded-xl border border-slate-100">Nenhum registro encontrado para este período.</div>`;
-            return;
-        }
+// === KPI Cards ===
+function renderizarKPIs(r) {
+    const kpis = [
+        { label: 'Total Obrigações', value: r.total, icon: 'fa-layer-group', color: 'slate', border: '' },
+        { label: 'Entregues', value: r.entregues, icon: 'fa-circle-check', color: 'emerald', border: 'border-l-4 border-l-emerald-500', sub: `${r.percentual_conclusao}% concluído` },
+        { label: 'No Prazo', value: r.no_prazo, icon: 'fa-clock', color: 'sky', border: 'border-l-4 border-l-sky-500', sub: 'pendentes dentro do prazo' },
+        { label: 'Em Atraso', value: r.atraso_interno + r.atraso_legal, icon: 'fa-triangle-exclamation', color: 'red', border: 'border-l-4 border-l-red-500', sub: r.atraso_legal > 0 ? `${r.atraso_legal} atraso legal` : 'atraso interno' }
+    ];
+    const el = document.getElementById('kpi-container');
+    el.innerHTML = kpis.map(k => `
+        <div class="card-premium kpi-card p-5 ${k.border}">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-slate-500 font-semibold text-[10px] uppercase tracking-wider">${k.label}</h3>
+                <div class="bg-${k.color}-50 text-${k.color}-500 p-2 rounded-xl"><i class="fa-solid ${k.icon}"></i></div>
+            </div>
+            <p class="text-3xl font-extrabold text-slate-800 kpi-value kpi-value-anim" data-target="${k.value}">0</p>
+            ${k.sub ? `<p class="text-[10px] text-slate-400 mt-1 font-medium">${k.sub}</p>` : ''}
+        </div>
+    `).join('');
+    el.querySelectorAll('[data-target]').forEach(el => animarContador(el, parseInt(el.dataset.target)));
+}
 
-        let html = '';
-        
-        for (const [chave, itens] of Object.entries(agrupado)) {
-            html += `
-            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                    <h3 class="font-bold text-jp-navy flex items-center gap-2">
-                        <i class="fa-solid fa-folder-open text-amber-500"></i> ${chave}
-                    </h3>
-                    <span class="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded-lg">${itens.length} obrigações</span>
-                </div>
-                <div class="overflow-x-auto p-4 hidden">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-100">
-                                <th class="pb-2 font-bold w-1/4">Obrigação / Tarefa</th>
-                                <th class="pb-2 font-bold text-center">Competência</th>
-                                <th class="pb-2 font-bold text-center">Vcto Interno</th>
-                                <th class="pb-2 font-bold text-center">Vcto Legal</th>
-                                <th class="pb-2 font-bold text-center">Entrega</th>
-                                <th class="pb-2 font-bold text-center">Leitura</th>
-                                <th class="pb-2 font-bold text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-xs">
-            `;
+function animarContador(el, target) {
+    if (target === 0) { el.textContent = '0'; return; }
+    let current = 0;
+    const step = Math.max(1, Math.ceil(target / 40));
+    const interval = setInterval(() => {
+        current += step;
+        if (current >= target) { el.textContent = target; clearInterval(interval); }
+        else el.textContent = current;
+    }, 20);
+}
 
-            itens.forEach(item => {
-                // Definir Badge baseado no status
-                let badgeClass = '';
-                let badgeText = '';
-                
-                if (item.status_visual === 'NO_PRAZO') {
-                    badgeClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
-                    badgeText = 'No Prazo';
-                } else if (item.status_visual === 'ATRASADA_INTERNO') {
-                    badgeClass = 'bg-amber-100 text-amber-700 border-amber-200';
-                    badgeText = 'Atraso Interno';
-                } else if (item.status_visual === 'ATRASADA_LEGAL') {
-                    badgeClass = 'bg-red-100 text-red-700 border-red-200';
-                    badgeText = 'Atraso Legal';
-                } else if (item.status_visual === 'ENTREGUE') {
-                    badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
-                    badgeText = 'Entregue';
+// === Charts ===
+function renderizarGraficos(resumo, topAtrasos) {
+    const container = document.getElementById('charts-container');
+    if (resumo.total === 0) { container.classList.add('hidden'); return; }
+    container.classList.remove('hidden');
+
+    // Donut
+    if (donutChart) donutChart.destroy();
+    const ctx = document.getElementById('chartDonut');
+    if (ctx) {
+        donutChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Entregues', 'No Prazo', 'Atraso Interno', 'Atraso Legal'],
+                datasets: [{
+                    data: [resumo.entregues, resumo.no_prazo, resumo.atraso_interno, resumo.atraso_legal],
+                    backgroundColor: ['#10b981', '#0ea5e9', '#f59e0b', '#ef4444'],
+                    borderColor: '#fff', borderWidth: 2.5, hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '62%',
+                animation: { animateRotate: true, duration: 1000, easing: 'easeOutQuart' },
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { family: 'Inter', size: 11, weight: '600' }, color: '#475569' } },
+                    tooltip: { backgroundColor: '#1e293b', titleFont: { family: 'Inter', size: 12, weight: '700' }, bodyFont: { family: 'Inter', size: 11 }, padding: 10, cornerRadius: 8 }
                 }
+            }
+        });
+    }
 
-                const clienteNome = visaoAtual !== 'cliente' ? `<div class="text-[10px] text-slate-400 truncate max-w-[200px] mt-0.5" title="${item.cliente}"><i class="fa-regular fa-building"></i> ${item.cliente}</div>` : '';
-                const obrigNome = visaoAtual !== 'tarefa' ? `<div class="font-bold text-slate-700">${item.obrigacao}</div>` : `<div class="font-bold text-slate-700">${item.cliente}</div>`; // se visão for tarefa, mostra cliente na coluna principal
+    // Top Atrasos (barras HTML)
+    const topEl = document.getElementById('topAtrasosContainer');
+    if (!topAtrasos || topAtrasos.length === 0) {
+        topEl.innerHTML = '<div class="text-center text-slate-400 py-6 text-[10px] uppercase font-bold tracking-widest"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Nenhum atraso registrado</div>';
+        return;
+    }
+    const maxQtd = topAtrasos[0].qtd;
+    topEl.innerHTML = topAtrasos.map(a => {
+        const pct = Math.round((a.qtd / maxQtd) * 100);
+        return `<div>
+            <div class="flex justify-between text-[10px] font-bold text-slate-600 mb-1 tracking-wider uppercase">
+                <span class="truncate max-w-[200px]">${a.nome}</span>
+                <span class="text-red-500 shrink-0 ml-2">${a.qtd} atraso${a.qtd > 1 ? 's' : ''}</span>
+            </div>
+            <div class="h-2.5 w-full bg-red-100 rounded-full overflow-hidden">
+                <div class="h-full bg-red-500 rounded-full progress-bar-animated" style="width:0%" data-width="${pct}%"></div>
+            </div>
+        </div>`;
+    }).join('');
+    // Animate bars
+    requestAnimationFrame(() => {
+        topEl.querySelectorAll('[data-width]').forEach(bar => { bar.style.width = bar.dataset.width; });
+    });
+}
 
-                html += `
-                    <tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
-                        <td class="py-2.5">
-                            ${obrigNome}
-                            ${clienteNome}
-                        </td>
-                        <td class="py-2.5 text-center text-slate-500 font-medium">${item.mes_ano}</td>
-                        <td class="py-2.5 text-center text-slate-600 font-medium">${item.vencimento_interno}</td>
-                        <td class="py-2.5 text-center text-slate-600 font-medium">${item.vencimento_legal}</td>
-                        <td class="py-2.5 text-center text-slate-500">${item.data_entrega}</td>
-                        <td class="py-2.5 text-center text-slate-500">${item.data_leitura}</td>
-                        <td class="py-2.5 text-center">
-                            <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${badgeClass}">
-                                ${badgeText}
-                            </span>
-                        </td>
-                    </tr>
-                `;
+// === Data Rendering ===
+function renderizarDados(agrupado) {
+    const container = document.getElementById('dados-container');
+    const keys = Object.keys(agrupado);
+    if (keys.length === 0) {
+        container.innerHTML = '<div class="text-center py-10 text-slate-400 font-bold uppercase tracking-widest bg-slate-50 rounded-xl border border-slate-100">Nenhum registro encontrado para este período.</div>';
+        return;
+    }
+
+    const sortIcon = (field) => {
+        if (sortField !== field) return '<i class="fa-solid fa-sort sort-icon"></i>';
+        return sortDir === 'asc' ? '<i class="fa-solid fa-sort-up sort-icon"></i>' : '<i class="fa-solid fa-sort-down sort-icon"></i>';
+    };
+    const sortClass = (field) => sortField === field ? 'active' : '';
+
+    let html = '';
+    keys.forEach((chave, idx) => {
+        const grp = agrupado[chave];
+        let itens = [...grp.itens];
+
+        // Sorting
+        if (sortField) {
+            itens.sort((a, b) => {
+                let va = a[sortField] || '';
+                let vb = b[sortField] || '';
+                if (sortField === 'dias_atraso') { va = Number(va); vb = Number(vb); }
+                else if (sortField.includes('vencimento') || sortField.includes('data_')) {
+                    va = parseDateStr(va); vb = parseDateStr(vb);
+                } else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
+                if (va < vb) return sortDir === 'asc' ? -1 : 1;
+                if (va > vb) return sortDir === 'asc' ? 1 : -1;
+                return 0;
             });
+        }
 
-            html += `
-                        </tbody>
-                    </table>
+        // Progress bar color
+        let progColor = 'bg-emerald-500';
+        if (grp.percentual < 50) progColor = 'bg-red-500';
+        else if (grp.percentual < 80) progColor = 'bg-amber-500';
+
+        const isExpanded = idx < 3;
+        html += `
+        <div class="grupo-container bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" onclick="toggleGrupo(this)">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-jp-navy flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-chevron-right text-[10px] text-slate-400 transition-transform duration-200 grupo-arrow ${isExpanded ? 'rotate-90' : ''}"></i>
+                        ${chave}
+                    </h3>
+                    <div class="flex items-center gap-3">
+                        ${grp.atrasos > 0 ? `<span class="text-[10px] font-bold text-red-500"><i class="fa-solid fa-triangle-exclamation mr-0.5"></i>${grp.atrasos}</span>` : ''}
+                        <span class="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-lg">${grp.entregues}/${grp.total}</span>
+                    </div>
+                </div>
+                <div class="mt-2 flex items-center gap-3">
+                    <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div class="h-full ${progColor} rounded-full progress-bar-animated" style="width:${grp.percentual}%"></div>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 shrink-0">${grp.percentual}%</span>
                 </div>
             </div>
-            `;
-        }
+            <div class="overflow-x-auto grupo-body ${isExpanded ? '' : 'hidden'}">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-white">
+                            <th class="py-2.5 px-4 font-bold w-1/4">Obrigação / Tarefa</th>
+                            <th class="py-2.5 px-2 font-bold text-center sort-header ${sortClass('mes_ano')}" onclick="ordenarPor('mes_ano')">Comp. ${sortIcon('mes_ano')}</th>
+                            <th class="py-2.5 px-2 font-bold text-center sort-header ${sortClass('vencimento_interno')}" onclick="ordenarPor('vencimento_interno')">Vcto Interno ${sortIcon('vencimento_interno')}</th>
+                            <th class="py-2.5 px-2 font-bold text-center sort-header ${sortClass('vencimento_legal')}" onclick="ordenarPor('vencimento_legal')">Vcto Legal ${sortIcon('vencimento_legal')}</th>
+                            <th class="py-2.5 px-2 font-bold text-center sort-header ${sortClass('data_entrega')}" onclick="ordenarPor('data_entrega')">Entrega ${sortIcon('data_entrega')}</th>
+                            <th class="py-2.5 px-2 font-bold text-center">Leitura</th>
+                            <th class="py-2.5 px-2 font-bold text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-xs">`;
 
-        container.innerHTML = html;
-        
-        // Expandir a primeira aba por padrão
-        const firstHiddenDiv = container.querySelector('.hidden');
-        if (firstHiddenDiv) {
-            firstHiddenDiv.classList.remove('hidden');
-        }
-    }
+        itens.forEach(item => {
+            const badge = getBadge(item);
+            const tooltip = getTooltip(item);
+            const showCliente = visaoAtual !== 'cliente' ? `<div class="text-[10px] text-slate-400 truncate max-w-[200px] mt-0.5" title="${item.cliente}"><i class="fa-regular fa-building mr-0.5"></i>${item.cliente}</div>` : '';
+            const mainLabel = visaoAtual !== 'tarefa' ? item.obrigacao : item.cliente;
 
-    // Inicializar na carga
-    document.addEventListener("DOMContentLoaded", () => {
-        carregarDados();
+            html += `
+                        <tr class="border-b border-slate-50 last:border-0 hover:bg-sky-50/40 transition-colors">
+                            <td class="py-2.5 px-4">
+                                <div class="font-bold text-slate-700">${mainLabel}</div>
+                                ${showCliente}
+                            </td>
+                            <td class="py-2.5 px-2 text-center text-slate-500 font-medium">${item.mes_ano}</td>
+                            <td class="py-2.5 px-2 text-center text-slate-600 font-medium">${item.vencimento_interno}</td>
+                            <td class="py-2.5 px-2 text-center text-slate-600 font-medium">${item.vencimento_legal}</td>
+                            <td class="py-2.5 px-2 text-center text-slate-500">${item.data_entrega}</td>
+                            <td class="py-2.5 px-2 text-center text-slate-500">${item.data_leitura}</td>
+                            <td class="py-2.5 px-2 text-center">
+                                <span class="tooltip-status px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${badge.cls}" data-tip="${tooltip}">
+                                    ${badge.text}
+                                </span>
+                            </td>
+                        </tr>`;
+        });
+
+        html += `</tbody></table></div></div>`;
     });
+
+    container.innerHTML = html;
+    // Animate progress bars
+    requestAnimationFrame(() => {
+        container.querySelectorAll('.progress-bar-animated').forEach(bar => {
+            const w = bar.style.width; bar.style.width = '0%';
+            requestAnimationFrame(() => { bar.style.width = w; });
+        });
+    });
+}
+
+// === Badge & Tooltip Helpers ===
+function getBadge(item) {
+    const map = {
+        'NO_PRAZO': { cls: 'bg-emerald-100 text-emerald-700 border-emerald-200', text: 'No Prazo' },
+        'ATRASADA_INTERNO': { cls: 'bg-amber-100 text-amber-700 border-amber-200', text: 'Atraso Interno' },
+        'ATRASADA_LEGAL': { cls: 'bg-red-100 text-red-700 border-red-200', text: 'Atraso Legal' },
+        'ENTREGUE': { cls: 'bg-slate-100 text-slate-600 border-slate-200', text: 'Entregue' }
+    };
+    return map[item.status_visual] || map['NO_PRAZO'];
+}
+
+function getTooltip(item) {
+    if (item.status_visual === 'ENTREGUE') return 'Obrigação entregue ao cliente';
+    if (item.status_visual === 'NO_PRAZO') return 'Dentro do prazo operacional';
+    if (item.dias_atraso > 0) return `${item.dias_atraso} dia${item.dias_atraso > 1 ? 's' : ''} de atraso`;
+    return '';
+}
+
+// === Date Parsing for Sort ===
+function parseDateStr(s) {
+    if (!s || s === '-') return '9999-99-99';
+    const parts = s.split(/[/ ]/);
+    if (parts.length >= 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return s;
+}
+
+// === Sorting ===
+function ordenarPor(campo) {
+    if (sortField === campo) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortField = campo; sortDir = 'asc'; }
+    if (dadosAtuais) renderizarDados(dadosAtuais.dados);
+}
+
+// === Group Toggle ===
+function toggleGrupo(header) {
+    const body = header.nextElementSibling;
+    const arrow = header.querySelector('.grupo-arrow');
+    body.classList.toggle('hidden');
+    arrow.classList.toggle('rotate-90');
+}
+
+function toggleTodos() {
+    todosExpandidos = !todosExpandidos;
+    const btn = document.getElementById('btnToggle');
+    document.querySelectorAll('.grupo-body').forEach(b => {
+        todosExpandidos ? b.classList.remove('hidden') : b.classList.add('hidden');
+    });
+    document.querySelectorAll('.grupo-arrow').forEach(a => {
+        todosExpandidos ? a.classList.add('rotate-90') : a.classList.remove('rotate-90');
+    });
+    btn.innerHTML = todosExpandidos
+        ? '<i class="fa-solid fa-arrows-up-down mr-1"></i> Colapsar Todos'
+        : '<i class="fa-solid fa-arrows-up-down mr-1"></i> Expandir Todos';
+}
+
+// === Search Filter ===
+function filtrarGrupos(query) {
+    const q = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    document.querySelectorAll('.grupo-container').forEach(g => {
+        const text = g.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        g.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
+// === Init ===
+document.addEventListener("DOMContentLoaded", () => { carregarDados(); });
 </script>
 {% endblock %}

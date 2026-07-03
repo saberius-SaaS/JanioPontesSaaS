@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date
+from collections import defaultdict
 
 from app import models
 from app.database import get_db
@@ -74,14 +75,17 @@ async def obter_dados_painel(
     resultados = []
     
     for t in tarefas:
-        status_visual = "NO_PRAZO" # Verde
+        status_visual = "NO_PRAZO"
+        dias_atraso = 0
         if t.status != "ENTREGUE":
             if t.vencimento_legal and t.vencimento_legal < hoje:
-                status_visual = "ATRASADA_LEGAL" # Vermelho
+                status_visual = "ATRASADA_LEGAL"
+                dias_atraso = (hoje - t.vencimento_legal).days
             elif t.vencimento and t.vencimento < hoje:
-                status_visual = "ATRASADA_INTERNO" # Amarelo/Laranja
+                status_visual = "ATRASADA_INTERNO"
+                dias_atraso = (hoje - t.vencimento).days
         else:
-            status_visual = "ENTREGUE" # Verde/Cinza
+            status_visual = "ENTREGUE"
 
         data_entrega = None
         data_leitura = None
@@ -102,9 +106,35 @@ async def obter_dados_painel(
             "data_leitura": data_leitura or "-",
             "status_visual": status_visual,
             "status_real": t.status,
-            "protocolo": t.protocolo or "-"
+            "protocolo": t.protocolo or "-",
+            "dias_atraso": dias_atraso
         })
-        
+
+    # Resumo global
+    total = len(resultados)
+    entregues = sum(1 for r in resultados if r["status_visual"] == "ENTREGUE")
+    no_prazo = sum(1 for r in resultados if r["status_visual"] == "NO_PRAZO")
+    atraso_interno = sum(1 for r in resultados if r["status_visual"] == "ATRASADA_INTERNO")
+    atraso_legal = sum(1 for r in resultados if r["status_visual"] == "ATRASADA_LEGAL")
+
+    resumo = {
+        "total": total,
+        "entregues": entregues,
+        "no_prazo": no_prazo,
+        "atraso_interno": atraso_interno,
+        "atraso_legal": atraso_legal,
+        "percentual_conclusao": round(entregues / total * 100, 1) if total > 0 else 0
+    }
+
+    # Top 5 clientes com mais atrasos
+    atrasos_por_cliente = defaultdict(int)
+    for r in resultados:
+        if r["status_visual"] in ("ATRASADA_INTERNO", "ATRASADA_LEGAL"):
+            atrasos_por_cliente[r["cliente"]] += 1
+    top_atrasos = sorted(atrasos_por_cliente.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_atrasos = [{"nome": n, "qtd": q} for n, q in top_atrasos]
+
+    # Agrupar com sub-resumo
     agrupado = {}
     for r in resultados:
         chave = "Outros"
@@ -116,12 +146,27 @@ async def obter_dados_painel(
             chave = r["mes_ano"]
         elif visao == "responsavel":
             chave = r["responsavel"]
-            
         if chave not in agrupado:
             agrupado[chave] = []
         agrupado[chave].append(r)
-        
-    # Order chaves
-    agrupado_ordenado = {k: agrupado[k] for k in sorted(agrupado.keys())}
-    
-    return {"dados": agrupado_ordenado, "visao": visao}
+
+    agrupado_enriquecido = {}
+    for chave in sorted(agrupado.keys()):
+        itens = agrupado[chave]
+        grp_total = len(itens)
+        grp_entregues = sum(1 for i in itens if i["status_visual"] == "ENTREGUE")
+        grp_atrasos = sum(1 for i in itens if "ATRASADA" in i["status_visual"])
+        agrupado_enriquecido[chave] = {
+            "itens": itens,
+            "total": grp_total,
+            "entregues": grp_entregues,
+            "percentual": round(grp_entregues / grp_total * 100) if grp_total > 0 else 0,
+            "atrasos": grp_atrasos
+        }
+
+    return {
+        "dados": agrupado_enriquecido,
+        "visao": visao,
+        "resumo": resumo,
+        "top_atrasos": top_atrasos
+    }
