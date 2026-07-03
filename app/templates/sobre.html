@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Sobre - Janio Pontes SaaS{% endblock %}
+{% block page_title %}Sobre (Continuidade de Negócios){% endblock %}
+
+{% block hero_title %}Manual de Contingência e Continuidade{% endblock %}
+{% block hero_subtitle %}Documento restrito a Administradores detalhando infraestrutura e processos do Janio Pontes SaaS.{% endblock %}
+
+{% block content %}
+
+<div class="card-premium flex flex-col overflow-hidden mb-6 border-l-4 border-l-amber-500">
+    <div class="p-6 border-b border-slate-100 bg-amber-50/30">
+        <h2 class="font-bold text-jp-navy flex items-center gap-2 text-lg">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> DOCUMENTO CRÍTICO E RESTRITO A ADMINISTRADORES
+        </h2>
+        <p class="text-sm text-slate-600 mt-2">
+            Este documento contém informações sensíveis e essenciais para a continuidade do Janio Pontes SaaS. Em caso de ausência permanente ou incapacidade do idealizador e gestor principal (Janio Pontes), este documento deve ser entregue a um Engenheiro de Software ou Desenvolvedor Full-Stack Sênior para assumir a manutenção e evolução do sistema.
+        </p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6">
+    
+    <!-- Visão Geral -->
+    <div class="card-premium p-6">
+        <h3 class="font-bold text-jp-navy border-b border-slate-100 pb-3 mb-4 text-sm uppercase tracking-widest flex items-center gap-2">
+            <i class="fa-solid fa-rocket text-indigo-500"></i> 1. Visão Geral do Sistema
+        </h3>
+        <p class="text-sm text-slate-600 mb-3">
+            O <strong>Janio Pontes SaaS</strong> é a plataforma de gestão interna e portal do cliente da Janio Pontes Contabilidade. Ele gerencia tarefas, protocolos, automação de WhatsApp, e-mails e área do cliente.
+        </p>
+        <ul class="space-y-2 text-sm text-slate-600 ml-5 list-disc">
+            <li><strong>URL do Sistema:</strong> <a href="https://app.janiopontes.com.br" target="_blank" class="text-indigo-600 hover:underline">app.janiopontes.com.br</a></li>
+            <li><strong>URL do Chatwoot (WhatsApp):</strong> <a href="https://chat.janiopontes.com.br" target="_blank" class="text-indigo-600 hover:underline">chat.janiopontes.com.br</a></li>
+        </ul>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="card-premium p-6">
+        <h3 class="font-bold text-jp-navy border-b border-slate-100 pb-3 mb-4 text-sm uppercase tracking-widest flex items-center gap-2">
+            <i class="fa-solid fa-layer-group text-indigo-500"></i> 2. Tecnologias Utilizadas (Tech Stack)
+        </h3>
+        <p class="text-sm text-slate-600 mb-3">Um novo desenvolvedor precisará destas tecnologias para dar continuidade ao projeto:</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <span class="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-1">Linguagem & Backend</span>
+                <span class="text-sm text-slate-700 font-semibold">Python 3.12, FastAPI, Uvicorn</span>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <span class="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-1">Banco de Dados</span>
+                <span class="text-sm text-slate-700 font-semibold">PostgreSQL (SQLAlchemy / Alembic)</span>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <span class="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-1">Frontend</span>
+                <span class="text-sm text-slate-700 font-semibold">HTML (Jinja2), Tailwind CSS v4, HTMX</span>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <span class="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-1">Automação IA</span>
+                <span class="text-sm text-slate-700 font-semibold">Estruturado em IA Agent (Pasta .agents)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Infraestrutura -->
+    <div class="card-premium p-6">
+        <h3 class="font-bold text-jp-navy border-b border-slate-100 pb-3 mb-4 text-sm uppercase tracking-widest flex items-center gap-2">
+            <i class="fa-brands fa-google text-indigo-500"></i> 3. Infraestrutura de Produção (GCP)
+        </h3>
+        <p class="text-sm text-slate-600 mb-3">O sistema está inteiramente hospedado no ecossistema do <strong>Google Cloud Platform (GCP)</strong>.</p>
+        <ul class="space-y-3 text-sm text-slate-600">
+            <li class="flex items-start gap-2"><i class="fa-solid fa-cloud text-slate-400 mt-1 w-4"></i> <span><strong>Projeto GCP:</strong> <code>jp-saas-producao</code></span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-server text-slate-400 mt-1 w-4"></i> <span><strong>Google Cloud Run:</strong> Serviço <code>jp-saas-app</code> (us-east1)</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-database text-slate-400 mt-1 w-4"></i> <span><strong>Google Cloud SQL:</strong> Instância <code>jpsaas-db-us</code> (us-east1)</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-hard-drive text-slate-400 mt-1 w-4"></i> <span><strong>Google Cloud Storage (GCS):</strong> Bucket <code>janio-pontes-saas-docs-us</code></span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-globe text-slate-400 mt-1 w-4"></i> <span><strong>Firebase Hosting:</strong> Conectado ao Cloud Run para gerenciar o domínio.</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-clock text-slate-400 mt-1 w-4"></i> <span><strong>Cloud Scheduler (Cronjobs):</strong> Região southamerica-east1 para alertas e relatórios.</span></li>
+        </ul>
+    </div>
+
+    <!-- Acessos e Credenciais -->
+    <div class="card-premium p-6">
+        <h3 class="font-bold text-jp-navy border-b border-slate-100 pb-3 mb-4 text-sm uppercase tracking-widest flex items-center gap-2">
+            <i class="fa-solid fa-key text-indigo-500"></i> 4. Acessos, Credenciais e Deploy
+        </h3>
+        <p class="text-sm text-slate-600 mb-3">Para assumir o projeto, são necessários os seguintes acessos e configurações:</p>
+        <ul class="space-y-2 text-sm text-slate-600 ml-5 list-decimal mb-4">
+            <li>Administrador do projeto <strong>Google Cloud</strong> (<code>jp-saas-producao</code>).</li>
+            <li>Acesso ao <strong>Repositório de Código</strong> e provedor de domínio (app.janiopontes.com.br).</li>
+            <li>Acesso Root ao <strong>Chatwoot</strong>.</li>
+            <li>Acesso aos E-mails Administrativos: <code>sac@janiopontes.com.br</code> e <code>janiopontes@janiopontes.com.br</code>.</li>
+        </ul>
+        
+        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+            <h4 class="font-bold text-indigo-900 text-xs uppercase tracking-widest mb-2"><i class="fa-solid fa-terminal mr-1"></i> Deploy & Segredos</h4>
+            <p class="text-xs text-indigo-800 mb-2">As variáveis de ambiente estão configuradas diretamente no Cloud Run: <code>JPSAAS_DB_PASSWORD</code>, <code>JPSAAS_SECRET_KEY</code>, <code>JPSAAS_GOOGLE_CLIENT_SECRET</code>, <code>JPSAAS_GCP_CREDENTIALS</code>.</p>
+            <p class="text-xs text-indigo-800">Comando padrão de publicação (via terminal na pasta do projeto):<br><code class="bg-white px-2 py-1 rounded text-indigo-900 font-bold mt-1 inline-block">gcloud run deploy --source .</code></p>
+        </div>
+    </div>
+    
+    <div class="text-center mt-4 mb-8">
+        <p class="text-xs text-slate-400 italic">Documento criado para garantir a perenidade, estabilidade e segurança das operações da Janio Pontes Contabilidade.</p>
+    </div>
+
+</div>
+
+{% endblock %}
