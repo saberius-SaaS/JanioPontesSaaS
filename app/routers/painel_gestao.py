@@ -28,10 +28,13 @@ async def painel_gestao_view(
     ).distinct().all()
     periodos = sorted([p[0] for p in periodos_db if p[0]], reverse=True)
     
+    mes_atual = date.today().strftime('%m/%Y')
+    
     return templates.TemplateResponse(request, "painel_gestao.html", {
         "request": request,
         "user": current_user,
         "periodos": periodos,
+        "mes_atual": mes_atual,
         "page_title": "Painel de Acompanhamento de Trabalhos"
     })
 
