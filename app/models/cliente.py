@@ -41,6 +41,7 @@ class Cliente(TenantMixin, Base):
     email_contabil = Column(String(255), nullable=True, comment="Email de roteamento — Contábil")
     email_pessoal = Column(String(255), nullable=True, comment="Email de roteamento — Pessoal")
     email_societario = Column(String(255), nullable=True, comment="Email de roteamento — Societário")
+    regras_roteamento = Column(Text, nullable=True, comment="JSON mapping: {'Obrigacao': 'email@destino'}")
 
     # --- Coluna U ---
     nome_fantasia = Column(String(255), nullable=True, comment="Nome fantasia da empresa")

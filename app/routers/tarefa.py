@@ -24,14 +24,25 @@ def gerar_protocolo() -> str:
     return f"PRT-{agora.strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
 
 
-def obter_email_cliente(db: Session, tenant_id: str, nome_cliente: str, departamento: str = None) -> str:
-    """Busca o email do cliente com roteamento por departamento (igual ao sistema legado)."""
+import json
+
+def obter_email_cliente(db: Session, tenant_id: str, nome_cliente: str, departamento: str = None, obrigacao: str = None) -> str:
+    """Busca o email do cliente com roteamento por departamento e regras de exceção."""
     cliente = db.query(models.Cliente).filter(
         models.Cliente.tenant_id == tenant_id,
         models.Cliente.cliente == nome_cliente
     ).first()
     if not cliente:
         return ""
+    
+    # Regra de Exceção por Tarefa (Roteamento Customizado)
+    if obrigacao and getattr(cliente, "regras_roteamento", None):
+        try:
+            regras = json.loads(cliente.regras_roteamento)
+            if obrigacao in regras and regras[obrigacao].strip():
+                return regras[obrigacao].strip()
+        except Exception as e:
+            logger.error(f"Erro ao parsear regras de roteamento do cliente {nome_cliente}: {e}")
     
     # Roteamento por departamento (emails específicos por setor)
     if departamento:
@@ -408,7 +419,7 @@ async def finalizar_tarefa(
     
     acao = (tarefa.acao or "ENVIAR").upper().strip()
     protocolo = gerar_protocolo()
-    email_destino = obter_email_cliente(db, current_user.tenant_id, tarefa.cliente, tarefa.departamento)
+    email_destino = obter_email_cliente(db, current_user.tenant_id, tarefa.cliente, tarefa.departamento, tarefa.obrigacao)
     
     # Verificar se a regra de obrigação exige revisão (Coluna M = 'S')
     regra = db.query(models.RegraObrigacao).filter(
@@ -582,7 +593,7 @@ async def aprovar_revisao(
         raise HTTPException(status_code=404, detail="Tarefa em revisão não encontrada")
     
     # Ao aprovar, dispara o e-mail que ficou pendente
-    email_destino = obter_email_cliente(db, current_user.tenant_id, tarefa.cliente, tarefa.departamento)
+    email_destino = obter_email_cliente(db, current_user.tenant_id, tarefa.cliente, tarefa.departamento, tarefa.obrigacao)
     acao = (tarefa.acao or "").upper()
     
     try:
