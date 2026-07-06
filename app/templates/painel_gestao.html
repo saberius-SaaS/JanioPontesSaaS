@@ -42,9 +42,14 @@
         <h2 class="text-xl font-bold text-jp-navy"><i class="fa-solid fa-chart-gantt text-sky-500 mr-2"></i> Painel de Gestão</h2>
         <p class="text-sm text-slate-500">Acompanhamento detalhado das obrigações e prazos.</p>
     </div>
-    <div class="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-        <label class="text-xs font-bold text-slate-500 uppercase ml-2"><i class="fa-solid fa-calendar mr-1"></i> Período:</label>
-        <select id="filtroMesAno" class="bg-white border border-slate-200 rounded-lg text-sm font-semibold py-1.5 px-3 focus:ring-2 focus:ring-sky-500 outline-none cursor-pointer" onchange="carregarDados()">
+    <div class="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+        <select id="tipoFiltro" class="bg-transparent border-none text-xs font-bold text-slate-500 uppercase focus:ring-0 outline-none cursor-pointer py-1.5 px-2" onchange="carregarDados()">
+            <option value="mes_ano" selected>Mes/Ano</option>
+            <option value="vencimento">Vencimento</option>
+        </select>
+        <div class="w-px h-5 bg-slate-200 mx-1"></div>
+        <i class="fa-solid fa-calendar text-slate-400 text-sm ml-2"></i>
+        <select id="filtroMesAno" class="bg-transparent border-none text-sm font-semibold text-slate-700 py-1.5 pr-8 pl-2 focus:ring-0 outline-none cursor-pointer w-36" onchange="carregarDados()">
             <option value="todos">Todos os Períodos</option>
             {% for p in periodos %}
             <option value="{{ p }}" {% if p == mes_atual %}selected{% endif %}>{{ p }}</option>
@@ -135,13 +140,14 @@ function mudarVisao(visao) {
 // === Data Loading ===
 async function carregarDados() {
     const mesAno = document.getElementById('filtroMesAno').value;
+    const tipoFiltro = document.getElementById('tipoFiltro').value;
     const loader = document.getElementById('loader');
     const container = document.getElementById('dados-container');
     container.innerHTML = '';
     loader.classList.remove('hidden');
 
     try {
-        const res = await fetch(`/painel-gestao/dados?visao=${visaoAtual}&mes_ano=${mesAno}`);
+        const res = await fetch(`/painel-gestao/dados?visao=${visaoAtual}&mes_ano=${mesAno}&tipo_filtro=${tipoFiltro}`);
         if (!res.ok) throw new Error("Falha ao carregar dados");
         const data = await res.json();
         dadosAtuais = data;

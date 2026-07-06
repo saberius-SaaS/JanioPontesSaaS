@@ -38,10 +38,13 @@ async def painel_gestao_view(
         "page_title": "Painel de Acompanhamento de Trabalhos"
     })
 
+from sqlalchemy import extract
+
 @router.get("/painel-gestao/dados")
 async def obter_dados_painel(
     visao: str = Query("cliente", description="cliente | tarefa | periodo | responsavel"),
     mes_ano: Optional[str] = Query(None, description="Filtro de competencia"),
+    tipo_filtro: str = Query("mes_ano", description="mes_ano | vencimento"),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -53,13 +56,33 @@ async def obter_dados_painel(
     # Query Tarefas
     q_tarefas = db.query(models.Tarefa).filter(models.Tarefa.tenant_id == current_user.tenant_id)
     if mes_ano and mes_ano != "todos":
-        q_tarefas = q_tarefas.filter(models.Tarefa.mes_ano == mes_ano)
+        if tipo_filtro == "vencimento":
+            try:
+                mes, ano = mes_ano.split('/')
+                q_tarefas = q_tarefas.filter(
+                    extract('month', models.Tarefa.vencimento) == int(mes),
+                    extract('year', models.Tarefa.vencimento) == int(ano)
+                )
+            except ValueError:
+                pass
+        else:
+            q_tarefas = q_tarefas.filter(models.Tarefa.mes_ano == mes_ano)
     tarefas_ativas = q_tarefas.all()
 
     # Query Historico
     q_hist = db.query(models.HistoricoTarefa).filter(models.HistoricoTarefa.tenant_id == current_user.tenant_id)
     if mes_ano and mes_ano != "todos":
-        q_hist = q_hist.filter(models.HistoricoTarefa.mes_ano == mes_ano)
+        if tipo_filtro == "vencimento":
+            try:
+                mes, ano = mes_ano.split('/')
+                q_hist = q_hist.filter(
+                    extract('month', models.HistoricoTarefa.vencimento) == int(mes),
+                    extract('year', models.HistoricoTarefa.vencimento) == int(ano)
+                )
+            except ValueError:
+                pass
+        else:
+            q_hist = q_hist.filter(models.HistoricoTarefa.mes_ano == mes_ano)
     tarefas_hist = q_hist.all()
 
     tarefas = tarefas_ativas + tarefas_hist
