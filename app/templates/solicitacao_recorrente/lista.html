@@ -1,118 +1,238 @@
 {% extends "base.html" %}
 
-{% block title %}Solicitações Recorrentes - JP SaaS{% endblock %}
+{% block title %}Regras de Solicitação - JP SaaS{% endblock %}
+{% block page_title %}Regras de Solicitação{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    <div class="px-4 py-6 sm:px-0">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">Configuração de Solicitações Recorrentes</h1>
-            <button onclick="document.getElementById('modal-regra').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow">
-                + Nova Regra
-            </button>
-        </div>
 
-        <!-- Lista de Regras Atuais -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-md">
-            <ul role="list" class="divide-y divide-gray-200">
-                {% for regra in regras %}
-                <li>
-                    <div class="px-4 py-4 sm:px-6 hover:bg-gray-50 flex justify-between items-center">
-                        <div>
-                            <p class="text-sm font-medium text-blue-600 truncate">{{ regra.cliente_nome }}</p>
-                            <div class="mt-2 flex items-center text-sm text-gray-500">
-                                <span class="truncate">{{ regra.titulo_template }} (Dia {{ regra.dia_geracao }})</span>
-                            </div>
-                            <div class="mt-1 flex items-center text-xs text-gray-400">
-                                Depto: {{ regra.departamento }} | Resp: {{ regra.responsavel }} 
-                                {% if regra.email_override %}| E-mail Fixo: {{ regra.email_override }}{% endif %}
-                            </div>
-                        </div>
-                        <div class="flex gap-2">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ 'bg-green-100 text-green-800' if regra.ativo else 'bg-red-100 text-red-800' }}">
-                                {{ "Ativo" if regra.ativo else "Inativo" }}
-                            </span>
-                            <form action="/gestao/solicitacoes-recorrentes/deletar/{{ regra.id }}" method="POST" onsubmit="return confirm('Tem certeza?');">
-                                <button type="submit" class="text-red-600 hover:text-red-900 font-bold px-2 py-1 bg-red-50 rounded">Excluir</button>
-                            </form>
-                        </div>
-                    </div>
-                </li>
-                {% else %}
-                <li>
-                    <div class="px-4 py-8 sm:px-6 text-center text-gray-500">
-                        Nenhuma regra de solicitação recorrente cadastrada.
-                    </div>
-                </li>
-                {% endfor %}
-            </ul>
+<!-- Header com Busca e Botão Nova Regra -->
+<div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-5">
+    <h2 class="text-lg font-extrabold text-jp-navy tracking-tight flex items-center gap-2">
+        <i class="fa-solid fa-calendar-check text-indigo-500"></i> Solicitações Recorrentes
+        <span class="text-xs font-semibold bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100">{{ regras|length }}</span>
+    </h2>
+    <div class="flex items-center gap-3">
+        <div class="relative">
+            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input type="text" id="searchRegras" onkeyup="filtrarRegras()" placeholder="Buscar regra..." class="glass-input pl-8 pr-4 py-2 text-sm w-56">
         </div>
+        <button onclick="document.getElementById('modal-regra').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl transition-colors flex items-center gap-2 text-sm shadow-sm">
+            <i class="fa-solid fa-plus"></i> Nova Regra
+        </button>
     </div>
 </div>
 
-<!-- Modal Nova/Editar Regra -->
-<div id="modal-regra" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <form action="/gestao/solicitacoes-recorrentes/salvar" method="POST" class="p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Cadastrar Nova Regra</h3>
-            
-            <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Cliente *</label>
-                    <select name="cliente_id" required class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                        <option value="">Selecione...</option>
-                        {% for cli in clientes %}
-                        <option value="{{ cli.id }}">{{ cli.cliente }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Departamento *</label>
-                    <select name="departamento" required class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                        <option value="">Selecione...</option>
-                        {% for d in departamentos %}
-                        <option value="{{ d }}">{{ d }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Resp. (Email) *</label>
-                    <input type="text" name="responsavel" required class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                </div>
-                
-                <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">E-mail Específico (Opcional)</label>
-                    <input type="email" name="email_override" placeholder="Se preenchido, ignora o e-mail padrão do cliente" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                </div>
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+    <div class="card-premium p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Total de Regras</h3>
+            <div class="bg-indigo-100 text-indigo-500 p-2.5 rounded-xl"><i class="fa-solid fa-layer-group"></i></div>
+        </div>
+        <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ regras|length }}</p>
+    </div>
+    <div class="card-premium p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Regras Ativas</h3>
+            <div class="bg-emerald-100 text-emerald-500 p-2.5 rounded-xl"><i class="fa-solid fa-circle-check"></i></div>
+        </div>
+        <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ regras|selectattr('ativo')|list|length }}</p>
+    </div>
+    <div class="card-premium p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Regras Inativas</h3>
+            <div class="bg-amber-100 text-amber-500 p-2.5 rounded-xl"><i class="fa-solid fa-circle-pause"></i></div>
+        </div>
+        <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ regras|rejectattr('ativo')|list|length }}</p>
+    </div>
+</div>
 
-                <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Título (Assunto) *</label>
-                    <input type="text" name="titulo_template" required placeholder="Ex: Extratos Bancários do mês {mes_anterior}/{ano_anterior}" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                </div>
+<!-- Lista de Regras em Cards -->
+<div class="card-premium flex flex-col overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+        <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-clipboard-list mr-2 text-indigo-400"></i> Regras Cadastradas</h3>
+    </div>
 
-                <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Mensagem *</label>
-                    <textarea name="descricao_template" rows="3" required placeholder="Use {mes_anterior} e {ano_anterior} para datas relativas..." class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
-                    <p class="mt-2 text-xs text-gray-500">Exemplo: "Por favor, encaminhar os extratos bancários referentes ao mês <b>{mes_anterior}/{ano_anterior}</b>."</p>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Dia de Geração *</label>
-                    <input type="number" name="dia_geracao" required min="1" max="31" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+    <div id="listaRegras" class="flex-1 p-3 overflow-y-auto bg-slate-50/30 space-y-1.5">
+        {% for regra in regras %}
+        <div class="regra-card flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg shadow-sm hover:shadow hover:bg-slate-50 transition group border-l-4 {{ 'border-l-emerald-500' if regra.ativo else 'border-l-slate-300' }}">
+            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-[12px] font-bold text-jp-navy uppercase tracking-wider truncate">{{ regra.cliente_nome }}</span>
+                        <span class="text-slate-300 hidden md:inline">/</span>
+                        <span class="text-[11px] text-slate-600 truncate">{{ regra.titulo_template }}</span>
+                    </div>
+                    <div class="mt-1.5 flex items-center gap-2 flex-wrap">
+                        <span class="bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-slate-100 uppercase">
+                            <i class="fa-solid fa-building-columns mr-1"></i>{{ regra.departamento }}
+                        </span>
+                        <span class="bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-slate-100 uppercase">
+                            <i class="fa-solid fa-user-shield mr-1"></i>{{ regra.responsavel.split('@')[0] }}
+                        </span>
+                        <span class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-indigo-100">
+                            <i class="fa-regular fa-calendar mr-1"></i>Dia {{ regra.dia_geracao }}
+                        </span>
+                        {% if regra.email_override %}
+                        <span class="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-widest border border-amber-100" title="{{ regra.email_override }}">
+                            <i class="fa-solid fa-envelope mr-1"></i>E-mail fixo
+                        </span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
+            <div class="ml-3 flex-shrink-0 flex items-center gap-1.5">
+                <span class="px-2 py-0.5 text-[9px] uppercase font-black rounded-md border {{ 'bg-emerald-100 text-emerald-700 border-emerald-200' if regra.ativo else 'bg-slate-100 text-slate-500 border-slate-200' }}">
+                    {{ "Ativo" if regra.ativo else "Inativo" }}
+                </span>
+                <button onclick="editarRegra('{{ regra.id }}', '{{ regra.cliente_id }}', '{{ regra.departamento }}', '{{ regra.responsavel }}', '{{ regra.email_override or '' }}', `{{ regra.titulo_template }}`, `{{ regra.descricao_template or '' }}`, {{ regra.dia_geracao }}, {{ 'true' if regra.ativo else 'false' }})" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-500 hover:text-white p-1.5 rounded-md text-xs font-bold transition-all" title="Editar">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <form action="/gestao/solicitacoes-recorrentes/deletar/{{ regra.id }}" method="POST" class="inline" onsubmit="return confirm('Tem certeza que deseja excluir esta regra?');">
+                    <button type="submit" class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white p-1.5 rounded-md text-xs font-bold transition-all" title="Excluir">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-slate-500">
+            <i class="fa-solid fa-inbox text-4xl mb-3 text-slate-300"></i>
+            <h2 class="text-sm font-bold">Nenhuma regra cadastrada.</h2>
+            <p class="text-xs text-slate-400 mt-1">Clique em "+ Nova Regra" para começar.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
 
-            <div class="mt-6 flex justify-end gap-3">
-                <button type="button" onclick="document.getElementById('modal-regra').classList.add('hidden')" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
-                    Cancelar
-                </button>
-                <button type="submit" class="bg-blue-600 border border-transparent rounded-md shadow-sm py-2 px-4 text-sm font-medium text-white hover:bg-blue-700">
-                    Salvar Regra
-                </button>
+<!-- Legenda de Variáveis -->
+<div class="card-premium p-5 mt-5">
+    <h3 class="font-bold text-jp-navy uppercase tracking-widest text-[11px] mb-3"><i class="fa-solid fa-circle-info mr-2 text-indigo-400"></i> Variáveis Dinâmicas Disponíveis</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+            <code class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap">{mes_anterior}</code>
+            <span class="text-xs text-slate-600">Mês anterior ao da geração (ex: em Agosto → <b>07</b>)</span>
+        </div>
+        <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+            <code class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap">{ano_anterior}</code>
+            <span class="text-xs text-slate-600">Ano referente ao mês anterior (ex: em Jan/2027 → <b>2026</b>)</span>
+        </div>
+    </div>
+    <p class="text-[10px] text-slate-400 mt-3"><i class="fa-solid fa-lightbulb mr-1 text-amber-400"></i> Exemplo de uso: <i>"Extratos Bancários do mês <b>{mes_anterior}/{ano_anterior}</b>"</i> → gerado em Agosto: <i>"Extratos Bancários do mês 07/2026"</i></p>
+</div>
+
+<!-- Modal Nova/Editar Regra -->
+<div id="modal-regra" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200">
+        <form action="/gestao/solicitacoes-recorrentes/salvar" method="POST" id="formRegra">
+            <!-- Header do Modal -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 rounded-t-2xl">
+                <h3 id="modalTitle" class="font-bold text-jp-navy uppercase tracking-widest text-[11px]"><i class="fa-solid fa-plus mr-2 text-indigo-400"></i> Cadastrar Nova Regra</h3>
+                <button type="button" onclick="fecharModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="p-6">
+                <input type="hidden" name="id" id="regraId" value="">
+                
+                <div class="grid grid-cols-1 gap-y-5 gap-x-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cliente *</label>
+                        <select name="cliente_id" id="fCliente" required class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                            <option value="">Selecione...</option>
+                            {% for cli in clientes %}
+                            <option value="{{ cli.id }}">{{ cli.cliente }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Departamento *</label>
+                        <select name="departamento" id="fDepartamento" required class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                            <option value="">Selecione...</option>
+                            {% for d in departamentos %}
+                            <option value="{{ d }}">{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Responsável (E-mail) *</label>
+                        <input type="text" name="responsavel" id="fResponsavel" required class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                    </div>
+                    
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-mail Específico <span class="text-slate-400 normal-case font-normal">(Opcional — sobrepõe o e-mail padrão do cliente)</span></label>
+                        <input type="email" name="email_override" id="fEmailOverride" placeholder="ex: financeiro@empresa.com.br" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Título (Assunto do E-mail) *</label>
+                        <input type="text" name="titulo_template" id="fTitulo" required placeholder="Ex: Extratos Bancários do mês {mes_anterior}/{ano_anterior}" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mensagem *</label>
+                        <textarea name="descricao_template" id="fDescricao" rows="3" required placeholder="Use {mes_anterior} e {ano_anterior} para datas relativas..." class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Dia de Geração *</label>
+                        <input type="number" name="dia_geracao" id="fDia" required min="1" max="31" class="w-full bg-slate-50 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                        <p class="mt-1 text-[10px] text-slate-400">Se cair em final de semana, será postergado para o próximo dia útil.</p>
+                    </div>
+
+                    <div class="flex items-end">
+                        <label class="flex items-center gap-3 cursor-pointer bg-slate-50 px-4 py-2.5 rounded-lg w-full">
+                            <input type="checkbox" name="ativo" id="fAtivo" value="true" checked class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                            <span class="text-sm font-semibold text-slate-700">Regra Ativa</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Botões do Modal -->
+                <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="fecharModal()" class="bg-white py-2 px-4 border border-slate-200 rounded-xl shadow-sm text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-indigo-600 border border-transparent rounded-xl shadow-sm py-2 px-5 text-sm font-bold text-white hover:bg-indigo-700 transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Salvar Regra
+                    </button>
+                </div>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+function filtrarRegras() {
+    const filter = document.getElementById('searchRegras').value.toLowerCase();
+    const cards = document.querySelectorAll('.regra-card');
+    cards.forEach(card => {
+        card.style.display = card.innerText.toLowerCase().includes(filter) ? '' : 'none';
+    });
+}
+
+function editarRegra(id, clienteId, departamento, responsavel, emailOverride, titulo, descricao, dia, ativo) {
+    document.getElementById('regraId').value = id;
+    document.getElementById('fCliente').value = clienteId;
+    document.getElementById('fDepartamento').value = departamento;
+    document.getElementById('fResponsavel').value = responsavel;
+    document.getElementById('fEmailOverride').value = emailOverride;
+    document.getElementById('fTitulo').value = titulo;
+    document.getElementById('fDescricao').value = descricao;
+    document.getElementById('fDia').value = dia;
+    document.getElementById('fAtivo').checked = ativo;
+    document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square mr-2 text-indigo-400"></i> Editar Regra';
+    document.getElementById('modal-regra').classList.remove('hidden');
+}
+
+function fecharModal() {
+    document.getElementById('modal-regra').classList.add('hidden');
+    document.getElementById('formRegra').reset();
+    document.getElementById('regraId').value = '';
+    document.getElementById('fAtivo').checked = true;
+    document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-plus mr-2 text-indigo-400"></i> Cadastrar Nova Regra';
+}
+</script>
+
 {% endblock %}
