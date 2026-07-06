@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/gestao/solicitacoes-recorrentes")
 templates = Jinja2Templates(directory="app/templates")
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
 async def list_recorrentes(request: Request, db: Session = Depends(get_db), current_user: Usuario = Depends(require_login)):
     regras = db.query(SolicitacaoRecorrente).filter(
         SolicitacaoRecorrente.tenant_id == current_user.tenant_id
