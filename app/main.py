@@ -112,6 +112,9 @@ app.include_router(protocolo.router, tags=["Protocolos"])
 app.include_router(webhook.router, prefix="/webhook", tags=["Webhooks"])
 app.include_router(scheduler.router, prefix="/scheduler", tags=["Rotinas Agendadas"])
 
+from app.routers import solicitacao_recorrente
+app.include_router(solicitacao_recorrente.router, tags=["Solicitações Recorrentes"])
+
 from app.routers import painel_gestao
 app.include_router(painel_gestao.router, tags=["Painel de Gestão"])
 

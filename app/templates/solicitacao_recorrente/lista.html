@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitações Recorrentes - JP SaaS{% end block %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-900">Configuração de Solicitações Recorrentes</h1>
+            <button onclick="document.getElementById('modal-regra').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow">
+                + Nova Regra
+            </button>
+        </div>
+
+        <!-- Lista de Regras Atuais -->
+        <div class="bg-white shadow overflow-hidden sm:rounded-md">
+            <ul role="list" class="divide-y divide-gray-200">
+                {% for regra in regras %}
+                <li>
+                    <div class="px-4 py-4 sm:px-6 hover:bg-gray-50 flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-blue-600 truncate">{{ regra.cliente_nome }}</p>
+                            <div class="mt-2 flex items-center text-sm text-gray-500">
+                                <span class="truncate">{{ regra.titulo_template }} (Dia {{ regra.dia_geracao }})</span>
+                            </div>
+                            <div class="mt-1 flex items-center text-xs text-gray-400">
+                                Depto: {{ regra.departamento }} | Resp: {{ regra.responsavel }} 
+                                {% if regra.email_override %}| E-mail Fixo: {{ regra.email_override }}{% endif %}
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ 'bg-green-100 text-green-800' if regra.ativo else 'bg-red-100 text-red-800' }}">
+                                {{ "Ativo" if regra.ativo else "Inativo" }}
+                            </span>
+                            <form action="/gestao/solicitacoes-recorrentes/deletar/{{ regra.id }}" method="POST" onsubmit="return confirm('Tem certeza?');">
+                                <button type="submit" class="text-red-600 hover:text-red-900 font-bold px-2 py-1 bg-red-50 rounded">Excluir</button>
+                            </form>
+                        </div>
+                    </div>
+                </li>
+                {% else %}
+                <li>
+                    <div class="px-4 py-8 sm:px-6 text-center text-gray-500">
+                        Nenhuma regra de solicitação recorrente cadastrada.
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nova/Editar Regra -->
+<div id="modal-regra" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <form action="/gestao/solicitacoes-recorrentes/salvar" method="POST" class="p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Cadastrar Nova Regra</h3>
+            
+            <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Cliente *</label>
+                    <select name="cliente_id" required class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                        <option value="">Selecione...</option>
+                        {% for cli in clientes %}
+                        <option value="{{ cli.id }}">{{ cli.cliente }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Departamento *</label>
+                    <select name="departamento" required class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                        <option value="">Selecione...</option>
+                        {% for d in departamentos %}
+                        <option value="{{ d }}">{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Resp. (Email) *</label>
+                    <input type="text" name="responsavel" required class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                </div>
+                
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">E-mail Específico (Opcional)</label>
+                    <input type="email" name="email_override" placeholder="Se preenchido, ignora o e-mail padrão do cliente" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Título (Assunto) *</label>
+                    <input type="text" name="titulo_template" required placeholder="Ex: Extratos Bancários do mês {mes_anterior}/{ano_anterior}" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Mensagem *</label>
+                    <textarea name="descricao_template" rows="3" required placeholder="Use {mes_anterior} e {ano_anterior} para datas relativas..." class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                    <p class="mt-2 text-xs text-gray-500">Exemplo: "Por favor, encaminhar os extratos bancários referentes ao mês <b>{mes_anterior}/{ano_anterior}</b>."</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Dia de Geração *</label>
+                    <input type="number" name="dia_geracao" required min="1" max="31" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('modal-regra').classList.add('hidden')" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Cancelar
+                </button>
+                <button type="submit" class="bg-blue-600 border border-transparent rounded-md shadow-sm py-2 px-4 text-sm font-medium text-white hover:bg-blue-700">
+                    Salvar Regra
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% end block %}

@@ -13,6 +13,7 @@ from app.models.perfil import Perfil
 from app.models.tipo_tarefa import TipoTarefaAvulsa
 from app.models.equipe import Equipe, UsuarioEquipe
 from app.models.certificado import CertificadoDigital
+from app.models.solicitacao_recorrente import SolicitacaoRecorrente
 
 __all__ = [
     "Base",
@@ -34,5 +35,6 @@ __all__ = [
     "TipoTarefaAvulsa",
     "Equipe",
     "UsuarioEquipe",
-    "CertificadoDigital"
+    "CertificadoDigital",
+    "SolicitacaoRecorrente"
 ]

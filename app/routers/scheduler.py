@@ -11,6 +11,7 @@ from app.database import get_db
 from app.core.email_service import email_service
 from app.api.deps import verify_scheduler_key
 from app.core.task_engine import run_task_engine
+from app.core.cron_solicitacoes import run_cron_solicitacoes_recorrentes
 
 router = APIRouter()
 
@@ -108,6 +109,26 @@ async def trigger_task_engine(
         return {"status": "error", "message": "Sem dados base"}
         
     resultado = run_task_engine(db, cliente.tenant_id)
+    return resultado
+
+@router.post("/run-cron-solicitacoes")
+async def trigger_cron_solicitacoes(
+    db: Session = Depends(get_db),
+    _auth: bool = Depends(verify_scheduler_key)
+):
+    """
+    Roda a rotina diária de criação automática de solicitações recorrentes.
+    """
+    try:
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    except Exception:
+        pass
+        
+    cliente = db.query(models.Cliente).first()
+    if not cliente:
+        return {"status": "error", "message": "Sem dados base"}
+        
+    resultado = await run_cron_solicitacoes_recorrentes(db, cliente.tenant_id)
     return resultado
 
 @router.post("/whatsapp-reminders")
