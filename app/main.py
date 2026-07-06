@@ -62,6 +62,30 @@ def ensure_schema_updates():
                 conn.execute(text("ALTER TABLE clientes ADD COLUMN data_entrada DATE"))
                 conn.commit()
                 logger.info("[SCHEMA] Coluna 'data_entrada' adicionada à tabela 'clientes'.")
+                
+        # Criar tabela de solicitações recorrentes caso não exista
+        try:
+            from app.models.solicitacao_recorrente import SolicitacaoRecorrente
+            SolicitacaoRecorrente.__table__.create(engine, checkfirst=True)
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE solicitacoes_recorrentes ENABLE ROW LEVEL SECURITY;"))
+                # Cria a policy se não existir
+                conn.execute(text("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_policies WHERE tablename = 'solicitacoes_recorrentes' AND policyname = 'tenant_isolation_policy'
+                    ) THEN
+                        CREATE POLICY tenant_isolation_policy ON solicitacoes_recorrentes 
+                        USING (tenant_id::text = current_setting('app.current_tenant', true) OR current_setting('app.bypass_rls', true) = 'on');
+                    END IF;
+                END
+                $$;
+                """))
+                conn.commit()
+            logger.info("[SCHEMA] Tabela 'solicitacoes_recorrentes' e RLS verificados/criados.")
+        except Exception as e:
+            logger.warning(f"[SCHEMA] Erro ao criar tabela solicitacoes_recorrentes: {e}")
         
         if "regras_roteamento" not in colunas:
             with engine.connect() as conn:
