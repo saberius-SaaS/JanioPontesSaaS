@@ -26,7 +26,7 @@ if DB_HOST.startswith("/cloudsql"):
 else:
     DATABASE_URL = f"postgresql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True, connect_args={"options": "-c timezone=America/Sao_Paulo"})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

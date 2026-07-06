@@ -51,7 +51,8 @@ class StorageService:
         Funciona mesmo com Uniform Bucket-Level Access e Public Access Prevention habilitados.
         """
         try:
-            expiration = datetime.timedelta(days=SIGNED_URL_EXPIRATION_DAYS)
+            # Usa datetime absoluto com timezone explícito para evitar problemas de fuso horário local
+            expiration = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=SIGNED_URL_EXPIRATION_DAYS)
             
             # Se temos credenciais de Service Account, usa diretamente
             if self._credentials:
