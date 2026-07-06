@@ -1,3 +1,4 @@
+from app.core.timezone import agora_br, hoje_br
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, BackgroundTasks, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -66,12 +67,12 @@ async def create_solicitacao(
         if cli and cli.email:
             email = cli.email
 
-    id_legado_gerado = f"SOL-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4]}"
+    id_legado_gerado = f"SOL-{agora_br().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4]}"
     
     nova = models.Solicitacao(
         tenant_id=current_user.tenant_id,
         id_legado=id_legado_gerado,
-        data=datetime.now(),
+        data=agora_br(),
         cliente=cliente,
         email=email,
         pedido=pedido,
@@ -132,7 +133,7 @@ async def cobrar_solicitacao(
         eml = solic.email
 
         solic.qtd_avisos = (solic.qtd_avisos or 0) + 1
-        solic.ultima_cobranca = datetime.now()
+        solic.ultima_cobranca = agora_br()
         db.commit()
         
         if eml:
@@ -174,7 +175,7 @@ async def concluir_solicitacao(
     
     if solic:
         solic.status = "ENTREGUE"
-        solic.data_envio = datetime.now()
+        solic.data_envio = agora_br()
         db.commit()
         
     return RedirectResponse(url="/solicitacoes", status_code=303)
@@ -225,7 +226,7 @@ async def responder_solicitacao_publica(
         link = await storage_service.upload_file(arquivo)
         
     solic.status = "ENTREGUE"
-    solic.data_envio = datetime.now()
+    solic.data_envio = agora_br()
     resposta_texto = ""
     if mensagem:
         resposta_texto += f"\n\n[RESPOSTA DO CLIENTE]: {mensagem}"

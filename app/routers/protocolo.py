@@ -1,3 +1,4 @@
+from app.core.timezone import agora_br, hoje_br
 from fastapi import APIRouter, Depends, Request, Form, Query, UploadFile, File, BackgroundTasks
 from sqlalchemy import not_, or_
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -96,7 +97,7 @@ async def create_protocolo(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
-    prt_code = f"PRT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    prt_code = f"PRT-{agora_br().strftime('%Y%m%d%H%M%S')}"
 
     link = "Não anexado"
     if arquivo and arquivo.filename:
@@ -104,7 +105,7 @@ async def create_protocolo(
 
     novo_protocolo = models.Protocolo(
         tenant_id=current_user.tenant_id,
-        data=datetime.now(),
+        data=agora_br(),
         protocolo=prt_code,
         cliente=cliente,
         obrigacao=obrigacao,
@@ -117,7 +118,7 @@ async def create_protocolo(
 
     historico = models.HistoricoTarefa(
         tenant_id=current_user.tenant_id,
-        mes_ano=datetime.now().strftime("%m/%Y"),
+        mes_ano=agora_br().strftime("%m/%Y"),
         cliente=cliente,
         obrigacao=obrigacao,
         status="ENTREGUE",
@@ -223,7 +224,7 @@ async def baixa_manual_protocolo(
     
     if protocolo:
         log_msg = f"[BAIXA] Protocolo {protocolo.protocolo} ({protocolo.cliente}) marcado como lido por {current_user.nome}"
-        protocolo.conf_recto = datetime.now()
+        protocolo.conf_recto = agora_br()
         db.commit()
         logger.info(log_msg)
     

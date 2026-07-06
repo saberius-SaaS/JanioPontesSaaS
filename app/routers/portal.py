@@ -1,3 +1,4 @@
+from app.core.timezone import agora_br, hoje_br
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -63,7 +64,7 @@ async def acesso_magico(
 
     # Marca como lido se ainda não estiver
     if not protocolo.conf_recto:
-        protocolo.conf_recto = datetime.now()
+        protocolo.conf_recto = agora_br()
         db.commit()
 
     # Tenta preservar a sessão de admin (sub) caso o dono do sistema esteja testando o portal
@@ -78,7 +79,7 @@ async def acesso_magico(
 
     # Gera token de sessão do cliente
     expires = timedelta(days=30)
-    expire = datetime.now(timezone.utc) + expires
+    expire = agora_br() + expires
     token_data = {"exp": expire, "cliente": cliente_nome, "tenant_id": tenant_id_str}
     
     if admin_sub:
@@ -350,7 +351,7 @@ async def portal_solicitacao_reply(
         link = await storage_service.upload_file(arquivo, cliente_nome=cliente_nome)
 
     solic.status = "ENTREGUE"
-    solic.data_envio = datetime.now()
+    solic.data_envio = agora_br()
     
     resposta_texto = ""
     if mensagem:

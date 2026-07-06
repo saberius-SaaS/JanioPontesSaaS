@@ -1,3 +1,4 @@
+from app.core.timezone import agora_br, hoje_br
 from fastapi import APIRouter, Depends, Request, Form, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def gerar_protocolo() -> str:
     """Gera um código de protocolo único no formato PRT-YYYYMMDD-XXXX."""
-    agora = datetime.datetime.now()
+    agora = agora_br()
     return f"PRT-{agora.strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
 
 
@@ -66,7 +67,7 @@ def registrar_protocolo(db: Session, tenant_id: str, tarefa, protocolo: str,
     """Registra o protocolo de entrega no banco."""
     prot = models.Protocolo(
         tenant_id=tenant_id,
-        data=datetime.datetime.now(datetime.timezone.utc),
+        data=agora_br(),
         cliente=tarefa.cliente,
         protocolo=protocolo,
         id_tarefa=tarefa.id_controle,
@@ -77,7 +78,7 @@ def registrar_protocolo(db: Session, tenant_id: str, tarefa, protocolo: str,
         status_envio=status_envio,
         vcto_legal=tarefa.vencimento_legal,
         acao=tarefa.acao,
-        conf_recto=datetime.datetime.now(datetime.timezone.utc) if baixa_automatica else None
+        conf_recto=agora_br() if baixa_automatica else None
     )
     db.add(prot)
     return prot
@@ -144,7 +145,7 @@ async def enviar_notificacao_entrega(tarefa, protocolo: str, email_destino: str,
             <div style="margin-top: 30px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
                 <p style="color: #64748b; font-size: 12px; margin: 0; font-weight: bold;">Sistema Gestor de Tarefas - NCE (Núcleo de Consultoria Estratégica)</p>
                 <p style="color: #94a3b8; font-size: 10px; margin: 5px 0 0;">Monitoramento legal de abertura de mensagem.</p>
-                <p style="color: #cbd5e1; font-size: 9px; margin: 15px 0 0;">Processado por {responsavel_nome} — {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                <p style="color: #cbd5e1; font-size: 9px; margin: 15px 0 0;">Processado por {responsavel_nome} — {agora_br().strftime('%d/%m/%Y %H:%M')}</p>
             </div>
         </div>
     </div>

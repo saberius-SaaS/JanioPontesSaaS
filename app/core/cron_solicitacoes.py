@@ -1,3 +1,4 @@
+from app.core.timezone import agora_br, hoje_br
 import datetime
 import calendar
 import logging
@@ -106,7 +107,7 @@ async def run_cron_solicitacoes_recorrentes(db: Session, tenant_id: str, force_d
             nova_solicitacao = Solicitacao(
                 id_legado=f"SOL-REC-{hoje.strftime('%Y%m%d%H%M%S')}-{geradas}",
                 tenant_id=tenant_id,
-                data=datetime.datetime.now(),
+                data=agora_br(),
                 cliente=cliente.cliente,
                 email=email_destino,
                 pedido=pedido_completo,

@@ -1,3 +1,4 @@
+from app.core.timezone import agora_br, hoje_br
 from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -32,7 +33,7 @@ async def check_overdue_tasks(
     except Exception:
         pass
 
-    today = datetime.now().date()
+    today = hoje_br()
 
     tarefas_atrasadas = db.query(models.Tarefa).filter(
         models.Tarefa.vencimento < today,
@@ -64,7 +65,7 @@ async def daily_report(
     except Exception:
         pass
 
-    today = datetime.now().date()
+    today = hoje_br()
     entregas_hoje = db.query(models.Protocolo).filter(
         models.Protocolo.data >= datetime.combine(today, datetime.min.time())
     ).count()
@@ -151,7 +152,7 @@ async def send_whatsapp_reminders(
     except Exception:
         pass
         
-    agora = datetime.now(timezone.utc)
+    agora = agora_br()
     limite_notificacao = agora - timedelta(hours=24)
 
     # Buscar protocolos não lidos que não foram notificados nas últimas 24h

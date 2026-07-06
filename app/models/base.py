@@ -2,6 +2,7 @@
 Modelo Base SQLAlchemy para o JP SaaS.
 Define a classe base, mixins de auditoria e o tenant_id para RLS.
 """
+from app.core.timezone import agora_br, hoje_br
 import uuid
 from datetime import datetime, timezone
 
@@ -34,15 +35,15 @@ class TenantMixin:
     criado_em = Column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=func.now(),
+        default=agora_br,
         comment="Data de criação do registro"
     )
 
     atualizado_em = Column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=func.now(),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=agora_br,
+        onupdate=agora_br,
         comment="Data da última atualização"
     )
 

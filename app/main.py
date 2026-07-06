@@ -1,3 +1,4 @@
+from app.core.timezone import agora_br, hoje_br
 from fastapi import FastAPI
 from sqlalchemy import extract as sa_extract
 from fastapi.middleware.cors import CORSMiddleware
@@ -408,7 +409,7 @@ async def get_badges(db: Session = Depends(get_db), current_user: models.Usuario
     ).count()
 
     from datetime import timezone
-    agora = datetime.now(timezone.utc)
+    agora = agora_br()
     limite_online = agora - timedelta(seconds=90)
     hoje = date.today()
     

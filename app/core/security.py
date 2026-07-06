@@ -1,3 +1,4 @@
+from app.core.timezone import agora_br, hoje_br
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 
@@ -12,9 +13,9 @@ def create_access_token(
     subject: Union[str, Any], expires_delta: timedelta = None
 ) -> str:
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = agora_br() + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
+        expire = agora_br() + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
     to_encode = {"exp": expire, "sub": str(subject)}

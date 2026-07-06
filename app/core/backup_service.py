@@ -3,6 +3,7 @@ Backup do banco PostgreSQL para o Google Drive.
 Exporta todas as tabelas como CSV, compacta em ZIP e faz upload
 na pasta BACKUPS_SISTEMA do Drive corporativo.
 """
+from app.core.timezone import agora_br, hoje_br
 import io
 import csv
 import zipfile
@@ -33,7 +34,7 @@ def gerar_backup_zip(db: Session) -> tuple[bytes, str]:
     except Exception:
         pass
 
-    agora = datetime.now()
+    agora = agora_br()
     nome_arquivo = f"backup_jpsaas_{agora.strftime('%Y%m%d_%H%M%S')}.zip"
 
     zip_buffer = io.BytesIO()
@@ -114,7 +115,7 @@ def limpar_backups_antigos(dias_retencao: int = 30):
     from datetime import timedelta
 
     service = drive_service._get_service()
-    limite = (datetime.now() - timedelta(days=dias_retencao)).isoformat() + "Z"
+    limite = (agora_br() - timedelta(days=dias_retencao)).isoformat() + "Z"
 
     try:
         resultados = service.files().list(

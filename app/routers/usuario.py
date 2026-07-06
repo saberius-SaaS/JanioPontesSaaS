@@ -1,3 +1,4 @@
+from app.core.timezone import agora_br, hoje_br
 from fastapi import APIRouter, Depends, Request, Form, Query
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -39,7 +40,7 @@ async def list_usuarios_page(
     map_mes = {t.email: t.total_minutos for t in telemetria_mes}
 
     from datetime import timezone
-    agora = datetime.now(timezone.utc)
+    agora = agora_br()
     limite_online = agora - timedelta(seconds=90)
     online_freqs = db.query(models.FrequenciaAcesso.email).filter(
         models.FrequenciaAcesso.tenant_id == current_user.tenant_id,
@@ -213,7 +214,7 @@ async def impersonate_user(
         return RedirectResponse(url="/usuarios", status_code=303)
         
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    expire = datetime.now(timezone.utc) + access_token_expires
+    expire = agora_br() + access_token_expires
     
     # Store the admin's original token in __admin_session
     original_token = request.cookies.get("__session")
@@ -269,7 +270,7 @@ async def stop_impersonate(request: Request, db: Session = Depends(get_db)):
             
         # Gera novo token de admin
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        expire = datetime.now(timezone.utc) + access_token_expires
+        expire = agora_br() + access_token_expires
         
         token_data = {"exp": expire, "sub": str(admin_user.id)}
         
