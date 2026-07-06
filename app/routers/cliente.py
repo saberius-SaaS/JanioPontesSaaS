@@ -200,6 +200,13 @@ async def update_cliente(
     obj.email_societario = email_societario
     obj.regras_roteamento = regras_roteamento
     obj.status = status
+    if status == "INATIVO":
+        db.query(models.Tarefa).filter(
+            models.Tarefa.cliente == obj.cliente,
+            models.Tarefa.tenant_id == current_user.tenant_id,
+            models.Tarefa.status != 'ENTREGUE'
+        ).delete(synchronize_session=False)
+
     if data_entrada:
         try:
             obj.data_entrada = datetime.datetime.strptime(data_entrada, '%Y-%m-%d').date()
@@ -221,6 +228,11 @@ async def delete_cliente(
     obj = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if obj:
         obj.status = "INATIVO"
+        db.query(models.Tarefa).filter(
+            models.Tarefa.cliente == obj.cliente,
+            models.Tarefa.tenant_id == current_user.tenant_id,
+            models.Tarefa.status != 'ENTREGUE'
+        ).delete(synchronize_session=False)
         db.commit()
 
     clientes = db.query(models.Cliente).order_by(models.Cliente.cliente).limit(PAGE_SIZE).all()

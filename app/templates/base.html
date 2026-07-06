@@ -500,7 +500,16 @@
         </h2>
         <form action="/" method="GET" id="filterForm" class="flex flex-col sm:flex-row items-center gap-3">
             <input type="hidden" name="periodo" id="periodoInput" value="{{ periodo_selecionado }}">
+            <input type="hidden" name="tipo_pesquisa" id="tipoPesquisaInput" value="{{ tipo_pesquisa_selecionado }}">
             
+            <!-- Seletor Tipo de Pesquisa (Mês/Ano ou Vencimento) -->
+            <div class="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                <select id="tipoPesquisa" onchange="document.getElementById('tipoPesquisaInput').value=this.value; document.getElementById('filterForm').submit();" class="bg-transparent border-none text-xs font-bold text-slate-500 uppercase focus:ring-0 outline-none cursor-pointer py-1.5 px-2">
+                    <option value="mes_ano" {{ 'selected' if tipo_pesquisa_selecionado == 'mes_ano' else '' }}>Mês/Ano</option>
+                    <option value="vencimento" {{ 'selected' if tipo_pesquisa_selecionado == 'vencimento' else '' }}>Vencimento</option>
+                </select>
+            </div>
+
             <!-- Seletor de Período -->
             <div class="flex bg-white rounded-xl p-1 border border-slate-200 shadow-sm">
                 {% for p in periodos %}

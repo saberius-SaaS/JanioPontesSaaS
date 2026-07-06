@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from sqlalchemy import extract as sa_extract
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
@@ -147,6 +148,7 @@ async def root(
     request: Request, 
     departamento: str = None,
     periodo: str = None,
+    tipo_pesquisa: str = "vencimento",
     db: Session = Depends(get_db), 
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -183,8 +185,23 @@ async def root(
     filtro_periodo_hist = []
     
     if periodo_selecionado != 'todos':
-        filtro_periodo = [models.Tarefa.mes_ano == periodo_selecionado]
-        filtro_periodo_hist = [models.HistoricoTarefa.mes_ano == periodo_selecionado]
+        if tipo_pesquisa == 'vencimento':
+            try:
+                mes, ano = periodo_selecionado.split('/')
+                filtro_periodo = [
+                    sa_extract('month', models.Tarefa.vencimento) == int(mes),
+                    sa_extract('year', models.Tarefa.vencimento) == int(ano)
+                ]
+                filtro_periodo_hist = [
+                    sa_extract('month', models.HistoricoTarefa.vencimento) == int(mes),
+                    sa_extract('year', models.HistoricoTarefa.vencimento) == int(ano)
+                ]
+            except ValueError:
+                filtro_periodo = [models.Tarefa.mes_ano == periodo_selecionado]
+                filtro_periodo_hist = [models.HistoricoTarefa.mes_ano == periodo_selecionado]
+        else:
+            filtro_periodo = [models.Tarefa.mes_ano == periodo_selecionado]
+            filtro_periodo_hist = [models.HistoricoTarefa.mes_ano == periodo_selecionado]
 
     # Buscar lista de departamentos disponíveis para o filtro
     departamentos_db = db.query(models.Equipe.departamento).filter(
@@ -358,7 +375,8 @@ async def root(
         "departamentos": departamentos_lista,
         "departamento_selecionado": departamento or 'TODOS',
         "periodos": periodos,
-        "periodo_selecionado": periodo_selecionado
+        "periodo_selecionado": periodo_selecionado,
+        "tipo_pesquisa_selecionado": tipo_pesquisa
     })
 
 @app.get("/api/badges")
