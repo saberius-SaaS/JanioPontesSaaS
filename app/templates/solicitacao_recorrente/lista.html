@@ -22,30 +22,7 @@
     </div>
 </div>
 
-<!-- KPI Cards -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-    <div class="card-premium p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Total de Regras</h3>
-            <div class="bg-indigo-100 text-indigo-500 p-2.5 rounded-xl"><i class="fa-solid fa-layer-group"></i></div>
-        </div>
-        <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ regras|length }}</p>
-    </div>
-    <div class="card-premium p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Regras Ativas</h3>
-            <div class="bg-emerald-100 text-emerald-500 p-2.5 rounded-xl"><i class="fa-solid fa-circle-check"></i></div>
-        </div>
-        <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ regras|selectattr('ativo')|list|length }}</p>
-    </div>
-    <div class="card-premium p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-slate-500 font-semibold text-xs uppercase tracking-wider">Regras Inativas</h3>
-            <div class="bg-amber-100 text-amber-500 p-2.5 rounded-xl"><i class="fa-solid fa-circle-pause"></i></div>
-        </div>
-        <p class="text-3xl font-extrabold text-slate-800 kpi-value">{{ regras|rejectattr('ativo')|list|length }}</p>
-    </div>
-</div>
+
 
 <!-- Lista de Regras em Cards -->
 <div class="card-premium flex flex-col overflow-hidden">

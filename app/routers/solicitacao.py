@@ -21,9 +21,17 @@ async def list_solicitacoes(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
+    from sqlalchemy import case
+    
     solicitacoes = db.query(models.Solicitacao).filter(
         models.Solicitacao.tenant_id == current_user.tenant_id
-    ).order_by(models.Solicitacao.data.desc()).all()
+    ).order_by(
+        case(
+            (models.Solicitacao.status != 'ENTREGUE', 0),
+            else_=1
+        ),
+        models.Solicitacao.data.desc()
+    ).all()
     
     clientes = db.query(models.Cliente).filter(
         models.Cliente.tenant_id == current_user.tenant_id,
