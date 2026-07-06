@@ -43,7 +43,7 @@ from app.api.deps import require_login
 from app import models
 from app.database import get_db
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -251,12 +251,14 @@ async def root(
     ).count()
     entregues = entregues_ativas + entregues_historico
 
-    # Risco Legal: tarefas PENDENTE com vencimento <= hoje
+    # Risco Legal: Tarefas não entregues (PENDENTE, REVISAO, etc) com vencimento_legal ou interno vencidos
     atrasadas = db.query(models.Tarefa).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
-        models.Tarefa.status == 'PENDENTE',
-        models.Tarefa.vencimento != None,
-        models.Tarefa.vencimento <= hoje,
+        models.Tarefa.status.notin_(['ENTREGUE']),
+        or_(
+            models.Tarefa.vencimento < hoje,
+            models.Tarefa.vencimento_legal < hoje
+        ),
         *filtro_depto,
         *filtro_periodo
     ).count()
