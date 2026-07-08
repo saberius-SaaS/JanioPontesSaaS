@@ -312,7 +312,7 @@ async def portal_dashboard(
         models.Protocolo.cliente == cliente_nome
     )
     if email_usuario:
-        query = query.filter(models.Protocolo.email == email_usuario)
+        query = query.filter(models.Protocolo.email.ilike(f"%{email_usuario}%"))
     protocolos_db = query.order_by(models.Protocolo.data.desc()).limit(50).all()
 
     import re
@@ -419,7 +419,7 @@ async def portal_documento(
         models.Protocolo.cliente == cliente_nome
     )
     if email_usuario:
-        query = query.filter(models.Protocolo.email == email_usuario)
+        query = query.filter(models.Protocolo.email.ilike(f"%{email_usuario}%"))
     protocolo = query.first()
 
     if not protocolo:
@@ -464,7 +464,7 @@ async def portal_solicitacoes_list(
         models.Solicitacao.cliente == cliente_nome
     )
     if email_usuario:
-        query = query.filter(models.Solicitacao.email == email_usuario)
+        query = query.filter(models.Solicitacao.email.ilike(f"%{email_usuario}%"))
     solicitacoes = query.order_by(models.Solicitacao.data.desc()).all()
 
     return templates.TemplateResponse(request, "portal/solicitacoes.html", {
@@ -495,7 +495,7 @@ async def portal_solicitacao_view(
         models.Solicitacao.cliente == cliente_nome
     )
     if email_usuario:
-        query = query.filter(models.Solicitacao.email == email_usuario)
+        query = query.filter(models.Solicitacao.email.ilike(f"%{email_usuario}%"))
     solic = query.first()
 
     if not solic:
@@ -544,7 +544,7 @@ async def portal_solicitacao_reply(
         models.Solicitacao.cliente == cliente_nome
     )
     if email_usuario:
-        query = query.filter(models.Solicitacao.email == email_usuario)
+        query = query.filter(models.Solicitacao.email.ilike(f"%{email_usuario}%"))
     solic = query.first()
 
     if not solic:
