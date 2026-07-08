@@ -86,9 +86,11 @@ chave_portal_gerada_em = Column(DateTime(timezone=True), nullable=True, comment=
 
 ### Task 2: Migration Alembic
 
-**Comando:** `alembic revision --autogenerate -m "add_portal_access_key_to_clientes"`
+**Comando:** `alembic revision --autogenerate -m "add_portal_access_key_and_login_attempts"`
 
-Colunas: `chave_portal_hash` (VARCHAR 255, nullable), `chave_portal_gerada_em` (TIMESTAMPTZ, nullable).
+Tabelas/Colunas:
+- Tabela `clientes`: colunas `chave_portal_hash` (VARCHAR 255, nullable), `chave_portal_gerada_em` (TIMESTAMPTZ, nullable).
+- Tabela `tentativas_login`: colunas `id` (UUID, primary key), `ip_address` (VARCHAR 45, index), `attempt_time` (TIMESTAMPTZ, default now), `documento` (VARCHAR 20, nullable).
 
 > **Verificar:** `alembic upgrade head` executa sem erros no banco.
 
@@ -101,23 +103,23 @@ Colunas: `chave_portal_hash` (VARCHAR 255, nullable), `chave_portal_gerada_em` (
 Nova rota `POST /portal/auth`:
 
 ```
-Recebe: {cnpj: str, chave: str}
-1. Normaliza CNPJ (remove ./-) 
-2. Busca cliente por CNPJ (bypass RLS) com status ATIVO
-3. Se não encontrar → erro genérico "CNPJ ou Chave de Acesso inválidos"
-4. bcrypt.verify(chave, cliente.chave_portal_hash)
-5. Se inválido → mesmo erro genérico (não revelar qual campo falhou)
-6. Gera JWT idêntico ao do magic link: {cliente: nome, tenant_id: id}
-7. Set-Cookie __session (httponly, secure, samesite=lax, 30 dias)
-8. Redirect → /portal
+Recebe: {documento: str, chave: str}
+1. Normaliza e valida documento: remove caracteres não numéricos. Se len == 11, valida CPF; se len == 14, valida CNPJ.
+2. Limpa tentativas expiradas (>15 min) e verifica rate limit no banco para o IP: se > 5 tentativas falhas, retorna HTTP 429.
+3. Busca cliente por documento normalizado (bypass RLS) com status ATIVO. A comparação zera à esquerda (zfill 11 ou 14) para lidar com formatação inconsistente no DB.
+4. Se não encontrar → registra tentativa falha e retorna erro genérico 401 "CNPJ/CPF ou Chave de Acesso inválidos".
+5. bcrypt.verify(chave, cliente.chave_portal_hash).
+6. Se inválido → registra tentativa falha e retorna erro genérico 401.
+7. Se válido → remove histórico de falhas do IP, gera JWT {cliente: nome, tenant_id: id} (30 dias).
+8. Set-Cookie __session (httponly, secure, samesite=lax, 30 dias) e Redirect → /portal.
 ```
 
 **Segurança:**
-- Rate limiting: max 5 tentativas por IP em 15 min (implementar com dict in-memory ou middleware)
-- Mensagem de erro genérica (nunca revelar se CNPJ existe ou não)
-- Log de tentativas falhas
+- Rate limiting: persistido no banco na tabela `tentativas_login` (máx. 5 falhas por IP em 15 min).
+- Mensagem de erro genérica.
+- Log de tentativas falhas.
 
-> **Verificar:** `POST /portal/auth` com credenciais corretas → redirect para `/portal` com cookie. Credenciais erradas → erro 401.
+> **Verificar:** `POST /portal/auth` com credenciais corretas → redirect para `/portal`. Bloqueio após 5 falhas consecutivas do mesmo IP.
 
 ---
 
@@ -177,12 +179,13 @@ Novo endpoint `POST /api/clientes/{id}/gerar-chave-portal`:
 ```
 
 **Emails destinatários (todos os cadastrados):**
+Extrair de forma unificada e sem duplicidades (usando `set`):
 - `cliente.email` (principal)
 - `cliente.email_fiscal`
 - `cliente.email_contabil`
 - `cliente.email_pessoal`
 - `cliente.email_societario`
-- Emails de `cliente.regras_roteamento` (extrair do JSON)
+- Emails de `cliente.regras_roteamento`: parsear JSON e extrair todos os valores string, separando por vírgula/ponto-e-vírgula se contiverem múltiplos e-mails.
 
 **Template do email:**
 ```

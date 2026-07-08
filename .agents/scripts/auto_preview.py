@@ -12,7 +12,6 @@ Usage:
 
 import os
 import sys
-import time
 import json
 import signal
 import argparse

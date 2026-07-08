@@ -244,6 +244,21 @@
                         <input type="hidden" name="regras_roteamento" id="input-regras-roteamento" value="">
                     </div>
                     
+                    <!-- Chave de Acesso ao Portal (Apenas Edição) -->
+                    <div id="campo-chave-portal" class="mt-4 hidden">
+                        <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Portal do Cliente</label>
+                        <div class="bg-indigo-50/50 border border-indigo-100/50 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div class="space-y-1">
+                                <span class="block text-xs font-bold text-jp-navy">Chave de Acesso Direto</span>
+                                <span id="portal-chave-status" class="block text-[11px] text-slate-500">Nenhuma chave gerada para este cliente.</span>
+                            </div>
+                            <button type="button" id="btn-gerar-chave-portal" onclick="gerarChavePortal()"
+                                    class="px-4 py-2 bg-jp-navy hover:bg-[#15243e] text-white text-xs font-bold rounded-lg shadow transition-all whitespace-nowrap flex items-center gap-1.5 font-sans">
+                                <i class="fa-solid fa-key"></i> Gerar e Enviar Chave
+                            </button>
+                        </div>
+                    </div>
+                    
                     <!-- Perfis Ativos -->
                     <div class="mt-4">
                         <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Perfis Ativos</label>
@@ -311,8 +326,9 @@ function abrirNovoCliente() {
     document.getElementById('subtitulo-modal-cliente').textContent = 'Preencha os dados do novo cliente';
     document.getElementById('icone-modal-cliente').innerHTML = '<i class="fa-solid fa-building text-lg"></i>';
     
-    // Hide status field for new clients (always ATIVO)
+    // Hide status field and portal key for new clients
     document.getElementById('campo-status-cliente').classList.add('hidden');
+    document.getElementById('campo-chave-portal').classList.add('hidden');
     toggleStatus.checked = true;
     inputStatus.value = 'ATIVO';
     labelStatus.textContent = 'ATIVO';
@@ -368,6 +384,18 @@ function abrirEdicaoCliente(dados) {
     labelStatus.textContent = isAtivo ? 'ATIVO' : 'INATIVO';
     labelStatus.className = isAtivo ? 'text-sm font-bold text-emerald-600' : 'text-sm font-bold text-slate-400';
     
+    // Portal Key Setup
+    document.getElementById('campo-chave-portal').classList.remove('hidden');
+    document.getElementById('btn-gerar-chave-portal').setAttribute('data-cliente-id', dados.id);
+    const chaveStatus = document.getElementById('portal-chave-status');
+    if (dados.chave_portal_gerada_em) {
+        const dataGerada = new Date(dados.chave_portal_gerada_em);
+        const dataFormatada = dataGerada.toLocaleDateString('pt-BR') + ' às ' + dataGerada.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+        chaveStatus.innerHTML = `Chave ativa gerada em <strong class="text-indigo-900">${dataFormatada}</strong>`;
+    } else {
+        chaveStatus.textContent = 'Nenhuma chave gerada para este cliente.';
+    }
+
     // Header
     document.getElementById('titulo-modal-cliente').textContent = 'Editar Cliente';
     document.getElementById('subtitulo-modal-cliente').textContent = dados.cliente || 'Atualizar dados';
@@ -438,6 +466,51 @@ function adicionarRegraRoteamento() {
 function removerRegraRoteamento(obrigacao) {
     delete _regrasRoteamento[obrigacao];
     renderizarRegrasRoteamento();
+}
+
+async function gerarChavePortal() {
+    const btn = document.getElementById('btn-gerar-chave-portal');
+    const clienteId = btn.getAttribute('data-cliente-id');
+    if (!clienteId) return;
+
+    if (!confirm('Deseja realmente gerar uma nova chave de acesso para este cliente? A chave atual (se houver) será invalidada.')) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Gerando...';
+
+    try {
+        const response = await fetch(`/api/clientes/${clienteId}/gerar-chave-portal`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            throw new Error('Falha ao gerar chave de acesso.');
+        }
+
+        const data = await response.json();
+        
+        if (data.ok) {
+            const emails = data.destinatarios && data.destinatarios.length > 0 
+                ? data.destinatarios.join(', ') 
+                : 'nenhum e-mail configurado';
+            
+            alert(`Chave de Acesso gerada com sucesso!\n\nChave: ${data.chave}\n\nEnviada por e-mail para: ${emails}`);
+            
+            const chaveStatus = document.getElementById('portal-chave-status');
+            const agora = new Date();
+            const dataFormatada = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+            chaveStatus.innerHTML = `Chave ativa gerada em <strong class="text-indigo-900">${dataFormatada}</strong>`;
+        } else {
+            alert('Erro: ' + (data.error || 'Não foi possível gerar a chave.'));
+        }
+    } catch (err) {
+        alert('Erro ao gerar chave de acesso: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-key"></i> Gerar e Enviar Chave';
+    }
 }
 </script>
 {% endblock %}

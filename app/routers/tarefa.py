@@ -1,4 +1,4 @@
-from app.core.timezone import agora_br, hoje_br
+from app.core.timezone import agora_br
 from fastapi import APIRouter, Depends, Request, Form, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -12,7 +12,7 @@ from app.database import get_db
 from app.api.deps import require_login
 from app.core.email_service import email_service
 from app.core.storage_service import storage_service
-from typing import List, Optional
+from typing import List
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -515,7 +515,7 @@ async def finalizar_tarefa(
             else:
                 logger.warning(f"[DEBUG GCS] Arquivo ignorado: has_read={has_read}, fname='{fname}'")
     else:
-        logger.warning(f"[DEBUG GCS] lista_arquivos está vazia, nenhum upload tentado")
+        logger.warning("[DEBUG GCS] lista_arquivos está vazia, nenhum upload tentado")
                     
     logger.warning(f"[DEBUG RESULTADO] links_gerados: {len(links_gerados)}")
     
@@ -624,7 +624,7 @@ async def finalizar_tarefa(
         "status": status_final,
         "acao": acao,
         "email_destino": email_destino or "N/A",
-        "message": f"Tarefa movida para REVISÃO (aguardando aprovação)." if precisa_revisao 
+        "message": "Tarefa movida para REVISÃO (aguardando aprovação)." if precisa_revisao 
                    else f"Tarefa concluída com protocolo {protocolo}."
     })
 

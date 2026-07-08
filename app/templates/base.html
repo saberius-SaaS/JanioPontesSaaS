@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Janio Pontes SaaS - Plataforma{% endblock %}</title>
   <meta name="description" content="Plataforma moderna de gestão multi-tenant Janio Pontes SaaS">
+  <meta property="og:title" content="Janio Pontes SaaS">
+  <meta property="og:description" content="Plataforma moderna de gestão multi-tenant Janio Pontes SaaS">
+  <meta property="og:type" content="website">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -108,7 +111,7 @@
 
     /* ═══════════════ AVATAR INICIAIS ═══════════════ */
     .avatar-initials {
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
       box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3), inset 0 1px 2px rgba(255,255,255,0.15);
       text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
@@ -234,7 +237,7 @@
 
     /* ═══════════════ UTILITÁRIOS VISUAIS ═══════════════ */
     .text-gradient {
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      background: linear-gradient(135deg, #6366f1, #0ea5e9);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -326,7 +329,7 @@
       <a href="/revisoes" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
         <i class="fa-solid fa-stamp w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
         <span class="ml-2.5 flex-1">Aprovar Revisões</span>
-        <span id="badge-revisoes" class="hidden bg-purple-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shadow-black/20"></span>
+        <span id="badge-revisoes" class="hidden bg-sky-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shadow-black/20"></span>
       </a>
       {% endif %}
 
@@ -499,8 +502,8 @@
             <i class="fa-solid fa-chart-pie text-indigo-500"></i> Visão Geral: {% if periodo_selecionado == 'todos' %}Todos os Períodos{% else %}{{ periodo_selecionado }}{% endif %}
         </h2>
         <form action="/" method="GET" id="filterForm" class="flex flex-col sm:flex-row items-center gap-3">
-            <input type="hidden" name="periodo" id="periodoInput" value="{{ periodo_selecionado }}">
-            <input type="hidden" name="tipo_pesquisa" id="tipoPesquisaInput" value="{{ tipo_pesquisa_selecionado }}">
+            <input aria-label="hidden" type="hidden" name="periodo" id="periodoInput" value="{{ periodo_selecionado }}">
+            <input aria-label="hidden" type="hidden" name="tipo_pesquisa" id="tipoPesquisaInput" value="{{ tipo_pesquisa_selecionado }}">
             
             <!-- Seletor Tipo de Pesquisa (Mês/Ano ou Vencimento) -->
             <div class="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
@@ -613,7 +616,7 @@
 
             const palette = [
               '#6366f1', '#06b6d4', '#f59e0b', '#10b981', '#ef4444',
-              '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#3b82f6'
+              '#0ea5e9', '#ec4899', '#14b8a6', '#f97316', '#3b82f6'
             ];
 
             new Chart(ctx, {

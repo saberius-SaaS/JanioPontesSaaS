@@ -1,14 +1,15 @@
-from app.core.timezone import agora_br, hoje_br
-from fastapi import APIRouter, Depends, Request, Form, Query
+from app.core.timezone import agora_br
+from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from jose import jwt
 from sqlalchemy.orm import Session
 from uuid import UUID
 
 from app import models
 from app.database import get_db
-from app.api.deps import require_admin, require_login, get_user_from_cookie
-from datetime import date, datetime, timedelta
+from app.api.deps import require_admin, get_user_from_cookie
+from datetime import date, timedelta
 from sqlalchemy import func
 
 router = APIRouter()
@@ -39,7 +40,6 @@ async def list_usuarios_page(
     ).group_by(models.FrequenciaAcesso.email).all()
     map_mes = {t.email: t.total_minutos for t in telemetria_mes}
 
-    from datetime import timezone
     agora = agora_br()
     limite_online = agora - timedelta(seconds=90)
     online_freqs = db.query(models.FrequenciaAcesso.email).filter(
@@ -99,7 +99,6 @@ async def register_ping(
 
         # SLIDING SESSION: Renova o token e o cookie se o usuário estiver ativo
         from fastapi.responses import JSONResponse
-        from app.core import security
         from app.core.config import settings
         from datetime import timedelta
 
@@ -207,7 +206,7 @@ async def impersonate_user(
     from fastapi.responses import RedirectResponse
     from app.core.config import settings
     from jose import jwt
-    from datetime import datetime, timedelta, timezone
+    from datetime import timedelta
     
     target_user = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
     if not target_user:
@@ -251,7 +250,7 @@ async def stop_impersonate(request: Request, db: Session = Depends(get_db)):
     from fastapi.responses import RedirectResponse
     from app.core.config import settings
     from jose import jwt
-    from datetime import datetime, timedelta, timezone
+    from datetime import timedelta
 
     current_token = request.cookies.get("__session")
     if not current_token:

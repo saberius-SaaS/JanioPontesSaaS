@@ -16,7 +16,7 @@
             {% endfor %}
             
             <form hx-post="/equipes/{{ eq.id }}/membros" hx-target="#equipes-tbody" class="flex items-center gap-1 ml-2">
-                <select name="usuario_id" class="text-xs border-slate-200 rounded p-1 py-0.5 focus:ring-indigo-500" required>
+                <select aria-label="Selecionar Usuário" name="usuario_id" class="text-xs border-slate-200 rounded p-1 py-0.5 focus:ring-indigo-500" required>
                     <option value="">+ Adicionar Membro</option>
                     {% for u in usuarios %}
                     <option value="{{ u.id }}">{{ u.nome }}</option>

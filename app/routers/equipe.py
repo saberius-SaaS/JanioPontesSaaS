@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from uuid import UUID
 
 from app import models
 from app.database import get_db

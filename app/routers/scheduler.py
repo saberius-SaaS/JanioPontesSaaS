@@ -142,7 +142,7 @@ async def send_whatsapp_reminders(
     Protegida por X-Scheduler-Key header. Chamada pelo Cloud Scheduler.
     """
     from sqlalchemy import not_, or_, text
-    from datetime import datetime, timezone, timedelta
+    from datetime import timedelta
     from app.core.chatwoot_service import chatwoot_service
     from collections import defaultdict
     import re

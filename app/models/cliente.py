@@ -2,7 +2,7 @@
 Modelo: Clientes (Empresas atendidas pelo escritório)
 Mapeamento: DB_CLIENTES (21 colunas)
 """
-from sqlalchemy import Column, Integer, String, Text, Date
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 import datetime
 
@@ -45,6 +45,10 @@ class Cliente(TenantMixin, Base):
 
     # --- Coluna U ---
     nome_fantasia = Column(String(255), nullable=True, comment="Nome fantasia da empresa")
+
+    # --- Chave de Acesso ao Portal ---
+    chave_portal_hash = Column(String(255), nullable=True, comment="Hash bcrypt da chave de acesso ao portal")
+    chave_portal_gerada_em = Column(DateTime(timezone=True), nullable=True, comment="Data de geracao da ultima chave")
 
     # --- Controle de Entrada ---
     data_entrada = Column(Date, nullable=True, default=datetime.date.today, comment="Data de entrada do cliente na carteira. Tarefas não serão geradas para competências anteriores a este mês.")

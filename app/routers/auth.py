@@ -13,7 +13,6 @@ from google.auth.transport import urllib3 as google_urllib3
 import urllib3
 
 from app import models
-from app.core import security
 from app.core.config import settings
 from app.database import get_db
 

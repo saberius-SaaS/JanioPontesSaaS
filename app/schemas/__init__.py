@@ -1,1 +1,1 @@
-from app.schemas.token import Token, TokenPayload
+from app.schemas.token import Token as Token, TokenPayload as TokenPayload

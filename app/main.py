@@ -1,4 +1,4 @@
-from app.core.timezone import agora_br, hoje_br
+from app.core.timezone import agora_br
 from fastapi import FastAPI
 from sqlalchemy import extract as sa_extract
 from fastapi.middleware.cors import CORSMiddleware
@@ -116,8 +116,9 @@ async def add_global_template_context_and_security(request: Request, call_next):
     return response
 
 # Inclusão de Rotas
-from app.routers import auth, cliente, regra, protocolo, webhook, scheduler, usuario, equipe, perfil, tarefa, historico, solicitacao, tipo_tarefa, workflow, compliance, portal, ferramentas, certificados, sobre
+from app.routers import auth, cliente, regra, protocolo, webhook, scheduler, usuario, equipe, perfil, tarefa, historico, solicitacao, tipo_tarefa, workflow, compliance, portal, ferramentas, certificados, sobre, institucional
 app.include_router(auth.router, tags=["Autenticação"])
+app.include_router(institucional.router, tags=["Institucional"])
 app.include_router(ferramentas.router, tags=["Ferramentas"])
 app.include_router(sobre.router, tags=["Sobre"])
 app.include_router(portal.router, tags=["Portal do Cliente"])
@@ -150,9 +151,13 @@ async def root(
     departamento: str = None,
     periodo: str = None,
     tipo_pesquisa: str = "vencimento",
-    db: Session = Depends(get_db), 
-    current_user: models.Usuario = Depends(require_login)
+    db: Session = Depends(get_db)
 ):
+    from app.api.deps import get_user_from_cookie
+    current_user = get_user_from_cookie(request, db)
+    if not current_user or not current_user.ativo:
+        return templates.TemplateResponse(request, "institucional/home.html", {"request": request})
+
     from datetime import date
     hoje = date.today()
     
@@ -385,7 +390,7 @@ async def root(
 @app.get("/api/badges")
 async def get_badges(db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_login)):
     from sqlalchemy import not_, or_
-    from datetime import datetime, timedelta, date
+    from datetime import timedelta, date
     
     revisoes = db.query(models.Tarefa).filter(
         models.Tarefa.tenant_id == current_user.tenant_id,
@@ -408,7 +413,6 @@ async def get_badges(db: Session = Depends(get_db), current_user: models.Usuario
         )
     ).count()
 
-    from datetime import timezone
     agora = agora_br()
     limite_online = agora - timedelta(seconds=90)
     hoje = date.today()

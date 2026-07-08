@@ -2,11 +2,10 @@
 Modelo Base SQLAlchemy para o JP SaaS.
 Define a classe base, mixins de auditoria e o tenant_id para RLS.
 """
-from app.core.timezone import agora_br, hoje_br
+from app.core.timezone import agora_br
 import uuid
-from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, text, func
+from sqlalchemy import Column, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, declared_attr
 

@@ -1,4 +1,4 @@
-from app.core.timezone import agora_br, hoje_br
+from app.core.timezone import agora_br
 import datetime
 import calendar
 import logging
@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from app.models import SolicitacaoRecorrente, Solicitacao, Cliente
 from app.core.task_engine import is_dia_util
 from app.core.email_service import email_service
-from app.models.base import gerar_uuid
 
 logger = logging.getLogger(__name__)
 

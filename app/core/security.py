@@ -1,13 +1,9 @@
-from app.core.timezone import agora_br, hoje_br
-from datetime import datetime, timedelta, timezone
+import bcrypt
+from app.core.timezone import agora_br
+from datetime import timedelta
 from typing import Any, Union
-
 from jose import jwt
-from passlib.context import CryptContext
-
 from app.core.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def create_access_token(
     subject: Union[str, Any], expires_delta: timedelta = None
@@ -25,7 +21,16 @@ def create_access_token(
     return encoded_jwt
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        # bcrypt.checkpw requires bytes
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except Exception:
+        return False
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    # bcrypt.hashpw returns bytes, we decode it to string for DB storage
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')

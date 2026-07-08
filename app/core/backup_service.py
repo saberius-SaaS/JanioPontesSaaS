@@ -3,12 +3,11 @@ Backup do banco PostgreSQL para o Google Drive.
 Exporta todas as tabelas como CSV, compacta em ZIP e faz upload
 na pasta BACKUPS_SISTEMA do Drive corporativo.
 """
-from app.core.timezone import agora_br, hoje_br
+from app.core.timezone import agora_br
 import io
 import csv
 import zipfile
 import logging
-from datetime import datetime
 
 from sqlalchemy import text, inspect
 from sqlalchemy.orm import Session

@@ -2,15 +2,13 @@ import os
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, Header, status
-from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app import models, schemas
-from app.core import security
+from app import models
 from app.core.config import settings
 from app.database import get_db
 

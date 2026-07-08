@@ -2,7 +2,6 @@
 8.1.3 — Testes para as rotas CRUD de protocolos, clientes e scheduler.
 Valida que as rotas respondem corretamente e que os dados são persistidos.
 """
-import pytest
 
 
 class TestCrudClientes:

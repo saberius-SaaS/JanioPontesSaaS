@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base, TenantMixin, gerar_uuid

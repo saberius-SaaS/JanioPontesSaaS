@@ -519,8 +519,8 @@ function renderizarTarefas(tarefas) {
         let borderClass = ehEnvio ? 'border-l-emerald-500' : 'border-l-slate-400 hover:border-l-indigo-500';
         
         if (ehRevisao) {
-            colorClass = 'bg-purple-100 text-purple-700';
-            borderClass = 'border-l-purple-500 bg-purple-50/30';
+            colorClass = 'bg-sky-100 text-sky-700';
+            borderClass = 'border-l-sky-500 bg-sky-50/30';
         }
         if (ehCompetenciaFutura && !ehRevisao) {
             borderClass = 'border-l-amber-500 bg-amber-50/30';
@@ -538,7 +538,7 @@ function renderizarTarefas(tarefas) {
                 <div class="flex items-center gap-2 mb-0.5">
                    <span class="${ehCompetenciaFutura ? 'bg-amber-500 text-white' : 'bg-slate-800 text-slate-100'} px-1.5 py-0.5 rounded text-[9px] font-bold tracking-widest shadow-sm">${t.mesAno}</span>
                    ${ehCompetenciaFutura ? '<span class="bg-amber-100 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest shadow-sm">MÊS SEGUINTE</span>' : ''}
-                   ${ehRevisao ? '<span class="bg-purple-600 text-white px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest shadow-sm animate-pulse">EM REVISÃO</span>' : ''}
+                   ${ehRevisao ? '<span class="bg-sky-600 text-white px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest shadow-sm animate-pulse">EM REVISÃO</span>' : ''}
                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nível ${t.nivel} | Ref: ${t.id}</p>
                 </div>
                 <p class="text-xs font-bold text-jp-navy uppercase tracking-wider">${t.cliente}</p>
@@ -549,7 +549,7 @@ function renderizarTarefas(tarefas) {
                 ${t.responsavel ? `<p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1"><i class="fa-solid fa-user-tag mr-1 text-slate-300"></i>${t.responsavel}</p>` : ''}
              </div>
              <div class="text-right flex flex-col items-end">
-                <p class="text-[11px] font-bold ${ehRevisao ? 'text-purple-600' : 'text-red-500'} mb-2"><i class="fa-regular fa-clock mr-1"></i> ${t.vencimentoStr}</p>
+                <p class="text-[11px] font-bold ${ehRevisao ? 'text-sky-600' : 'text-red-500'} mb-2"><i class="fa-regular fa-clock mr-1"></i> ${t.vencimentoStr}</p>
                 <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${colorClass}">${ehRevisao ? 'VALIDAR ENTREGA' : textoAcao}</span>
              </div>
           </div>
@@ -581,10 +581,10 @@ function renderizarRevisoes(tarefas) {
         const obriSafe = String(t.obrigacao).replace(/'/g, "\\'");
         
         html += `
-          <div onclick="abrirModalTarefa('${idSafe}', '${clienteSafe}', '${obriSafe}', '${t.vencimentoStr}', '${t.acao}', 'REVISAO', '${t.docLinks || ''}')" class="task-card flex items-center justify-between p-4 bg-white border border-purple-100 rounded-xl shadow-sm hover:shadow transition group cursor-pointer border-l-4 border-l-purple-500 bg-purple-50/20">
+          <div onclick="abrirModalTarefa('${idSafe}', '${clienteSafe}', '${obriSafe}', '${t.vencimentoStr}', '${t.acao}', 'REVISAO', '${t.docLinks || ''}')" class="task-card flex items-center justify-between p-4 bg-white border border-sky-100 rounded-xl shadow-sm hover:shadow transition group cursor-pointer border-l-4 border-l-sky-500 bg-sky-50/20">
              <div>
                 <div class="flex items-center gap-2 mb-0.5">
-                   <span class="bg-purple-600 text-white px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest shadow-sm animate-pulse">REVISÃO PENDENTE</span>
+                   <span class="bg-sky-600 text-white px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest shadow-sm animate-pulse">REVISÃO PENDENTE</span>
                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ref: ${t.id}</p>
                 </div>
                 <p class="text-xs font-bold text-jp-navy uppercase tracking-wider">${t.cliente}</p>
@@ -594,8 +594,8 @@ function renderizarRevisoes(tarefas) {
                 </div>
              </div>
              <div class="text-right flex flex-col items-end">
-                <p class="text-[11px] font-bold text-purple-600 mb-2"><i class="fa-regular fa-clock mr-1"></i> ${t.vencimentoStr}</p>
-                <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 shadow-sm">VALIDAR AGORA</span>
+                <p class="text-[11px] font-bold text-sky-600 mb-2"><i class="fa-regular fa-clock mr-1"></i> ${t.vencimentoStr}</p>
+                <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-100 text-sky-700 border border-sky-200 shadow-sm">VALIDAR AGORA</span>
              </div>
           </div>
         `;
@@ -645,7 +645,7 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw, status, d
     if(ehEnvio) colorClass = "text-emerald-700 border-emerald-200 bg-emerald-50";
     if(ehAuditoria) colorClass = "text-amber-700 border-amber-200 bg-amber-50";
     if(ehComunicar) colorClass = "text-white border-indigo-500 bg-indigo-600 shadow-md";
-    if(ehRevisao) colorClass = "text-purple-700 border-purple-200 bg-purple-50 shadow-sm";
+    if(ehRevisao) colorClass = "text-sky-700 border-sky-200 bg-sky-50 shadow-sm";
     
     const badge = document.getElementById('modalAcaoBadge');
     badge.className = `inline-flex text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded border ${colorClass}`;
@@ -723,7 +723,7 @@ function abrirModalTarefa(id, cliente, obrigacao, vencimento, acaoRaw, status, d
        if (isAdmin) {
           btnFin.disabled = false;
           btnFin.innerHTML = `<i class="fa-solid fa-stamp mr-2"></i> Validar e Encerrar Agora`;
-          btnFin.className = "px-6 py-2 text-sm font-black bg-purple-600 hover:bg-purple-700 text-white rounded shadow-lg transition flex items-center uppercase tracking-widest";
+          btnFin.className = "px-6 py-2 text-sm font-black bg-sky-600 hover:bg-sky-700 text-white rounded shadow-lg transition flex items-center uppercase tracking-widest";
           btnFin.onclick = aprovarTarefaWeb;
           
           // Exibir área de reprovação para Admin

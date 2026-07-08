@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Request, BackgroundTasks
 from sqlalchemy.orm import Session
-import json
 
 from app.database import get_db
 

@@ -1,16 +1,17 @@
-from app.core.timezone import agora_br, hoje_br
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from app.core.timezone import agora_br
+from fastapi import APIRouter, Depends, Request, HTTPException, status, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
+from jose import jwt
 import logging
+import re
 
 from app import models
 from app.database import get_db
 from app.api.deps import require_cliente_login
-from app.core import security
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,6 @@ async def acesso_magico(
     if admin_sub:
         token_data["sub"] = admin_sub
 
-    from jose import jwt
     token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     response = RedirectResponse(url=f"/portal/documento/{prot_id}", status_code=status.HTTP_302_FOUND)
@@ -102,6 +102,178 @@ async def acesso_magico(
 @router.get("/portal/login", response_class=HTMLResponse)
 async def portal_login(request: Request):
     return templates.TemplateResponse(request, "portal/login.html", {"request": request})
+
+def validar_documento(doc: str) -> str:
+    """Valida CPF (11 digitos) ou CNPJ (14 digitos) e retorna apenas os digitos."""
+    limpo = re.sub(r'[^0-9]', '', doc)
+    if len(limpo) == 11:
+        if limpo == limpo[0] * 11:
+            raise ValueError("CPF invalido")
+        soma = sum(int(limpo[i]) * (10 - i) for i in range(9))
+        d1 = (soma * 10) % 11
+        if d1 >= 10:
+            d1 = 0
+        if int(limpo[9]) != d1:
+            raise ValueError("CPF invalido")
+        soma = sum(int(limpo[i]) * (11 - i) for i in range(10))
+        d2 = (soma * 10) % 11
+        if d2 >= 10:
+            d2 = 0
+        if int(limpo[10]) != d2:
+            raise ValueError("CPF invalido")
+        return limpo
+    elif len(limpo) == 14:
+        if limpo == limpo[0] * 14:
+            raise ValueError("CNPJ invalido")
+        pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        soma = sum(int(limpo[i]) * pesos1[i] for i in range(12))
+        d1 = 11 - (soma % 11)
+        if d1 >= 10:
+            d1 = 0
+        if int(limpo[12]) != d1:
+            raise ValueError("CNPJ invalido")
+        pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        soma = sum(int(limpo[i]) * pesos2[i] for i in range(13))
+        d2 = 11 - (soma % 11)
+        if d2 >= 10:
+            d2 = 0
+        if int(limpo[13]) != d2:
+            raise ValueError("CNPJ invalido")
+        return limpo
+    else:
+        raise ValueError("Documento invalido")
+
+@router.post("/portal/auth", response_class=HTMLResponse)
+async def portal_auth(
+    request: Request,
+    documento: str = Form(...),
+    chave: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        limpo = validar_documento(documento)
+    except ValueError:
+        return templates.TemplateResponse(
+            request,
+            "portal/login.html",
+            {"request": request, "erro": "Documento (CPF ou CNPJ) invalido.", "documento": documento},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    ip = request.client.host if request.client else "0.0.0.0"
+    limite_tempo = agora_br() - timedelta(minutes=15)
+    
+    try:
+        from app.models.tentativa_login import TentativaLogin
+        db.query(TentativaLogin).filter(TentativaLogin.attempt_time < limite_tempo).delete()
+        db.commit()
+    except Exception as e:
+        logger.error(f"Erro ao limpar tentativas antigas: {e}")
+
+    try:
+        failed_count = db.query(TentativaLogin).filter(
+            TentativaLogin.ip_address == ip,
+            TentativaLogin.attempt_time >= limite_tempo
+        ).count()
+        if failed_count >= 5:
+            return templates.TemplateResponse(
+                request,
+                "portal/login.html",
+                {"request": request, "erro": "Muitas tentativas falhas. Acesso bloqueado por 15 minutos.", "documento": documento},
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+    except Exception as e:
+        logger.error(f"Erro ao contar tentativas falhas: {e}")
+
+    def registrar_falha():
+        try:
+            nova_tentativa = TentativaLogin(
+                ip_address=ip,
+                documento=limpo,
+                attempt_time=agora_br()
+            )
+            db.add(nova_tentativa)
+            db.commit()
+        except Exception as e:
+            logger.error(f"Erro ao persistir falha no login: {e}")
+
+    try:
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    except Exception:
+        pass
+
+    padded_input = limpo.zfill(11) if len(limpo) == 11 else limpo.zfill(14)
+    
+    clientes = db.query(models.Cliente).filter(models.Cliente.status == 'ATIVO').all()
+    cliente = None
+    for c in clientes:
+        if not c.cnpj:
+            continue
+        c_clean = re.sub(r'[^0-9]', '', c.cnpj)
+        if not c_clean:
+            continue
+        c_padded = c_clean.zfill(11) if len(c_clean) <= 11 else c_clean.zfill(14)
+        if c_padded == padded_input:
+            cliente = c
+            break
+
+    if not cliente or not cliente.chave_portal_hash:
+        registrar_falha()
+        return templates.TemplateResponse(
+            request,
+            "portal/login.html",
+            {"request": request, "erro": "Documento ou Chave de Acesso incorretos.", "documento": documento},
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
+
+    from app.core.security import verify_password
+    if not verify_password(chave.strip(), cliente.chave_portal_hash):
+        registrar_falha()
+        return templates.TemplateResponse(
+            request,
+            "portal/login.html",
+            {"request": request, "erro": "Documento ou Chave de Acesso incorretos.", "documento": documento},
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
+
+    try:
+        db.query(TentativaLogin).filter(TentativaLogin.ip_address == ip).delete()
+        db.commit()
+    except Exception as e:
+        logger.error(f"Erro ao limpar tentativas falhas: {e}")
+
+    expires = timedelta(days=30)
+    expire = agora_br() + expires
+    token_data = {
+        "exp": expire,
+        "cliente": cliente.cliente,
+        "tenant_id": str(cliente.tenant_id)
+    }
+
+    token_atual = request.cookies.get("__session")
+    if token_atual:
+        try:
+            from jose import jwt
+            payload = jwt.decode(token_atual, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            admin_sub = payload.get("sub")
+            if admin_sub:
+                token_data["sub"] = admin_sub
+        except Exception:
+            pass
+
+    from jose import jwt
+    token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+    response = RedirectResponse(url="/portal", status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(
+        key="__session",
+        value=token,
+        httponly=True,
+        max_age=30 * 24 * 60 * 60,
+        samesite="lax",
+        secure=True
+    )
+    return response
 
 @router.get("/portal", response_class=HTMLResponse)
 async def portal_dashboard(
@@ -125,9 +297,7 @@ async def portal_dashboard(
 
     import re
     from collections import defaultdict
-    import locale
 
-    protocolos_parsed = []
     meses_grupos = defaultdict(list)
 
     # Buscar período (mes_ano) das tarefas vinculadas (batch para evitar N+1)
@@ -318,9 +488,7 @@ async def portal_solicitacao_reply(
     Para reaproveitar o upload e email do backend, faremos um form submission simples
     semelhante à rota pública, mas redirecionando de volta ao portal.
     """
-    from fastapi import Form, UploadFile, File, BackgroundTasks
     from app.core.storage_service import storage_service
-    from app.core.email_service import email_service
     
     # Process the form data explicitly because this is inside a POST function 
     # that doesn't use the typical Form/File injections directly due to being a manual route handler.

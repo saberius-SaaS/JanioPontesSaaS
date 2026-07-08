@@ -1,10 +1,9 @@
-from app.core.timezone import agora_br, hoje_br
-from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, BackgroundTasks, HTTPException
+from app.core.timezone import agora_br
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime
 import uuid
 
 from app import models
@@ -88,7 +87,7 @@ async def create_solicitacao(
     db.commit()
     
     if email:
-        assunto = f"Nova Solicitação: Janio Pontes Contabilidade"
+        assunto = "Nova Solicitação: Janio Pontes Contabilidade"
         corpo = f"""
         <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
             <div style="background: #1C3051; color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
@@ -137,7 +136,7 @@ async def cobrar_solicitacao(
         db.commit()
         
         if eml:
-            assunto = f"Lembrete: Solicitação Janio Pontes Contabilidade"
+            assunto = "Lembrete: Solicitação Janio Pontes Contabilidade"
             corpo = f"""
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
                 <div style="background: #1C3051; color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">

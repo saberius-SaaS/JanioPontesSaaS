@@ -1,0 +1,37 @@
+# Exclude non-project directories from linting
+exclude = [
+    ".git",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    ".agents",
+    "alembic",
+    "gas",
+    "chatwoot",
+    "typebot",
+    "scripts",
+    # One-off utility scripts in root
+    "check_*.py",
+    "fix_*.py",
+    "clean_*.py",
+    "diag.py",
+    "find_*.py",
+    "limpar_*.py",
+    "list_*.py",
+    "trigger_*.py",
+    "patch.sh",
+]
+
+line-length = 120
+
+[lint]
+# Ignore rules that conflict with SQLAlchemy patterns and FastAPI structure
+ignore = [
+    "E402",   # Module level import not at top of file — FastAPI app setup pattern
+    "E701",   # Multiple statements on one line (colon)
+    "E711",   # Comparison to None — SQLAlchemy .filter(col == None) pattern
+    "E712",   # Comparison to True/False — SQLAlchemy filter pattern
+    "E722",   # Bare except — used in defensive try blocks for SQLite/Postgres compat
+    "E741",   # Ambiguous variable name — short names in list comprehensions
+]

@@ -93,7 +93,6 @@ class ChatwootService:
                 # Se encontrou por nome/email mas telefone não bate, atualizar o primeiro com o telefone correto
                 if normalized_phone:
                     first_contact = search_result["payload"][0]
-                    first_id = first_contact.get("id")
                     first_phone = first_contact.get("phone_number", "")
                     logger.warning(
                         f"Contato '{first_contact.get('name')}' encontrado mas telefone diverge: "

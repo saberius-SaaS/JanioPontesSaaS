@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acesso Expirado - Portal do Cliente</title>
+    <title>Entrar no Portal do Cliente — Jânio Pontes</title>
+    <meta name="description" content="Acesso seguro ao portal do cliente Janio Pontes SaaS">
+    <meta property="og:title" content="Portal do Cliente">
+    <meta property="og:description" content="Acesso seguro ao portal do cliente">
+    <meta property="og:type" content="website">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,44 +20,141 @@
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                        heading: ['Outfit', 'sans-serif']
                     }
                 }
             }
         }
     </script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #1C3051 0%, #15243e 50%, #0d1627 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .logo-glow {
+            filter: drop-shadow(0 0 15px rgba(28, 48, 81, 0.15));
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
-        <div class="p-8 text-center">
-            <img src="/static/logo.jpg" alt="Logo" class="h-16 w-auto mx-auto mb-6 rounded-lg shadow-sm border border-slate-200">
-            
-            <div class="w-16 h-16 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fa-solid fa-clock-rotate-left text-2xl"></i>
+    <!-- Decorative background elements -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-1/4 right-1/4 w-80 h-80 bg-indigo-500 rounded-full opacity-5 blur-3xl"></div>
+        <div class="absolute bottom-1/3 left-1/4 w-96 h-96 bg-blue-500 rounded-full opacity-5 blur-3xl"></div>
+    </div>
+
+    <div class="glass-card rounded-3xl shadow-2xl p-8 w-full max-w-md relative z-10">
+        <!-- Logo and Heading -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center mb-4">
+                <img src="/static/logo.jpg" class="h-16 w-auto object-contain rounded-xl logo-glow border border-slate-100" alt="Jânio Pontes Logo">
             </div>
-            
-            <h2 class="text-xl font-bold text-jp-navy mb-2">Sua Sessão Expirou</h2>
-            <p class="text-sm text-slate-500 mb-6">Por questões de segurança, o seu acesso ao portal foi desconectado.</p>
-            
-            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl mb-6 text-left">
-                <p class="text-xs text-indigo-800 font-medium">
-                    <i class="fa-solid fa-lightbulb text-indigo-500 mr-1"></i>
-                    Para voltar ao portal, basta abrir qualquer e-mail enviado recentemente pela nossa equipe e clicar no botão <strong>"Acessar no Portal do Cliente"</strong>.
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight font-heading">Portal do Cliente</h1>
+            <p class="text-slate-400 text-xs mt-1 font-medium uppercase tracking-wider">Jânio Pontes Contabilidade</p>
+        </div>
+
+        <!-- Notification / Error Messages -->
+        {% if erro %}
+        <div class="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-800 text-sm flex items-start gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 shrink-0 mt-0.5 text-rose-600">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+            </svg>
+            <div class="font-medium">{{ erro }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Form -->
+        <form action="/portal/auth" method="POST" class="space-y-6">
+            <div>
+                <label for="documento" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">CNPJ ou CPF do Cliente</label>
+                <div class="relative">
+                    <input type="text" id="documento" name="documento" required placeholder="00.000.000/0000-00" value="{{ documento or '' }}"
+                        class="w-full bg-slate-50 border border-slate-200 focus:border-jp-navy focus:bg-white focus:ring-0 rounded-2xl px-4 py-3.5 text-sm transition-all outline-none text-slate-800 placeholder-slate-400 font-medium">
+                </div>
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label for="chave" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Chave de Acesso</label>
+                    <span class="text-[10px] text-slate-400 font-medium">Formato: JP-XXXXXX</span>
+                </div>
+                <input type="password" id="chave" name="chave" required placeholder="Digite sua chave de acesso" 
+                    class="w-full bg-slate-50 border border-slate-200 focus:border-jp-navy focus:bg-white focus:ring-0 rounded-2xl px-4 py-3.5 text-sm transition-all outline-none text-slate-800 placeholder-slate-400 font-medium">
+            </div>
+
+            <button type="submit" 
+                class="w-full bg-jp-navy hover:bg-[#15243e] text-white font-semibold py-4 rounded-2xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm">
+                Entrar no Portal
+            </button>
+        </form>
+
+        <!-- Help Banner -->
+        <div class="mt-8 pt-6 border-t border-slate-100">
+            <div class="bg-indigo-50/50 border border-indigo-100/50 p-4 rounded-2xl text-left">
+                <p class="text-[11px] text-indigo-950/80 leading-relaxed font-medium">
+                    💡 <strong>Não possui uma chave?</strong> As chaves são geradas e enviadas por e-mail automaticamente. Caso precise de uma nova chave, entre em contato conosco ou clique no botão de acesso rápido em qualquer e-mail de documento enviado recentemente pelo nosso sistema.
                 </p>
             </div>
-            
-            <a href="mailto:contato@janiopontes.com.br" class="text-xs text-slate-400 hover:text-indigo-600 font-semibold transition-colors">
-                Precisa de ajuda? Fale conosco.
+        </div>
+
+        <!-- Back to Site Link -->
+        <div class="mt-6 text-center">
+            <a href="/" class="text-xs text-slate-400 hover:text-slate-600 font-semibold transition-colors flex items-center justify-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                </svg>
+                Voltar ao Site
             </a>
         </div>
     </div>
 
+    <!-- Client-side Masking Script -->
+    <script>
+        const docInput = document.getElementById('documento');
+        
+        function formatarDocumento(value) {
+            value = value.replace(/\D/g, ''); // Remove tudo que não é dígito
+            
+            if (value.length <= 11) {
+                // Formato CPF: 000.000.000-00
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            } else {
+                // Formato CNPJ: 00.000.000/0000-00
+                value = value.slice(0, 14); // Limita em 14 dígitos
+                value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+                value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+                value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+                value = value.replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+            }
+            return value;
+        }
+
+        docInput.addEventListener('input', function(e) {
+            const start = e.target.selectionStart;
+            const originalLength = e.target.value.length;
+            
+            e.target.value = formatarDocumento(e.target.value);
+            
+            // Ajustar o cursor após formatação
+            const newLength = e.target.value.length;
+            e.target.setSelectionRange(start + (newLength - originalLength), start + (newLength - originalLength));
+        });
+
+        // Garantir que a chave seja sempre enviada sem espaços em branco extras
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const chaveInput = document.getElementById('chave');
+            chaveInput.value = chaveInput.value.trim().toUpperCase();
+        });
+    </script>
 </body>
 </html>

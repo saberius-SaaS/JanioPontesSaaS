@@ -2,9 +2,6 @@
 8.1.2 — Testes unitários para isolamento RLS e autenticação.
 Valida que o middleware de tenant funciona e que rotas protegidas exigem token.
 """
-import pytest
-from unittest.mock import patch, MagicMock
-from app.api.deps import get_current_user
 
 
 class TestRLSIsolation:

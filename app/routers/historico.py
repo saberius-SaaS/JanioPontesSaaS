@@ -100,8 +100,7 @@ async def reenviar_historico(
     if not protocolo or not protocolo.email:
         return JSONResponse(status_code=400, content={"detail": "E-mail ou dados do protocolo não encontrados."})
         
-    link = protocolo.link_arquivo or "Não anexado"
-    
+        
     corpo_html = f"""
     <div style="font-family: 'Inter', 'Roboto', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
         <div style="background: #1C3051; color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">

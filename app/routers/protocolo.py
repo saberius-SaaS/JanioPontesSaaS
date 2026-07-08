@@ -1,10 +1,9 @@
-from app.core.timezone import agora_br, hoje_br
+from app.core.timezone import agora_br
 from fastapi import APIRouter, Depends, Request, Form, Query, UploadFile, File, BackgroundTasks
 from sqlalchemy import not_, or_
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from datetime import datetime
 import uuid
 import re
 import logging
