@@ -473,6 +473,7 @@ async function gerarChavePortal() {
     const clienteId = btn.getAttribute('data-cliente-id');
     if (!clienteId) return;
 
+    // Usar o modal de confirmação padrão do sistema
     if (!confirm('Deseja realmente gerar uma nova chave de acesso para este cliente? A chave atual (se houver) será invalidada.')) {
         return;
     }
@@ -496,17 +497,17 @@ async function gerarChavePortal() {
                 ? data.destinatarios.join(', ') 
                 : 'nenhum e-mail configurado';
             
-            alert(`Chave de Acesso gerada com sucesso!\n\nChave: ${data.chave}\n\nEnviada por e-mail para: ${emails}`);
+            showToast('Chave Gerada', `Chave: ${data.chave} — Enviada para: ${emails}`, 'success');
             
             const chaveStatus = document.getElementById('portal-chave-status');
             const agora = new Date();
             const dataFormatada = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
             chaveStatus.innerHTML = `Chave ativa gerada em <strong class="text-indigo-900">${dataFormatada}</strong>`;
         } else {
-            alert('Erro: ' + (data.error || 'Não foi possível gerar a chave.'));
+            showToast('Erro', data.error || 'Não foi possível gerar a chave.', 'error');
         }
     } catch (err) {
-        alert('Erro ao gerar chave de acesso: ' + err.message);
+        showToast('Erro', 'Falha ao gerar chave de acesso: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-key"></i> Gerar e Enviar Chave';
