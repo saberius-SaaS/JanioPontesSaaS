@@ -474,7 +474,8 @@ async function gerarChavePortal() {
     if (!clienteId) return;
 
     // Usar o modal de confirmação padrão do sistema
-    if (!confirm('Deseja realmente gerar uma nova chave de acesso para este cliente? A chave atual (se houver) será invalidada.')) {
+    const confirmed = await showConfirm('Deseja realmente gerar uma nova chave de acesso para este cliente? A chave atual (se houver) será invalidada.', 'Gerar Chave');
+    if (!confirmed) {
         return;
     }
 
