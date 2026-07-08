@@ -82,6 +82,14 @@
             </div>
 
             <div>
+                <label for="email" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Seu E-mail Corporativo</label>
+                <div class="relative">
+                    <input type="email" id="email" name="email" required placeholder="seu.email@empresa.com" value="{{ email or '' }}"
+                        class="w-full bg-slate-50 border border-slate-200 focus:border-jp-navy focus:bg-white focus:ring-0 rounded-2xl px-4 py-3.5 text-sm transition-all outline-none text-slate-800 placeholder-slate-400 font-medium">
+                </div>
+            </div>
+
+            <div>
                 <div class="flex items-center justify-between mb-2">
                     <label for="chave" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Chave de Acesso</label>
                     <span class="text-[10px] text-slate-400 font-medium">Formato: JP-XXXXXX</span>

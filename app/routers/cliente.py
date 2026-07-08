@@ -260,15 +260,6 @@ async def gerar_chave_portal(
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente nao encontrado")
 
-    chave_pura = gerar_chave_aleatoria()
-    
-    from app.core.security import get_password_hash
-    hash_chave = get_password_hash(chave_pura)
-
-    cliente.chave_portal_hash = hash_chave
-    cliente.chave_portal_gerada_em = agora_br()
-    db.commit()
-
     emails_dest = set()
     campos_email = ["email", "email_fiscal", "email_contabil", "email_pessoal", "email_societario"]
     for campo in campos_email:
@@ -293,43 +284,64 @@ async def gerar_chave_portal(
             import logging
             logging.getLogger(__name__).error(f"Erro ao parsear regras_roteamento no cliente {cliente.id}: {e}")
 
+    if not emails_dest:
+        return {"ok": False, "error": "Nenhum e-mail configurado para este cliente."}
+
+    from app.core.security import get_password_hash
     from app.core.email_service import email_service
-    enviados_com_sucesso = []
     
+    try:
+        chaves_map = json.loads(cliente.chaves_acesso) if cliente.chaves_acesso else {}
+    except:
+        chaves_map = {}
+
+    enviados_com_sucesso = []
     assunto = f"Chave de Acesso ao Portal do Cliente - {cliente.cliente}"
-    corpo_html = f"""
-    <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff;">
-        <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
-            <h2 style="color: #1C3051; margin: 0; font-size: 22px;">Janio Pontes Contabilidade</h2>
-            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Portal do Cliente</p>
-        </div>
-        <div style="color: #334155; font-size: 15px; line-height: 1.6;">
-            <p>Prezado(a) Cliente <strong>{cliente.cliente}</strong>,</p>
-            <p>Essa é a sua chave de Acesso ao <strong>Portal do Cliente</strong>.</p>
-            
-            <div style="text-align: center; margin: 32px 0; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 20px;">
-                <span style="font-family: monospace; font-size: 28px; font-weight: bold; letter-spacing: 2px; color: #1C3051; display: block; margin-bottom: 8px;">{chave_pura}</span>
-                <span style="font-size: 13px; color: #64748b;">(Respeite letras maiusculas e o traco)</span>
-            </div>
-            
-            <p>Para acessar o portal e consultar seus documentos, guias, guias de impostos e solicitacoes, siga o link abaixo:</p>
-            <div style="text-align: center; margin: 24px 0;">
-                <a href="https://app.janiopontes.com.br/portal/login" style="display: inline-block; background-color: #1C3051; color: #ffffff; text-decoration: none; padding: 12px 28px; font-weight: 600; border-radius: 6px; font-size: 15px;">Acessar Portal do Cliente</a>
-            </div>
-            
-            <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 24px 0;">
-            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">
-                Este e-mail e automatico. Sempre que precisar gerar nova chave, por favor entre em contato com nosso whatsapp.
-            </p>
-        </div>
-    </div>
-    """
     
     for email in sorted(list(emails_dest)):
+        chave_pura = gerar_chave_aleatoria()
+        hash_chave = get_password_hash(chave_pura)
+        
+        chaves_map[email] = {
+            "hash": hash_chave,
+            "gerada_em": agora_br().isoformat()
+        }
+        
+        corpo_html = f"""
+        <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff;">
+            <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
+                <h2 style="color: #1C3051; margin: 0; font-size: 22px;">Janio Pontes Contabilidade</h2>
+                <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Portal do Cliente</p>
+            </div>
+            <div style="color: #334155; font-size: 15px; line-height: 1.6;">
+                <p>Prezado(a) Cliente <strong>{cliente.cliente}</strong>,</p>
+                <p>Essa e a chave de Acesso ao <strong>Portal do Cliente</strong> vinculada ao seu e-mail ({email}).</p>
+                
+                <div style="text-align: center; margin: 32px 0; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 20px;">
+                    <span style="font-family: monospace; font-size: 28px; font-weight: bold; letter-spacing: 2px; color: #1C3051; display: block; margin-bottom: 8px;">{chave_pura}</span>
+                    <span style="font-size: 13px; color: #64748b;">(Respeite letras maiusculas e o traco)</span>
+                </div>
+                
+                <p>Para acessar o portal e consultar seus documentos, guias, impostos e solicitacoes, siga o link abaixo:</p>
+                <div style="text-align: center; margin: 24px 0;">
+                    <a href="https://app.janiopontes.com.br/portal/login" style="display: inline-block; background-color: #1C3051; color: #ffffff; text-decoration: none; padding: 12px 28px; font-weight: 600; border-radius: 6px; font-size: 15px;">Acessar Portal do Cliente</a>
+                </div>
+                
+                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 24px 0;">
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">
+                    Este e-mail e automatico. Sempre que precisar gerar nova chave, por favor entre em contato com nosso WhatsApp.
+                </p>
+            </div>
+        </div>
+        """
+        
         ok = await email_service.enviar_email(para=email, assunto=assunto, corpo_html=corpo_html)
         if ok:
             enviados_com_sucesso.append(email)
 
+    cliente.chaves_acesso = json.dumps(chaves_map)
+    cliente.chave_portal_gerada_em = agora_br()
+    db.commit()
     return {
         "ok": True,
         "chave": chave_pura,

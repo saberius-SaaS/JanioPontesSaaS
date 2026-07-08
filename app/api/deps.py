@@ -141,9 +141,10 @@ def get_cliente_from_cookie(request: Request) -> Optional[dict]:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         cliente_nome = payload.get("cliente")
         tenant_id = payload.get("tenant_id")
+        email_usuario = payload.get("email_usuario", "")
         if not cliente_nome or not tenant_id:
             return None
-        return {"cliente": cliente_nome, "tenant_id": tenant_id}
+        return {"cliente": cliente_nome, "tenant_id": tenant_id, "email_usuario": email_usuario}
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"Erro ao decodificar token do cliente: {e}")

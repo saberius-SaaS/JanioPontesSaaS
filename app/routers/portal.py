@@ -81,7 +81,8 @@ async def acesso_magico(
     # Gera token de sessão do cliente
     expires = timedelta(days=30)
     expire = agora_br() + expires
-    token_data = {"exp": expire, "cliente": cliente_nome, "tenant_id": tenant_id_str}
+    email_usuario = protocolo.email or ""
+    token_data = {"exp": expire, "cliente": cliente_nome, "tenant_id": tenant_id_str, "email_usuario": email_usuario}
     
     if admin_sub:
         token_data["sub"] = admin_sub
@@ -147,6 +148,7 @@ def validar_documento(doc: str) -> str:
 async def portal_auth(
     request: Request,
     documento: str = Form(...),
+    email: str = Form(...),
     chave: str = Form(...),
     db: Session = Depends(get_db)
 ):
@@ -217,22 +219,32 @@ async def portal_auth(
             cliente = c
             break
 
-    if not cliente or not cliente.chave_portal_hash:
+    email_limpo = email.strip().lower()
+
+    try:
+        import json
+        chaves_map = json.loads(cliente.chaves_acesso) if cliente.chaves_acesso else {}
+    except:
+        chaves_map = {}
+
+    chave_data = chaves_map.get(email_limpo)
+
+    if not cliente or not chave_data:
         registrar_falha()
         return templates.TemplateResponse(
             request,
             "portal/login.html",
-            {"request": request, "erro": "Documento ou Chave de Acesso incorretos.", "documento": documento},
+            {"request": request, "erro": "Dados de acesso incorretos.", "documento": documento, "email": email},
             status_code=status.HTTP_401_UNAUTHORIZED
         )
 
     from app.core.security import verify_password
-    if not verify_password(chave.strip(), cliente.chave_portal_hash):
+    if not verify_password(chave.strip(), chave_data["hash"]):
         registrar_falha()
         return templates.TemplateResponse(
             request,
             "portal/login.html",
-            {"request": request, "erro": "Documento ou Chave de Acesso incorretos.", "documento": documento},
+            {"request": request, "erro": "Dados de acesso incorretos.", "documento": documento, "email": email},
             status_code=status.HTTP_401_UNAUTHORIZED
         )
 
@@ -250,7 +262,8 @@ async def portal_auth(
     token_data = {
         "exp": expire,
         "cliente": cliente_nome,
-        "tenant_id": cliente_tenant
+        "tenant_id": cliente_tenant,
+        "email_usuario": email_limpo
     }
 
     token_atual = request.cookies.get("__session")
@@ -286,6 +299,7 @@ async def portal_dashboard(
 ):
     cliente_nome = cliente_data["cliente"]
     tenant_id = cliente_data["tenant_id"]
+    email_usuario = cliente_data.get("email_usuario", "")
 
     try:
         db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
@@ -294,9 +308,12 @@ async def portal_dashboard(
         pass
 
     # Buscar protocolos recentes (até 50 para uma timeline legal)
-    protocolos_db = db.query(models.Protocolo).filter(
+    query = db.query(models.Protocolo).filter(
         models.Protocolo.cliente == cliente_nome
-    ).order_by(models.Protocolo.data.desc()).limit(50).all()
+    )
+    if email_usuario:
+        query = query.filter(models.Protocolo.email == email_usuario)
+    protocolos_db = query.order_by(models.Protocolo.data.desc()).limit(50).all()
 
     import re
     from collections import defaultdict
@@ -389,6 +406,7 @@ async def portal_documento(
 ):
     cliente_nome = cliente_data["cliente"]
     tenant_id = cliente_data["tenant_id"]
+    email_usuario = cliente_data.get("email_usuario", "")
 
     try:
         db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
@@ -396,10 +414,13 @@ async def portal_documento(
     except Exception:
         pass
 
-    protocolo = db.query(models.Protocolo).filter(
+    query = db.query(models.Protocolo).filter(
         models.Protocolo.id == id,
         models.Protocolo.cliente == cliente_nome
-    ).first()
+    )
+    if email_usuario:
+        query = query.filter(models.Protocolo.email == email_usuario)
+    protocolo = query.first()
 
     if not protocolo:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
@@ -431,6 +452,7 @@ async def portal_solicitacoes_list(
 ):
     cliente_nome = cliente_data["cliente"]
     tenant_id = cliente_data["tenant_id"]
+    email_usuario = cliente_data.get("email_usuario", "")
 
     try:
         db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
@@ -438,9 +460,12 @@ async def portal_solicitacoes_list(
     except Exception:
         pass
 
-    solicitacoes = db.query(models.Solicitacao).filter(
+    query = db.query(models.Solicitacao).filter(
         models.Solicitacao.cliente == cliente_nome
-    ).order_by(models.Solicitacao.data.desc()).all()
+    )
+    if email_usuario:
+        query = query.filter(models.Solicitacao.email == email_usuario)
+    solicitacoes = query.order_by(models.Solicitacao.data.desc()).all()
 
     return templates.TemplateResponse(request, "portal/solicitacoes.html", {
         "request": request,
@@ -457,6 +482,7 @@ async def portal_solicitacao_view(
 ):
     cliente_nome = cliente_data["cliente"]
     tenant_id = cliente_data["tenant_id"]
+    email_usuario = cliente_data.get("email_usuario", "")
 
     try:
         db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
@@ -464,10 +490,13 @@ async def portal_solicitacao_view(
     except Exception:
         pass
 
-    solic = db.query(models.Solicitacao).filter(
+    query = db.query(models.Solicitacao).filter(
         models.Solicitacao.id_legado == id_legado,
         models.Solicitacao.cliente == cliente_nome
-    ).first()
+    )
+    if email_usuario:
+        query = query.filter(models.Solicitacao.email == email_usuario)
+    solic = query.first()
 
     if not solic:
         raise HTTPException(status_code=404, detail="Solicitação não encontrada")
@@ -502,6 +531,7 @@ async def portal_solicitacao_reply(
     
     cliente_nome = cliente_data["cliente"]
     tenant_id = cliente_data["tenant_id"]
+    email_usuario = cliente_data.get("email_usuario", "")
 
     try:
         db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
@@ -509,10 +539,13 @@ async def portal_solicitacao_reply(
     except Exception:
         pass
 
-    solic = db.query(models.Solicitacao).filter(
+    query = db.query(models.Solicitacao).filter(
         models.Solicitacao.id_legado == id_legado,
         models.Solicitacao.cliente == cliente_nome
-    ).first()
+    )
+    if email_usuario:
+        query = query.filter(models.Solicitacao.email == email_usuario)
+    solic = query.first()
 
     if not solic:
         raise HTTPException(status_code=404, detail="Solicitação não encontrada")

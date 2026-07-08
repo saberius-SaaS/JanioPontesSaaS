@@ -49,6 +49,7 @@ class Cliente(TenantMixin, Base):
     # --- Chave de Acesso ao Portal ---
     chave_portal_hash = Column(String(255), nullable=True, comment="Hash bcrypt da chave de acesso ao portal")
     chave_portal_gerada_em = Column(DateTime(timezone=True), nullable=True, comment="Data de geracao da ultima chave")
+    chaves_acesso = Column(Text, nullable=True, comment="JSON mapping: {'email': {'hash': '...', 'gerada_em': '...'}}")
 
     # --- Controle de Entrada ---
     data_entrada = Column(Date, nullable=True, default=datetime.date.today, comment="Data de entrada do cliente na carteira. Tarefas não serão geradas para competências anteriores a este mês.")
