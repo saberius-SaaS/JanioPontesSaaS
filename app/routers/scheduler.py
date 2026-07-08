@@ -170,16 +170,16 @@ async def send_whatsapp_reminders(
         )
     ).all()
     
-    protocolos_por_cliente = defaultdict(list)
-    for p in protocolos:
-        protocolos_por_cliente[(p.tenant_id, p.cliente)].append(p)
-        
-    contador_mensagens = 0
+    # 1. Agrupar protocolos pelo número de WhatsApp (garante 1 msg por número)
+    protocolos_por_wpp = defaultdict(list)
+    nome_por_wpp = {}
+    email_por_wpp = {}
+    wpp_original_por_wpp = {}
     
-    for (tenant_id, nome_cliente), lista_p in protocolos_por_cliente.items():
+    for p in protocolos:
         cliente_db = db.query(models.Cliente).filter(
-            models.Cliente.tenant_id == tenant_id,
-            models.Cliente.cliente == nome_cliente
+            models.Cliente.tenant_id == p.tenant_id,
+            models.Cliente.cliente == p.cliente
         ).first()
         
         if not cliente_db:
@@ -187,7 +187,6 @@ async def send_whatsapp_reminders(
             
         telefone_raw = getattr(cliente_db, 'telefone', None)
         if not telefone_raw:
-            logger.info(f"[WPP] Cliente '{nome_cliente}' sem telefone cadastrado. Ignorando.")
             continue
             
         telefones = re.split(r'[,;/]', telefone_raw)
@@ -195,10 +194,29 @@ async def send_whatsapp_reminders(
         if not wpp:
             continue
             
-        # Forçar email único baseado no telefone para evitar que o Chatwoot mescle contatos 
-        # distintos que compartilham o mesmo email cadastrado (ex: email da gerência/contador).
-        email = f"wpp_{re.sub(r'[^0-9]', '', wpp)}@cliente.local"
+        # Extrair apenas números para garantir o agrupamento correto
+        wpp_clean = re.sub(r'[^0-9]', '', wpp)
+        if not wpp_clean:
+            continue
             
+        chave = (p.tenant_id, wpp_clean)
+        protocolos_por_wpp[chave].append(p)
+        
+        # Salva os dados do primeiro cliente encontrado para este número
+        if chave not in nome_por_wpp:
+            nome_por_wpp[chave] = cliente_db.cliente
+            email_por_wpp[chave] = f"wpp_{wpp_clean}@cliente.local"
+            wpp_original_por_wpp[chave] = wpp
+            
+    contador_mensagens = 0
+    
+    # 2. Enviar 1 mensagem por número de WhatsApp com o total de protocolos
+    for chave, lista_p in protocolos_por_wpp.items():
+        tenant_id, wpp_clean = chave
+        nome_cliente = nome_por_wpp[chave]
+        email = email_por_wpp[chave]
+        wpp = wpp_original_por_wpp[chave]
+        
         total = len(lista_p)
         
         logger.info(f"[WPP] Enviando para '{nome_cliente}' → tel: {wpp} | {total} protocolo(s)")
@@ -214,12 +232,12 @@ async def send_whatsapp_reminders(
         if sucesso:
             for p in lista_p:
                 p.wpp_notif = agora
+            db.commit()  # Commitar a cada sucesso evita reenvios por timeout do Cloud Scheduler
             contador_mensagens += 1
             logger.info(f"[WPP] ✅ Enviado com sucesso para '{nome_cliente}' ({wpp})")
         else:
             logger.warning(f"[WPP] ❌ Falha ao enviar para '{nome_cliente}' ({wpp})")
             
-    db.commit()
     return {"status": "success", "clientes_notificados": contador_mensagens}
 
 
