@@ -275,7 +275,7 @@ async def gerar_chave_portal(
         val = getattr(cliente, campo, None)
         if val:
             for part in re.split(r'[;,]', val):
-                p_clean = part.strip()
+                p_clean = part.strip().lower()
                 if p_clean and "@" in p_clean:
                     emails_dest.add(p_clean)
 
@@ -286,7 +286,7 @@ async def gerar_chave_portal(
                 for val in regras.values():
                     if isinstance(val, str) and val.strip():
                         for part in re.split(r'[;,]', val):
-                            p_clean = part.strip()
+                            p_clean = part.strip().lower()
                             if p_clean and "@" in p_clean:
                                 emails_dest.add(p_clean)
         except Exception as e:
