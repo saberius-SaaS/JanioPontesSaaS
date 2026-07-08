@@ -37,7 +37,7 @@ async def enviar_contato(
     
     # Envia para o email do administrador
     await email_service.enviar_email(
-        para="janiopontes@janiopontes.com.br",
+        para="sac@janiopontes.com.br",
         assunto=assunto,
         corpo_html=corpo_html
     )
