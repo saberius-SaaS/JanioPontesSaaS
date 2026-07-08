@@ -236,6 +236,9 @@ async def portal_auth(
             status_code=status.HTTP_401_UNAUTHORIZED
         )
 
+    cliente_nome = cliente.cliente
+    cliente_tenant = str(cliente.tenant_id)
+
     try:
         db.query(TentativaLogin).filter(TentativaLogin.ip_address == ip).delete()
         db.commit()
@@ -246,8 +249,8 @@ async def portal_auth(
     expire = agora_br() + expires
     token_data = {
         "exp": expire,
-        "cliente": cliente.cliente,
-        "tenant_id": str(cliente.tenant_id)
+        "cliente": cliente_nome,
+        "tenant_id": cliente_tenant
     }
 
     token_atual = request.cookies.get("__session")

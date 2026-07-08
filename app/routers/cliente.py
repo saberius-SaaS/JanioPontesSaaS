@@ -305,7 +305,7 @@ async def gerar_chave_portal(
         </div>
         <div style="color: #334155; font-size: 15px; line-height: 1.6;">
             <p>Prezado(a) Cliente <strong>{cliente.cliente}</strong>,</p>
-            <p>Sua nova Chave de Acesso temporaria para o <strong>Portal do Cliente</strong> foi gerada.</p>
+            <p>Essa é a sua chave de Acesso ao <strong>Portal do Cliente</strong>.</p>
             
             <div style="text-align: center; margin: 32px 0; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 20px;">
                 <span style="font-family: monospace; font-size: 28px; font-weight: bold; letter-spacing: 2px; color: #1C3051; display: block; margin-bottom: 8px;">{chave_pura}</span>
@@ -319,7 +319,7 @@ async def gerar_chave_portal(
             
             <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 24px 0;">
             <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">
-                Este e-mail e automatico. Se voce nao solicitou esta chave, por favor entre em contato com nosso suporte contabil.
+                Este e-mail e automatico. Sempre que precisar gerar nova chave, por favor entre em contato com nosso whatsapp.
             </p>
         </div>
     </div>
