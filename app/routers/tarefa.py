@@ -86,7 +86,8 @@ def registrar_protocolo(db: Session, tenant_id: str, tarefa, protocolo: str,
 
 async def enviar_notificacao_entrega(tarefa, protocolo: str, email_destino: str, 
                                       responsavel_nome: str, justificativa: str = None,
-                                      links_documentos: list = None):
+                                      links_documentos: list = None,
+                                      cliente_tem_portal: bool = False):
     """Envia email de notificação ao cliente sobre entrega concluída."""
     assunto = f"[Protocolo {protocolo}] {tarefa.obrigacao} - {tarefa.cliente}"
     
@@ -130,6 +131,16 @@ async def enviar_notificacao_entrega(tarefa, protocolo: str, email_destino: str,
         <div style="text-align: center; margin: 25px 0;">
             <p style="margin: 8px 0;"><a href="{magic_link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">Acessar no Portal do Cliente</a></p>
             <p style="color: #64748b; font-size: 11px; margin-top: 12px;">O link acima concede acesso seguro aos arquivos desta entrega.</p>
+        </div>
+        """
+
+    if cliente_tem_portal:
+        corpo += f"""
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+            <p style="margin: 0 0 10px; font-size: 15px; font-weight: bold; color: #1C3051;">Seu Portal do Cliente está Ativo!</p>
+            <p style="margin: 0 0 20px; font-size: 13px; color: #475569;">Acesse para ver todo o seu histórico de documentos, impostos e guias.</p>
+            <a href="https://app.janiopontes.com.br/portal/login" style="display: inline-block; background-color: #1C3051; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; font-size: 13px; letter-spacing: 0.5px;">Acessar Portal</a>
+            <p style="margin: 20px 0 0; font-size: 12px; color: #64748b;"><strong>Usuário (E-mail):</strong> {email_destino} <br><strong>Chave:</strong> A mesma chave secreta já gerada e enviada anteriormente.</p>
         </div>
         """
 
@@ -582,11 +593,25 @@ async def finalizar_tarefa(
                 if deve_enviar:
                     msg_texto = mensagem_comunicar if "COMUNICAR" in acao else justificativa
                     
+                    tem_portal = False
+                    cliente_obj = db.query(models.Cliente).filter(
+                        models.Cliente.tenant_id == current_user.tenant_id,
+                        models.Cliente.cliente == tarefa.cliente
+                    ).first()
+                    if cliente_obj and getattr(cliente_obj, "chaves_acesso", None):
+                        try:
+                            chaves = json.loads(cliente_obj.chaves_acesso)
+                            if email_destino.lower() in chaves:
+                                tem_portal = True
+                        except Exception:
+                            pass
+                    
                     await enviar_notificacao_entrega(
                         tarefa, protocolo, email_destino, 
                         current_user.nome,
                         justificativa=msg_texto if msg_texto else None,
-                        links_documentos=links_gerados if links_gerados else None
+                        links_documentos=links_gerados if links_gerados else None,
+                        cliente_tem_portal=tem_portal
                     )
                     logger.warning(f"[ENTREGA] {tarefa.obrigacao} ({tarefa.cliente}) -> {email_destino} | Proto: {protocolo}")
                 else:
@@ -654,9 +679,23 @@ async def aprovar_revisao(
     
     try:
         if email_destino and "ARQUIVAR" not in acao:
+            tem_portal = False
+            cliente_obj = db.query(models.Cliente).filter(
+                models.Cliente.tenant_id == current_user.tenant_id,
+                models.Cliente.cliente == tarefa.cliente
+            ).first()
+            if cliente_obj and getattr(cliente_obj, "chaves_acesso", None):
+                try:
+                    chaves = json.loads(cliente_obj.chaves_acesso)
+                    if email_destino.lower() in chaves:
+                        tem_portal = True
+                except Exception:
+                    pass
+
             await enviar_notificacao_entrega(
                 tarefa, tarefa.protocolo or "N/A", email_destino,
-                current_user.nome
+                current_user.nome,
+                cliente_tem_portal=tem_portal
             )
     except Exception as e:
         logger.error(f"[EMAIL ERRO APROVACAO] {str(e)}")
