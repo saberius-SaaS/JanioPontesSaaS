@@ -44,11 +44,13 @@ async def list_societario(
     
     documentos = db.query(Model).filter(
         Model.tenant_id == current_user.tenant_id
-    ).order_by(Model.vencimento.asc()).all()
+    ).order_by(Model.vencimento.asc().nullslast()).all()
     
     hoje = datetime.date.today()
     for doc in documentos:
-        if doc.vencimento < hoje:
+        if doc.vencimento is None:
+            doc.status = "INDETERMINADO"
+        elif doc.vencimento < hoje:
             doc.status = "VENCIDO"
         elif (doc.vencimento - hoje).days <= 30:
             doc.status = "ALERTA"
@@ -72,7 +74,8 @@ async def create_societario(
     tipo_servico: str,
     request: Request,
     cliente_id: UUID = Form(...),
-    vencimento: str = Form(...),
+    vencimento: str = Form(""),
+    anotacao: str = Form(""),
     arquivo: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
@@ -80,19 +83,12 @@ async def create_societario(
     check_permission(current_user)
     Model, _, _ = get_model_and_template(tipo_servico)
     
-    try:
-        dt_venc = datetime.datetime.strptime(vencimento, '%Y-%m-%d').date()
-    except ValueError:
-        return HTMLResponse("<script>if(typeof showToast === 'function'){showToast('Erro', 'Data inválida.', 'error');}else{alert('Data inválida');}</script>")
-
-    existente = db.query(Model).filter(
-        Model.tenant_id == current_user.tenant_id,
-        Model.cliente_id == cliente_id,
-        Model.vencimento == dt_venc
-    ).first()
-    
-    if existente:
-        return HTMLResponse("<script>if(typeof showToast === 'function'){showToast('Erro', 'Documento já cadastrado.', 'error');}else{alert('Documento já cadastrado.');}</script>")
+    dt_venc = None
+    if vencimento and vencimento.strip():
+        try:
+            dt_venc = datetime.datetime.strptime(vencimento.strip(), '%Y-%m-%d').date()
+        except ValueError:
+            return HTMLResponse("<script>if(typeof showToast === 'function'){showToast('Erro', 'Data inválida.', 'error');}else{alert('Data inválida');}</script>")
 
     arquivo_url = None
     if arquivo and arquivo.filename:
@@ -104,8 +100,9 @@ async def create_societario(
         tenant_id=current_user.tenant_id,
         cliente_id=cliente_id,
         vencimento=dt_venc,
-        status="ATIVO",
-        arquivo_url=arquivo_url
+        status="INDETERMINADO" if dt_venc is None else "ATIVO",
+        arquivo_url=arquivo_url,
+        anotacao=anotacao.strip() if anotacao else None
     )
     db.add(novo_doc)
     db.commit()

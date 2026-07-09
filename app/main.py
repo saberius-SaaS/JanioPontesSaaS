@@ -94,8 +94,24 @@ def ensure_schema_updates():
                 conn.execute(text("ALTER TABLE clientes ADD COLUMN regras_roteamento TEXT"))
                 conn.commit()
                 logger.info("[SCHEMA] Coluna 'regras_roteamento' adicionada à tabela 'clientes'.")
+                
+        # Migrações manuais para Controle Societário (Anotação e Vencimento nulo)
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE certificados_digitais ADD COLUMN IF NOT EXISTS anotacao TEXT;"))
+                
+                # Para cada tabela nova do societario
+                for tabela in ["licencas_localizacao", "alvaras_sanitarios", "avcbs", "inscricoes_municipais"]:
+                    conn.execute(text(f"ALTER TABLE {tabela} ADD COLUMN IF NOT EXISTS anotacao TEXT;"))
+                    conn.execute(text(f"ALTER TABLE {tabela} ALTER COLUMN vencimento DROP NOT NULL;"))
+                    
+                conn.commit()
+                logger.info("[SCHEMA] Atualizações no Controle Societário aplicadas com sucesso.")
+            except Exception as e:
+                logger.warning(f"[SCHEMA] Erro ao atualizar schema do societário: {e}")
+                
     except Exception as e:
-        logger.warning(f"[SCHEMA] Não foi possível verificar/criar coluna data_entrada ou regras_roteamento: {e}")
+        logger.warning(f"[SCHEMA] Não foi possível verificar/criar colunas: {e}")
 
 # Middleware para injetar variáveis globais nos templates e Headers de Segurança
 @app.middleware("http")

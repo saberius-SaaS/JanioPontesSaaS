@@ -8,9 +8,10 @@ class LicencaLocalizacao(Base, TenantMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=gerar_uuid)
     cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
-    vencimento = Column(Date, nullable=False)
-    status = Column(String(20), nullable=False, default="ATIVO") # ATIVO, ALERTA, VENCIDO
+    vencimento = Column(Date, nullable=True)
+    status = Column(String(20), nullable=False, default="ATIVO") # ATIVO, ALERTA, VENCIDO, INDETERMINADO
     arquivo_url = Column(Text, nullable=True)
+    anotacao = Column(Text, nullable=True)
 
     cliente = relationship("Cliente", backref="licencas_localizacao")
 
@@ -19,9 +20,10 @@ class AlvaraSanitario(Base, TenantMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=gerar_uuid)
     cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
-    vencimento = Column(Date, nullable=False)
-    status = Column(String(20), nullable=False, default="ATIVO")
+    vencimento = Column(Date, nullable=True)
+    status = Column(String(20), nullable=False, default="ATIVO") # ATIVO, ALERTA, VENCIDO, INDETERMINADO
     arquivo_url = Column(Text, nullable=True)
+    anotacao = Column(Text, nullable=True)
 
     cliente = relationship("Cliente", backref="alvaras_sanitarios")
 
@@ -30,9 +32,10 @@ class AVCB(Base, TenantMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=gerar_uuid)
     cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
-    vencimento = Column(Date, nullable=False)
-    status = Column(String(20), nullable=False, default="ATIVO")
+    vencimento = Column(Date, nullable=True)
+    status = Column(String(20), nullable=False, default="ATIVO") # ATIVO, ALERTA, VENCIDO, INDETERMINADO
     arquivo_url = Column(Text, nullable=True)
+    anotacao = Column(Text, nullable=True)
 
     cliente = relationship("Cliente", backref="avcbs")
 
@@ -41,8 +44,9 @@ class InscricaoMunicipal(Base, TenantMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=gerar_uuid)
     cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
-    vencimento = Column(Date, nullable=False)
-    status = Column(String(20), nullable=False, default="ATIVO")
+    vencimento = Column(Date, nullable=True)
+    status = Column(String(20), nullable=False, default="ATIVO") # ATIVO, ALERTA, VENCIDO, INDETERMINADO
     arquivo_url = Column(Text, nullable=True)
+    anotacao = Column(Text, nullable=True)
 
     cliente = relationship("Cliente", backref="inscricoes_municipais")

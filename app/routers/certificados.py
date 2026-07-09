@@ -59,6 +59,7 @@ async def create_certificado(
     tipo: str = Form(...),
     vencimento: str = Form(...),
     senha: str = Form(None),
+    anotacao: str = Form(""),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -86,7 +87,8 @@ async def create_certificado(
         tipo=tipo,
         vencimento=dt_venc,
         senha=senha,
-        status="ATIVO"
+        status="ATIVO",
+        anotacao=anotacao.strip() if anotacao else None
     )
     db.add(novo_cert)
     db.commit()

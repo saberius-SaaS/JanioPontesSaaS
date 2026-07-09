@@ -313,6 +313,8 @@ async def send_societario_alerts(
     for Model, nome_servico in modelos_servicos:
         docs = db.query(Model).filter(Model.status != "VENCIDO").all()
         for doc in docs:
+            if doc.vencimento is None:
+                continue
             dias_restantes = (doc.vencimento - hoje).days
             
             # Se for dia de alerta
