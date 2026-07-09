@@ -116,6 +116,19 @@ async def create_societario(
         db.commit()
         return HTMLResponse("<script>if(typeof showToast === 'function'){showToast('Sucesso', 'Atualizado com sucesso.', 'success'); setTimeout(() => window.location.reload(), 1000);}else{window.location.reload();}</script>")
     else:
+        # Bloquear duplicidade de registros (especialmente indeterminado)
+        query_dup = db.query(Model).filter(
+            Model.cliente_id == cliente_id,
+            Model.tenant_id == current_user.tenant_id
+        )
+        if dt_venc is None:
+            query_dup = query_dup.filter(Model.vencimento == None, Model.status == "INDETERMINADO")
+        else:
+            query_dup = query_dup.filter(Model.vencimento == dt_venc)
+            
+        if query_dup.first():
+            return HTMLResponse("<script>if(typeof showToast === 'function'){showToast('Erro', 'Já existe um documento com este prazo para o cliente selecionado.', 'error'); setTimeout(() => window.location.reload(), 1500);}else{alert('Já existe um documento cadastrado.'); window.location.reload();}</script>")
+
         novo_doc = Model(
             tenant_id=current_user.tenant_id,
             cliente_id=cliente_id,
