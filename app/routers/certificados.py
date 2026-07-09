@@ -60,6 +60,7 @@ async def create_certificado(
     vencimento: str = Form(...),
     senha: str = Form(None),
     anotacao: str = Form(""),
+    cert_id: str = Form(""),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
 ):
@@ -70,30 +71,49 @@ async def create_certificado(
     except ValueError:
         raise HTTPException(status_code=400, detail="Data inválida")
 
-    # Verifica duplicidade
-    existente = db.query(models.CertificadoDigital).filter(
-        models.CertificadoDigital.tenant_id == current_user.tenant_id,
-        models.CertificadoDigital.cliente_id == cliente_id,
-        models.CertificadoDigital.tipo == tipo,
-        models.CertificadoDigital.vencimento == dt_venc
-    ).first()
-    
-    if existente:
-        return HTMLResponse("<script>window.location.reload();</script>")
+    if cert_id:
+        # Edit mode
+        cert = db.query(models.CertificadoDigital).filter(
+            models.CertificadoDigital.id == cert_id,
+            models.CertificadoDigital.tenant_id == current_user.tenant_id
+        ).first()
+        
+        if not cert:
+            return HTMLResponse("<script>window.location.reload();</script>")
+            
+        cert.cliente_id = cliente_id
+        cert.tipo = tipo
+        cert.vencimento = dt_venc
+        if senha:
+            cert.senha = senha
+        cert.anotacao = anotacao.strip() if anotacao else None
+        
+        db.commit()
+    else:
+        # Verifica duplicidade
+        existente = db.query(models.CertificadoDigital).filter(
+            models.CertificadoDigital.tenant_id == current_user.tenant_id,
+            models.CertificadoDigital.cliente_id == cliente_id,
+            models.CertificadoDigital.tipo == tipo,
+            models.CertificadoDigital.vencimento == dt_venc
+        ).first()
+        
+        if existente:
+            return HTMLResponse("<script>window.location.reload();</script>")
 
-    novo_cert = models.CertificadoDigital(
-        tenant_id=current_user.tenant_id,
-        cliente_id=cliente_id,
-        tipo=tipo,
-        vencimento=dt_venc,
-        senha=senha,
-        status="ATIVO",
-        anotacao=anotacao.strip() if anotacao else None
-    )
-    db.add(novo_cert)
-    db.commit()
+        novo_cert = models.CertificadoDigital(
+            tenant_id=current_user.tenant_id,
+            cliente_id=cliente_id,
+            tipo=tipo,
+            vencimento=dt_venc,
+            senha=senha,
+            status="ATIVO",
+            anotacao=anotacao.strip() if anotacao else None
+        )
+        db.add(novo_cert)
+        db.commit()
 
-    # Redireciona de volta com HX-Refresh ou apenas response
+    # Redireciona de volta
     return HTMLResponse("<script>window.location.reload();</script>")
 
 @router.delete("/certificados/{cert_id}", response_class=HTMLResponse)

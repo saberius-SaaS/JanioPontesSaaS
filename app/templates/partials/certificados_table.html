@@ -25,6 +25,9 @@
         {{ c.anotacao or '—' }}
     </td>
     <td class="py-3 px-4 text-right">
+        <button onclick="abrirEdicaoCert(this)" data-id="{{ c.id }}" data-cliente="{{ c.cliente_id }}" data-tipo="{{ c.tipo }}" data-vencimento="{{ c.vencimento.strftime('%Y-%m-%d') if c.vencimento else '' }}" data-anotacao="{{ c.anotacao or '' }}" class="text-slate-400 hover:text-indigo-500 transition-colors p-1" title="Editar">
+            <i class="fa-solid fa-pen"></i>
+        </button>
         <button hx-delete="/certificados/{{ c.id }}" hx-confirm="Tem certeza que deseja excluir este certificado?" hx-target="closest tr" hx-swap="outerHTML" class="text-slate-400 hover:text-red-500 transition-colors p-1" title="Excluir">
             <i class="fa-solid fa-trash"></i>
         </button>

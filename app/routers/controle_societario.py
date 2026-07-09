@@ -76,6 +76,7 @@ async def create_societario(
     cliente_id: UUID = Form(...),
     vencimento: str = Form(""),
     anotacao: str = Form(""),
+    doc_id: str = Form(""),
     arquivo: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_login)
@@ -96,16 +97,37 @@ async def create_societario(
         cliente_nome = cliente_db.cliente if cliente_db else "Desconhecido"
         arquivo_url = await storage_service.upload_file(arquivo, cliente_nome=cliente_nome)
 
-    novo_doc = Model(
-        tenant_id=current_user.tenant_id,
-        cliente_id=cliente_id,
-        vencimento=dt_venc,
-        status="INDETERMINADO" if dt_venc is None else "ATIVO",
-        arquivo_url=arquivo_url,
-        anotacao=anotacao.strip() if anotacao else None
-    )
-    db.add(novo_doc)
-    db.commit()
+    if doc_id:
+        doc = db.query(Model).filter(
+            Model.id == doc_id,
+            Model.tenant_id == current_user.tenant_id
+        ).first()
+        
+        if not doc:
+            return HTMLResponse("<script>if(typeof showToast === 'function'){showToast('Erro', 'Documento não encontrado.', 'error');}</script>")
+            
+        doc.cliente_id = cliente_id
+        doc.vencimento = dt_venc
+        doc.status = "INDETERMINADO" if dt_venc is None else "ATIVO"
+        doc.anotacao = anotacao.strip() if anotacao else None
+        if arquivo_url:
+            doc.arquivo_url = arquivo_url
+            
+        db.commit()
+        return HTMLResponse("<script>if(typeof showToast === 'function'){showToast('Sucesso', 'Atualizado com sucesso.', 'success'); setTimeout(() => window.location.reload(), 1000);}else{window.location.reload();}</script>")
+    else:
+        novo_doc = Model(
+            tenant_id=current_user.tenant_id,
+            cliente_id=cliente_id,
+            vencimento=dt_venc,
+            status="INDETERMINADO" if dt_venc is None else "ATIVO",
+            arquivo_url=arquivo_url,
+            anotacao=anotacao.strip() if anotacao else None
+        )
+        db.add(novo_doc)
+        db.commit()
+
+        return HTMLResponse("<script>if(typeof showToast === 'function'){showToast('Sucesso', 'Cadastrado com sucesso.', 'success'); setTimeout(() => window.location.reload(), 1000);}else{window.location.reload();}</script>")
 
     return HTMLResponse("<script>if(typeof showToast === 'function'){showToast('Sucesso', 'Cadastrado com sucesso.', 'success'); setTimeout(() => window.location.reload(), 1000);}else{window.location.reload();}</script>")
 

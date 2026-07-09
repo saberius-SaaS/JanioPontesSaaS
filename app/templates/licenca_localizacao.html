@@ -33,7 +33,7 @@
             <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
             <input type="text" id="searchDoc" placeholder="Buscar por cliente..." onkeyup="filterDocs()" class="glass-input w-full pl-10">
         </div>
-        <button onclick="document.getElementById('modal-novo-doc').classList.remove('hidden')" class="px-5 py-2.5 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-sm w-full md:w-auto flex justify-center items-center">
+        <button onclick="abrirNovoDoc()" class="px-5 py-2.5 bg-jp-navy hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-sm w-full md:w-auto flex justify-center items-center">
             <i class="fa-solid fa-plus mr-2"></i> Novo Documento
         </button>
     </div>
@@ -80,6 +80,9 @@
                         {{ d.anotacao or '—' }}
                     </td>
                     <td class="py-3 px-4 text-right flex justify-end gap-2">
+                        <button onclick="abrirEdicaoDoc(this)" data-id="{{ d.id }}" data-cliente="{{ d.cliente_id }}" data-vencimento="{{ d.vencimento.strftime('%Y-%m-%d') if d.vencimento else '' }}" data-anotacao="{{ d.anotacao or '' }}" class="text-slate-400 hover:text-indigo-500 transition-colors p-1" title="Editar">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
                         {% if d.arquivo_url %}
                         <a href="{{ d.arquivo_url }}" target="_blank" class="text-slate-400 hover:text-indigo-500 transition-colors p-1" title="Visualizar Documento">
                             <i class="fa-solid fa-file-pdf"></i>
@@ -108,14 +111,15 @@
 <div id="modal-novo-doc" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
         <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h3 class="font-bold text-jp-navy text-lg"><i class="fa-solid fa-plus mr-2 text-indigo-400"></i> Cadastrar Documento</h3>
+            <h3 class="font-bold text-jp-navy text-lg" id="modal-novo-doc-title"><i class="fa-solid fa-plus mr-2 text-indigo-400"></i> Cadastrar Documento</h3>
             <button onclick="document.getElementById('modal-novo-doc').classList.add('hidden')" class="text-slate-400 hover:text-red-500 transition-colors">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>
         
         <div class="p-6">
-            <form method="POST" action="/societario/licencas" enctype="multipart/form-data" onsubmit="const btn = this.querySelector('button[type=submit]'); btn.disabled = true; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin mr-2\'></i>Salvando...';">
+            <form id="form-doc" method="POST" action="/societario/licencas" enctype="multipart/form-data" onsubmit="const btn = this.querySelector('button[type=submit]'); btn.disabled = true; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin mr-2\'></i>Salvando...';">
+                <input type="hidden" name="doc_id" id="input-doc-id" value="">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Cliente *</label>
@@ -185,6 +189,44 @@ function toggleVencimento(chk) {
         input.disabled = false;
         input.classList.remove('opacity-50');
     }
+}
+
+function abrirNovoDoc() {
+    const form = document.getElementById('form-doc');
+    form.reset();
+    document.getElementById('input-doc-id').value = '';
+    document.getElementById('modal-novo-doc-title').innerHTML = '<i class="fa-solid fa-plus mr-2 text-indigo-400"></i> Cadastrar Documento';
+    document.getElementById('chk-indeterminado').checked = false;
+    toggleVencimento(document.getElementById('chk-indeterminado'));
+    document.getElementById('modal-novo-doc').classList.remove('hidden');
+}
+
+function abrirEdicaoDoc(btn) {
+    const dados = btn.dataset;
+    const form = document.getElementById('form-doc');
+    form.reset();
+    
+    document.getElementById('input-doc-id').value = dados.id;
+    if (form.elements['cliente_id']) form.elements['cliente_id'].value = dados.cliente;
+    if (form.elements['anotacao']) form.elements['anotacao'].value = dados.anotacao;
+    
+    const chk = document.getElementById('chk-indeterminado');
+    const inputVenc = document.getElementById('input-vencimento');
+    
+    if (!dados.vencimento) {
+        chk.checked = true;
+        inputVenc.value = '';
+        inputVenc.disabled = true;
+        inputVenc.classList.add('opacity-50');
+    } else {
+        chk.checked = false;
+        inputVenc.value = dados.vencimento;
+        inputVenc.disabled = false;
+        inputVenc.classList.remove('opacity-50');
+    }
+    
+    document.getElementById('modal-novo-doc-title').innerHTML = '<i class="fa-solid fa-pen mr-2 text-indigo-400"></i> Editar Documento';
+    document.getElementById('modal-novo-doc').classList.remove('hidden');
 }
 </script>
 {% endblock %}
