@@ -376,15 +376,18 @@ async def portal_dashboard(
             mensagem_texto = ""
 
         # Criar um dicionário com os dados formatados
+        import urllib.parse
+        safe_links = [f"/portal/download?url={urllib.parse.quote(l)}" for l in links]
+        
         p_dict = {
             "id": p.id,
             "protocolo": p.protocolo,
             "obrigacao": p.obrigacao,
             "data_obj": dt,
             "lido": bool(p.conf_recto),
-            "links": links,
+            "links": safe_links,
             "has_pdf": len(links) > 0 and any(".pdf" in l.lower() for l in links),
-            "first_url": links[0] if links else None,
+            "first_url": safe_links[0] if safe_links else None,
             "mes_ano": mes_ano_lookup.get(p.id_tarefa, ""),
             "acao": acao_tipo,
             "mensagem": mensagem_texto,
@@ -427,9 +430,11 @@ async def portal_documento(
 
     # Extrair os links anexos (se hover mais de um, separados por ' | ')
     import re
+    import urllib.parse
     link_bruto = protocolo.link_arquivo or ""
     base_link = re.sub(r'\[.*?\]', '', link_bruto).strip()
-    links = [l.strip() for l in base_link.split(' | ') if l.strip().startswith('http')]
+    links_orig = [l.strip() for l in base_link.split(' | ') if l.strip().startswith('http')]
+    links = [f"/portal/download?url={urllib.parse.quote(l)}" for l in links_orig]
 
     return templates.TemplateResponse(request, "portal/documento.html", {
         "request": request,
@@ -443,6 +448,16 @@ async def portal_logout():
     response = RedirectResponse(url="/portal/login", status_code=status.HTTP_302_FOUND)
     response.delete_cookie(key="__session")
     return response
+
+@router.get("/portal/download")
+async def portal_download(
+    url: str,
+    db: Session = Depends(get_db),
+    cliente_data: dict = Depends(require_cliente_login)
+):
+    from app.core.storage_service import storage_service
+    fresh_url = storage_service.refresh_signed_url(url)
+    return RedirectResponse(url=fresh_url, status_code=status.HTTP_302_FOUND)
 
 @router.get("/portal/solicitacoes", response_class=HTMLResponse)
 async def portal_solicitacoes_list(

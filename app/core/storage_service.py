@@ -76,6 +76,39 @@ class StorageService:
             # Fallback: retorna URL pública padrão (provavelmente dará 403)
             return blob.public_url
 
+    def refresh_signed_url(self, old_url: str) -> str:
+        """
+        Dada uma URL antiga (provavelmente expirada) do GCS, extrai o nome do blob
+        e gera uma nova Signed URL válida.
+        """
+        if "storage.googleapis.com" not in old_url:
+            return old_url
+
+        try:
+            from urllib.parse import urlparse, unquote
+            parsed = urlparse(old_url)
+            path = parsed.path
+            
+            bucket_prefix = f"/{GCS_BUCKET_NAME}/"
+            if path.startswith(bucket_prefix):
+                blob_name = path[len(bucket_prefix):]
+            elif parsed.netloc == f"{GCS_BUCKET_NAME}.storage.googleapis.com":
+                blob_name = path.lstrip('/')
+            else:
+                return old_url
+                
+            blob_name = unquote(blob_name)
+            
+            client = self._get_client()
+            bucket = client.bucket(GCS_BUCKET_NAME)
+            blob = bucket.blob(blob_name)
+            
+            return self._generate_signed_url(blob)
+            
+        except Exception as e:
+            logger.error(f"[GCS ERRO] Falha ao atualizar Signed URL: {str(e)}")
+            return old_url
+
     async def upload_file(self, file: UploadFile, cliente_nome: str = "Geral") -> str:
         """
         Recebe um arquivo do FastAPI e faz o upload para o Google Cloud Storage.
