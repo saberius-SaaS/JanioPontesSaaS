@@ -566,6 +566,13 @@ async def portal_solicitacao_reply(
     solic.pedido = (solic.pedido or "") + resposta_texto
     db.commit()
 
+    try:
+        db.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}';"))
+        db.execute(text("SET LOCAL app.bypass_rls = 'off';"))
+    except Exception:
+        pass
+    db.refresh(solic)
+
     # Como não temos background tasks instanciado diretamente, podemos usar chamadas await normais (ou ignorar email imediato).
     # O ideal seria injetar BackgroundTasks. Como não está na assinatura, vamos deixar apenas o log no banco por ora.
     
