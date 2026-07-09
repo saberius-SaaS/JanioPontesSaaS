@@ -232,21 +232,23 @@ async def responder_solicitacao_publica(
     if link:
         resposta_texto += f"\n[ARQUIVO ANEXADO]: {link}"
         
-    solic.pedido = solic.pedido + resposta_texto
+    solic.pedido = (solic.pedido or "") + resposta_texto
     
-    # Extrai dados antes do commit para evitar ObjectDeletedError no lazy-load pós-commit
+    # Extrai dados antes do commit
     s_responsavel = solic.responsavel
     s_tenant_id = solic.tenant_id
     s_cliente = solic.cliente
     db.commit()
     
+    # Precisamos reativar o bypass para garantir que o jinja ou queries subsequentes não falhem
+    try:
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    except Exception:
+        pass
+        
+    db.refresh(solic)
+    
     if s_responsavel:
-        # Precisamos reativar o bypass para buscar o usuário responsável (pois o commit encerrou a transação)
-        try:
-            db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
-        except Exception:
-            pass
-            
         user_responsavel = db.query(models.Usuario).filter(
             models.Usuario.nome == s_responsavel,
             models.Usuario.tenant_id == s_tenant_id

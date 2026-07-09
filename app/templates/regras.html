@@ -46,7 +46,9 @@
         </table>
     </div>
 </div>
+{% endblock %}
 
+{% block modals %}
 <!-- Modal Nova Obrigação -->
 <div id="modal-nova-obrigacao" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -156,7 +158,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 function abrirNovaObrigacao() {
     const form = document.getElementById('form-obrigacao');
