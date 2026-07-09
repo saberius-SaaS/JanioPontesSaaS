@@ -360,8 +360,8 @@
 
       {% if user and (user.nivel in ['ADMIN', 'MASTER'] or 'SOCIETARIO' in user.equipes|map(attribute='equipe.nome')|join(' ')|upper or 'SOCIETÁRIO' in user.equipes|map(attribute='equipe.nome')|join(' ')|upper) %}
       <a href="/certificados" class="nav-btn flex items-center w-full px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/10 no-underline text-slate-200 hover:text-white group">
-        <i class="fa-solid fa-certificate w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
-        <span class="ml-2.5">Certificados Digitais</span>
+        <i class="fa-solid fa-folder-open w-5 text-center text-amber-300/80 group-hover:text-amber-300 transition-colors"></i>
+        <span class="ml-2.5">Controle Societário</span>
       </a>
       {% endif %}
 

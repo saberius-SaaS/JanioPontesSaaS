@@ -129,6 +129,8 @@ app.include_router(solicitacao.router, tags=["Solicitações"])
 app.include_router(compliance.router, tags=["Compliance"])
 app.include_router(cliente.router, tags=["Clientes"])
 app.include_router(certificados.router, tags=["Certificados"])
+from app.routers import controle_societario
+app.include_router(controle_societario.router, tags=["Controle Societário"])
 app.include_router(regra.router, tags=["Regras e Obrigações"])
 app.include_router(usuario.router, tags=["Usuários"])
 app.include_router(equipe.router, tags=["Equipes"])

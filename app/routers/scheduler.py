@@ -269,3 +269,73 @@ async def backup_database(
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@router.post("/societario-alerts")
+async def send_societario_alerts(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _auth: bool = Depends(verify_scheduler_key)
+):
+    """
+    Verifica vencimentos do controle societário e envia alertas
+    com 30, 15, 10 e 5 dias de antecedência.
+    """
+    from sqlalchemy import text
+    try:
+        db.execute(text("SET LOCAL app.bypass_rls = 'on';"))
+    except Exception:
+        pass
+
+    hoje = hoje_br()
+    dias_alerta = [30, 15, 10, 5]
+
+    # Busca e-mails do societário
+    usuarios_societario = db.query(models.Usuario).join(models.UsuarioEquipe).join(models.Equipe).filter(
+        models.Equipe.nome.ilike("%societ%"),
+        models.Usuario.ativo == True
+    ).all()
+    emails_alvo = [u.email for u in usuarios_societario if u.email]
+    
+    if not emails_alvo:
+        emails_alvo = ["gerencia@janiopontes.com.br"]
+
+    # Verifica os 5 modelos
+    from app.models.documentos_societarios import LicencaLocalizacao, AlvaraSanitario, AVCB, InscricaoMunicipal
+    modelos_servicos = [
+        (models.CertificadoDigital, "Certificado Digital"),
+        (LicencaLocalizacao, "Licença/Localização"),
+        (AlvaraSanitario, "Alvará Sanitário"),
+        (AVCB, "AVCB"),
+        (InscricaoMunicipal, "Inscrição Municipal")
+    ]
+
+    alertas_enviados = 0
+
+    for Model, nome_servico in modelos_servicos:
+        docs = db.query(Model).filter(Model.status != "VENCIDO").all()
+        for doc in docs:
+            dias_restantes = (doc.vencimento - hoje).days
+            
+            # Se for dia de alerta
+            if dias_restantes in dias_alerta:
+                cliente_nome = doc.cliente.cliente if doc.cliente else "Desconhecido"
+                assunto = f"ALERTA DE VENCIMENTO: {nome_servico} - {cliente_nome} ({dias_restantes} dias)"
+                
+                corpo_html = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h2 style="color: #d97706;">Aviso de Vencimento Próximo</h2>
+                    <p>O documento abaixo irá vencer em <strong>{dias_restantes} dias</strong>.</p>
+                    <ul style="line-height: 1.6;">
+                        <li><strong>Cliente:</strong> {cliente_nome}</li>
+                        <li><strong>Documento:</strong> {nome_servico}</li>
+                        <li><strong>Data de Vencimento:</strong> {doc.vencimento.strftime('%d/%m/%Y')}</li>
+                    </ul>
+                    <p>Por favor, providencie a renovação e atualize o sistema.</p>
+                </div>
+                """
+                
+                for email in emails_alvo:
+                    background_tasks.add_task(email_service.enviar_email, email, assunto, corpo_html)
+                    alertas_enviados += 1
+
+    return {"status": "success", "alertas_enviados": alertas_enviados, "emails_alvo": emails_alvo}
+

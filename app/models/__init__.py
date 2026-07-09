@@ -15,6 +15,7 @@ from app.models.equipe import Equipe, UsuarioEquipe
 from app.models.certificado import CertificadoDigital
 from app.models.solicitacao_recorrente import SolicitacaoRecorrente
 from app.models.tentativa_login import TentativaLogin
+from app.models.documentos_societarios import LicencaLocalizacao, AlvaraSanitario, AVCB, InscricaoMunicipal
 
 __all__ = [
     "Base",
@@ -38,5 +39,9 @@ __all__ = [
     "UsuarioEquipe",
     "CertificadoDigital",
     "SolicitacaoRecorrente",
-    "TentativaLogin"
+    "TentativaLogin",
+    "LicencaLocalizacao",
+    "AlvaraSanitario",
+    "AVCB",
+    "InscricaoMunicipal"
 ]
